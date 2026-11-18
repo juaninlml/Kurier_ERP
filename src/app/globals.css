@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0f2a4a;
+  --color-brand-600: #173a63;
+  --color-accent: #f28c28;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #f5f7fa;
+  color: #0f172a;
+}
+
+@utility input {
+  @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50;
+}
+@utility label {
+  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-brand text-white hover:bg-brand-600;
+}
+@utility btn-accent {
+  @apply btn bg-accent text-white hover:brightness-95;
+}
+@utility btn-secondary {
+  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+}
+@utility btn-danger {
+  @apply btn border border-rose-200 bg-white text-rose-700 hover:bg-rose-50;
+}
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}
+@utility table {
+  @apply w-full text-sm;
+}
+@layer components {
+.table th {
+  @apply border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+}
+.table td {
+  @apply border-b border-slate-100 px-4 py-3;
+}
+.table td:first-child a {
+  @apply whitespace-nowrap;
+}
+.table tbody tr:hover {
+  @apply bg-slate-50/60;
+}
+}

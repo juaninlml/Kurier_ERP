@@ -1,0 +1,58 @@
+"use server";
+
+import { prisma } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { fromInputDate, round2 } from "@/lib/money";
+import { numv, str } from "./helpers";
+
+function txData(fd: FormData) {
+  const type = str(fd, "type");
+  if (type !== "INGRESO" && type !== "EGRESO") throw new Error("Tipo inválido.");
+  const amount = round2(numv(fd, "amount"));
+  if (amount <= 0) throw new Error("El monto debe ser mayor a 0.");
+  const category = str(fd, "category");
+  if (!category) throw new Error("Selecciona una categoría.");
+  const tax = round2(numv(fd, "tax"));
+  if (tax < 0 || tax > amount) throw new Error("El IVA debe estar entre 0 y el monto total.");
+  const clientId = numv(fd, "clientId");
+  return {
+    type,
+    category,
+    amount,
+    tax,
+    date: fromInputDate(str(fd, "date")),
+    description: str(fd, "description"),
+    method: str(fd, "method") || "Transferencia",
+    reference: str(fd, "reference"),
+    clientId: clientId || null,
+  };
+}
+
+function revalidate() {
+  revalidatePath("/contabilidad");
+  revalidatePath("/contabilidad/reportes");
+  revalidatePath("/");
+}
+
+export async function createTransaction(fd: FormData) {
+  await prisma.transaction.create({ data: txData(fd) });
+  revalidate();
+  redirect("/contabilidad");
+}
+
+export async function updateTransaction(id: number, fd: FormData) {
+  const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
+  if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; edítalo desde la factura.");
+  await prisma.transaction.update({ where: { id }, data: txData(fd) });
+  revalidate();
+  redirect("/contabilidad");
+}
+
+export async function deleteTransaction(id: number) {
+  const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
+  if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; elimina el pago desde la factura.");
+  await prisma.transaction.delete({ where: { id } });
+  revalidate();
+  redirect("/contabilidad");
+}

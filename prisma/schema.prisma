@@ -1,0 +1,181 @@
+// Kurier ERP — Fase 1: Cotizaciones, Facturas (informativas) y Contabilidad básica
+// SQLite para desarrollo local. Para producción: provider = "postgresql".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Configuración única de la empresa (id = 1). Alimenta el branding de los PDFs.
+model CompanySettings {
+  id                Int     @id @default(1)
+  tradeName         String  @default("Kurier Fulfillment")
+  legalName         String  @default("")
+  rfc               String  @default("")
+  address           String  @default("")
+  city              String  @default("")
+  state             String  @default("")
+  zip               String  @default("")
+  phone             String  @default("")
+  email             String  @default("")
+  website           String  @default("")
+  bankName          String  @default("")
+  bankAccount       String  @default("")
+  clabe             String  @default("")
+  primaryColor      String  @default("#0F2A4A")
+  accentColor       String  @default("#F28C28")
+  logoPath          String  @default("/branding/logo.png")
+  quotePrefix       String  @default("COT")
+  invoicePrefix     String  @default("FAC")
+  nextQuoteNumber   Int     @default(1)
+  nextInvoiceNumber Int     @default(1)
+  defaultTaxRate    Float   @default(16)
+  quoteValidityDays Int     @default(15)
+  paymentTermsDays  Int     @default(30)
+  quoteTerms        String  @default("")
+  invoiceNotes      String  @default("")
+  updatedAt         DateTime @updatedAt
+}
+
+model Client {
+  id           Int           @id @default(autoincrement())
+  name         String
+  legalName    String        @default("")
+  rfc          String        @default("")
+  contactName  String        @default("")
+  email        String        @default("")
+  phone        String        @default("")
+  address      String        @default("")
+  notes        String        @default("")
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  quotes       Quote[]
+  invoices     Invoice[]
+  transactions Transaction[]
+}
+
+/// Catálogo de servicios de fulfillment (almacenaje, pick & pack, envíos, etc.)
+model Service {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String   @default("")
+  unit        String   @default("Servicio")
+  unitPrice   Float    @default(0)
+  taxRate     Float    @default(16)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// status: BORRADOR | ENVIADA | ACEPTADA | RECHAZADA | FACTURADA
+model Quote {
+  id         Int         @id @default(autoincrement())
+  folio      String      @unique
+  clientId   Int
+  client     Client      @relation(fields: [clientId], references: [id])
+  issueDate  DateTime    @default(now())
+  validUntil DateTime
+  status     String      @default("BORRADOR")
+  notes      String      @default("")
+  terms      String      @default("")
+  subtotal   Float       @default(0)
+  discount   Float       @default(0)
+  tax        Float       @default(0)
+  total      Float       @default(0)
+  items      QuoteItem[]
+  invoices   Invoice[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model QuoteItem {
+  id          Int    @id @default(autoincrement())
+  quoteId     Int
+  quote       Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  position    Int    @default(0)
+  code        String @default("")
+  description String
+  unit        String @default("Servicio")
+  quantity    Float
+  unitPrice   Float
+  discountPct Float  @default(0)
+  taxRate     Float  @default(16)
+  amount      Float  @default(0) // importe sin IVA, después de descuento
+}
+
+/// status: PENDIENTE | PARCIAL | PAGADA | CANCELADA
+model Invoice {
+  id        Int           @id @default(autoincrement())
+  folio     String        @unique
+  clientId  Int
+  client    Client        @relation(fields: [clientId], references: [id])
+  quoteId   Int?
+  quote     Quote?        @relation(fields: [quoteId], references: [id])
+  issueDate DateTime      @default(now())
+  dueDate   DateTime
+  status    String        @default("PENDIENTE")
+  notes     String        @default("")
+  subtotal  Float         @default(0)
+  discount  Float         @default(0)
+  tax       Float         @default(0)
+  total     Float         @default(0)
+  paidTotal Float         @default(0)
+  items     InvoiceItem[]
+  payments  Payment[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position    Int     @default(0)
+  code        String  @default("")
+  description String
+  unit        String  @default("Servicio")
+  quantity    Float
+  unitPrice   Float
+  discountPct Float   @default(0)
+  taxRate     Float   @default(16)
+  amount      Float   @default(0)
+}
+
+/// Pago recibido de una factura. Genera automáticamente un movimiento de INGRESO.
+model Payment {
+  id          Int          @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  date        DateTime     @default(now())
+  amount      Float
+  method      String       @default("Transferencia")
+  reference   String       @default("")
+  notes       String       @default("")
+  transaction Transaction?
+  createdAt   DateTime     @default(now())
+}
+
+/// Movimiento contable. type: INGRESO | EGRESO
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  type        String
+  category    String
+  description String   @default("")
+  amount      Float    // monto total (con IVA)
+  tax         Float    @default(0) // IVA incluido en el monto
+  method      String   @default("Transferencia")
+  reference   String   @default("")
+  clientId    Int?
+  client      Client?  @relation(fields: [clientId], references: [id])
+  paymentId   Int?     @unique
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
