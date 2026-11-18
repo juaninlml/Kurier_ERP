@@ -46,7 +46,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           hint={s.years >= 1 ? `${b.vacationEntitled} del periodo · ${formatNumber(b.vacationTaken)} tomados` : `Al cumplir 1 año tendrá 12 días`}
           icon={Palmtree}
         />
-        <Stat label={`Aguinaldo ${year} a hoy`} value={formatMoney(b.aguinaldoToDate)} hint={`${formatNumber(b.aguinaldoDaysToDate)} días · al 31/dic: ${formatMoney(b.aguinaldoYear)}`} icon={Gift} />
+        <Stat label={`Aguinaldo ${year} a hoy`} value={formatMoney(b.aguinaldoToDate)} hint={`${formatNumber(b.aguinaldoDaysToDate)} días · al corte 20/dic: ${formatMoney(b.aguinaldoYear)} (${formatNumber(b.aguinaldoPayDays)} días)`} icon={Gift} />
         <Stat label="Costo mensual" value={formatMoney(monthlyCost(e))} hint="Sueldo + aguinaldo y prima prorrateados" icon={Timer} />
       </div>
 
@@ -60,7 +60,13 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
               ["Vacaciones del periodo actual", s.years >= 1 ? `${b.vacationEntitled} días (desde ${formatDate(s.lastAnniversary)})` : "Aún no cumple 1 año"],
               ["Vacaciones acumuladas hacia el próximo aniversario", `${formatNumber(b.vacationAccrued)} de ${b.nextEntitlement} días`],
               ["Prima vacacional (25%)", `${formatMoney(b.vacationPremiumPerDay)} por día · ${formatMoney(b.vacationPremiumAvailable)} por los días disponibles`],
-              [`Aguinaldo ${new Date().getFullYear()} (${b.aguinaldoDays} días)`, `${formatMoney(b.aguinaldoToDate)} a hoy · ${formatMoney(b.aguinaldoYear)} al 31 de diciembre`],
+              [`Aguinaldo ${new Date().getFullYear()} (${b.aguinaldoDays} días por antigüedad)`, `${formatMoney(b.aguinaldoToDate)} a hoy · ${formatMoney(b.aguinaldoYear)} al corte del 20 de diciembre`],
+              [
+                "Días de aguinaldo a pagar",
+                b.aguinaldoRawDays === b.aguinaldoPayDays
+                  ? `${formatNumber(b.aguinaldoPayDays)} días (proporcional, con decimales)`
+                  : `${formatNumber(b.aguinaldoRawDays)} proporcionales → ${formatNumber(b.aguinaldoPayDays)} días (con ,6 o más sube al siguiente)`,
+              ],
               ["Bono fijo semanal", formatMoney(e.weeklyBonus)],
             ].map(([k, v]) => (
               <div key={k} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 px-5 py-2.5">

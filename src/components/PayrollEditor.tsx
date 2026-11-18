@@ -25,7 +25,7 @@ export type EditorLine = {
   notes: string;
   /** Vacaciones disponibles sin contar esta nómina. */
   vacationAvailable: number;
-  /** Aguinaldo proporcional al día de pago. */
+  /** Aguinaldo a pagar al corte del 20 de diciembre. */
   aguinaldoDue: number;
 };
 
@@ -77,7 +77,7 @@ export function PayrollEditor({
               type="button"
               className="btn-secondary h-8 text-xs"
               onClick={() => setLines((ls) => ls.map((l) => ({ ...l, aguinaldo: l.aguinaldoDue })))}
-              title="Llena el aguinaldo proporcional de cada empleado (15 días por año trabajado)"
+              title="Llena el aguinaldo de cada empleado al corte del 20 de diciembre (días según antigüedad; con ,6 o más sube al siguiente día)"
             >
               <Gift className="size-3.5" /> Incluir aguinaldo
             </button>

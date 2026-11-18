@@ -6,12 +6,23 @@ import { round2 } from "./money";
  *   y después +2 cada 5 años (22 del 6º al 10º, 24 del 11º al 15º…).
  * - Prima vacacional (art. 80): 25% del salario de los días de vacaciones.
  * - Aguinaldo (política de Kurier, arriba del mínimo de ley de 15 días): 15 días el primer año, +1 día por
- *   año de antigüedad hasta el 5º año y +2 días por año después, con tope de 30 días. Proporcional al tiempo
- *   trabajado en el año calendario.
+ *   año de antigüedad hasta el 5º año y +2 días por año después, con tope de 30 días. Corte al 20 de diciembre:
+ *   es proporcional a lo trabajado del 1 de enero al 20 de diciembre y, si los días proporcionales llegan a
+ *   ,6 o más, se sube al día siguiente; si no, se pagan los días con sus decimales.
  * - Semana: se pagan 6 días; el 7º es de descanso y no se paga (por ahora).
  */
 export const AGUINALDO_BASE_DAYS = 15;
 export const AGUINALDO_MAX_DAYS = 30;
+/** Fecha de corte del aguinaldo: 20 de diciembre (mes 11 = diciembre en Date). */
+export const AGUINALDO_CUTOFF = { month: 11, day: 20 } as const;
+export const aguinaldoCutoff = (year: number) => new Date(Date.UTC(year, AGUINALDO_CUTOFF.month, AGUINALDO_CUTOFF.day));
+
+/** Redondeo de días de aguinaldo: con ,6 o más sube al siguiente día; si no, se pagan los días con decimales (2 dígitos). */
+export function roundAguinaldoDays(days: number) {
+  const whole = Math.floor(days + 1e-9);
+  return days - whole >= 0.6 - 1e-9 ? whole + 1 : round2(days);
+}
+
 /** Días que se pagan por semana (el 7º es descanso sin goce, por ahora). */
 export const PAID_DAYS_PER_WEEK = 6;
 
@@ -72,17 +83,22 @@ export function benefits(e: { startDate: Date; dailySalary: number }, vacationTa
   const nextEntitlement = vacationDaysFor(s.years + 1);
   const vacationAccrued = round2((nextEntitlement * elapsed) / periodDays);
 
-  // Aguinaldo del año calendario en curso
+  // Aguinaldo del año en curso: periodo del 1 de enero al corte (20 de diciembre)
   const yearStart = new Date(Date.UTC(at.getUTCFullYear(), 0, 1));
-  const yearEnd = new Date(Date.UTC(at.getUTCFullYear(), 11, 31));
+  const cutoff = aguinaldoCutoff(at.getUTCFullYear());
   const from = e.startDate > yearStart ? e.startDate : yearStart;
-  const daysInYear = (Date.UTC(at.getUTCFullYear() + 1, 0, 1) - yearStart.getTime()) / DAY;
-  const workedToDate = Math.max(0, Math.floor((at.getTime() - from.getTime()) / DAY) + 1);
-  const workedFullYear = Math.max(0, Math.floor((yearEnd.getTime() - from.getTime()) / DAY) + 1);
-  // Días de aguinaldo según la antigüedad cumplida al 31 de diciembre
-  const aguinaldoDays = aguinaldoDaysFor(seniority(e.startDate, yearEnd).years);
-  const aguinaldoToDate = round2((aguinaldoDays * daily * Math.min(workedToDate, daysInYear)) / daysInYear);
-  const aguinaldoYear = round2((aguinaldoDays * daily * Math.min(workedFullYear, daysInYear)) / daysInYear);
+  const aguinaldoPeriod = Math.round((cutoff.getTime() - yearStart.getTime()) / DAY) + 1; // 354 (355 en bisiesto)
+  // Se cuentan días calendario completos (sin importar la hora guardada en la fecha)
+  const dayNo = (d: Date) => Math.floor(d.getTime() / DAY);
+  const worked = (until: Date) => Math.min(aguinaldoPeriod, Math.max(0, dayNo(until) - dayNo(from) + 1));
+  const workedToDate = worked(at < cutoff ? at : cutoff);
+  const workedAtCutoff = worked(cutoff);
+  // Días de aguinaldo según la antigüedad cumplida a la fecha de corte
+  const aguinaldoDays = aguinaldoDaysFor(seniority(e.startDate, cutoff).years);
+  const aguinaldoRawDays = round2((aguinaldoDays * workedAtCutoff) / aguinaldoPeriod);
+  const aguinaldoPayDays = roundAguinaldoDays((aguinaldoDays * workedAtCutoff) / aguinaldoPeriod);
+  const aguinaldoToDate = round2((aguinaldoDays * daily * workedToDate) / aguinaldoPeriod);
+  const aguinaldoYear = round2(aguinaldoPayDays * daily);
 
   return {
     seniority: s,
@@ -96,7 +112,10 @@ export function benefits(e: { startDate: Date; dailySalary: number }, vacationTa
     aguinaldoToDate,
     aguinaldoYear,
     aguinaldoDays,
-    aguinaldoDaysToDate: round2((aguinaldoDays * Math.min(workedToDate, daysInYear)) / daysInYear),
+    aguinaldoRawDays,
+    aguinaldoPayDays,
+    aguinaldoCutoff: cutoff,
+    aguinaldoDaysToDate: round2((aguinaldoDays * workedToDate) / aguinaldoPeriod),
     weeklySalary: round2(daily * PAID_DAYS_PER_WEEK),
     // 6 días pagados por semana × 52 semanas ÷ 12 meses
     monthlySalary: round2((daily * PAID_DAYS_PER_WEEK * 52) / 12),

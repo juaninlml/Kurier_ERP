@@ -50,7 +50,7 @@ export default async function PayrollPage() {
         <Stat label="Empleados activos" value={String(active.length)} icon={Users} />
         <Stat label="Nómina semanal" value={formatMoney(weekly)} hint="Salario diario × 6 días + bonos fijos" icon={CalendarDays} />
         <Stat label="Costo mensual" value={formatMoney(monthly)} hint="Con aguinaldo y prima prorrateados" icon={Wallet} href="/contabilidad/gastos-fijos" />
-        <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint="Proyección al 31 de diciembre" icon={Gift} />
+        <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint="A pagar al corte del 20 de diciembre" icon={Gift} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">

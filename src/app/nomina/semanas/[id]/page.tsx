@@ -45,7 +45,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       deductions: l.deductions,
       notes: l.notes,
       vacationAvailable: b.vacationAvailable,
-      aguinaldoDue: b.aguinaldoToDate,
+      // Aguinaldo a pagar al corte del 20 de diciembre (días redondeados)
+      aguinaldoDue: b.aguinaldoYear,
     };
   });
 
