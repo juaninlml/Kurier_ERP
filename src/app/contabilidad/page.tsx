@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { createTransaction } from "@/app/actions/accounting";
-import { PageHeader, Stat, Empty } from "@/components/ui";
+import { PageHeader, Stat, Empty } from "@/components/kit";
 import { TransactionForm } from "@/components/TransactionForm";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { parseRange } from "@/lib/reports";
@@ -116,20 +116,20 @@ export default async function AccountingPage({
                       <td className="whitespace-nowrap">{formatDate(t.date)}</td>
                       <td>
                         {t.payment ? (
-                          <Link href={`/facturas/${t.payment.invoiceId}`} className="hover:text-brand">
+                          <Link href={`/facturas/${t.payment.invoiceId}`} className="hover:text-primary">
                             {t.description}
                           </Link>
                         ) : (
-                          <Link href={`/contabilidad/movimientos/${t.id}`} className="hover:text-brand">
+                          <Link href={`/contabilidad/movimientos/${t.id}`} className="hover:text-primary">
                             {t.description || "(sin concepto)"}
                           </Link>
                         )}
-                        {t.client && !t.payment && <div className="text-xs text-slate-500">{t.client.name}</div>}
+                        {t.client && !t.payment && <div className="text-xs text-muted-foreground">{t.client.name}</div>}
                       </td>
-                      <td className="text-slate-600">{t.category}</td>
-                      <td className="text-slate-600">
+                      <td className="text-muted-foreground">{t.category}</td>
+                      <td className="text-muted-foreground">
                         {t.method}
-                        {t.reference && <div className="text-xs text-slate-400">{t.reference}</div>}
+                        {t.reference && <div className="text-xs text-muted-foreground">{t.reference}</div>}
                       </td>
                       <td className={`whitespace-nowrap text-right font-medium tabular-nums ${t.type === "INGRESO" ? "text-emerald-700" : "text-rose-700"}`}>
                         {t.type === "INGRESO" ? "+" : "−"}

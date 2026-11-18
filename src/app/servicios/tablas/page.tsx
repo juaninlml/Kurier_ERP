@@ -1,8 +1,9 @@
+import { Download, Eye, Trash2 } from "lucide-react";
 import type { TariffTable } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { createTariffTable, deleteTariffTable, saveTariffTexts, updateTariffTable } from "@/app/actions/tariff";
-import { PageHeader, Field } from "@/components/ui";
+import { PageHeader, Field } from "@/components/kit";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -26,10 +27,10 @@ export default async function TariffTablesPage() {
         actions={
           <>
             <a href="/api/pdf/tarifario" target="_blank" className="btn-secondary">
-              Ver PDF
+              <Eye className="size-4" /> Ver PDF
             </a>
             <a href="/api/pdf/tarifario?download" className="btn-primary">
-              Descargar
+              <Download className="size-4" /> Descargar
             </a>
           </>
         }
@@ -52,7 +53,7 @@ export default async function TariffTablesPage() {
       </Form>
 
       <h2 className="mb-1 font-semibold">Tablas informativas</h2>
-      <p className="mb-4 text-xs text-slate-500">
+      <p className="mb-4 text-xs text-muted-foreground">
         Columnas separadas por <code>|</code>, con ancho opcional en % (<code>Concepto:32|Detalle:68</code>). Filas: una por línea, celdas separadas por{" "}
         <code>|</code>. Deja la primera celda vacía para continuar un grupo (ej. zonas). Admite <code>**negritas**</code> en la nota.
       </p>
@@ -67,7 +68,7 @@ export default async function TariffTablesPage() {
             </Form>
             <Form action={deleteTariffTable.bind(null, t.id)} className="mt-2 w-fit">
               <ConfirmButton message={`¿Eliminar la tabla “${t.title}”?`} className="btn-danger text-xs">
-                Eliminar
+                <Trash2 className="size-4" /> Eliminar
               </ConfirmButton>
             </Form>
           </div>

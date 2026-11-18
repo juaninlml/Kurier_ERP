@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useTransition } from "react";
+import { CircleAlert } from "lucide-react";
 import type { ActionResult } from "@/lib/safe-action";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PendingContext = createContext(false);
 export const useFormPending = () => useContext(PendingContext);
@@ -42,9 +44,10 @@ export function Form({
     >
       <PendingContext.Provider value={pending}>
         {error && (
-          <div role="alert" className="mb-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/5">
+            <CircleAlert />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         {children}
       </PendingContext.Provider>

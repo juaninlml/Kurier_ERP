@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SubmitButton } from "./SubmitButton";
 import { computeLines, type LineInput } from "@/lib/totals";
@@ -210,10 +211,10 @@ export function DocumentEditor({
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Perfil de la operación cotizada</h2>
-              <p className="text-xs text-slate-500">El cliente se agrega solo. Las filas sin detalle no se imprimen.</p>
+              <p className="text-xs text-muted-foreground">El cliente se agrega solo. Las filas sin detalle no se imprimen.</p>
             </div>
             <button type="button" className="btn-secondary" onClick={() => setProfile((p) => [...p, { label: "", value: "" }])}>
-              + Fila
+              <Plus className="size-4" /> Fila
             </button>
           </div>
           <div className="space-y-2">
@@ -231,8 +232,8 @@ export function DocumentEditor({
                   value={r.value}
                   onChange={(e) => setProfile((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
                 />
-                <button type="button" title="Quitar" className="px-2 text-rose-400 hover:text-rose-700" onClick={() => setProfile((p) => p.filter((_, j) => j !== i))}>
-                  ✕
+                <button type="button" title="Quitar" aria-label="Quitar" className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setProfile((p) => p.filter((_, j) => j !== i))}>
+                  <Trash2 className="size-4" />
                 </button>
               </div>
             ))}
@@ -241,10 +242,10 @@ export function DocumentEditor({
       )}
 
       <div className="card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div>
             <h2 className="font-semibold">{isQuote ? "Servicios y tarifas" : "Detalle de servicios facturados"}</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {isQuote
                 ? "Cantidad 0 = solo se muestra la tarifa. Con cantidad, el concepto entra al costo mensual estimado."
                 : "Los conceptos con cantidad 0 no se facturan."}
@@ -288,16 +289,16 @@ export function DocumentEditor({
               ))}
             </select>
             <button type="button" className="btn-secondary" onClick={() => append([emptyLine(defaultTaxRate)])}>
-              + Concepto libre
+              <Plus className="size-4" /> Concepto libre
             </button>
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-border">
           {lines.map((l, i) => (
-            <div key={i} className={`space-y-2 px-5 py-4 ${isQuote && l.quantity === 0 ? "bg-slate-50/60" : ""}`}>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-[minmax(0,3fr)_minmax(0,1.2fr)_90px_130px_80px_80px_120px_auto]">
-                <Cell label="Concepto" className="col-span-2 sm:col-span-4 2xl:col-span-1">
+            <div key={i} className={`space-y-2 px-5 py-4 ${isQuote && l.quantity === 0 ? "bg-muted/40" : ""}`}>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1.2fr)_90px_130px_80px_80px_120px_auto]">
+                <Cell label="Concepto" className="col-span-2 sm:col-span-4 xl:col-span-1">
                   <input className="input font-medium" value={l.description} placeholder="Nombre del servicio" onChange={(e) => update(i, { description: e.target.value })} />
                 </Cell>
                 <Cell label="Unidad">
@@ -334,18 +335,18 @@ export function DocumentEditor({
                   <div className="py-2 text-right text-sm font-medium tabular-nums">{formatMoney(lineAmount(l))}</div>
                 </Cell>
                 <div className="flex items-end justify-end gap-1 pb-2">
-                  <button type="button" title="Subir" className="px-1 text-slate-400 hover:text-slate-700" onClick={() => move(i, -1)}>
-                    ↑
+                  <button type="button" title="Subir" aria-label="Subir" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, -1)}>
+                    <ChevronUp className="size-4" />
                   </button>
-                  <button type="button" title="Bajar" className="px-1 text-slate-400 hover:text-slate-700" onClick={() => move(i, 1)}>
-                    ↓
+                  <button type="button" title="Bajar" aria-label="Bajar" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, 1)}>
+                    <ChevronDown className="size-4" />
                   </button>
-                  <button type="button" title="Eliminar" className="px-1 text-rose-400 hover:text-rose-700" onClick={() => remove(i)}>
-                    ✕
+                  <button type="button" title="Eliminar" aria-label="Eliminar" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(i)}>
+                    <Trash2 className="size-4" />
                   </button>
                 </div>
               </div>
-              <div className={`grid grid-cols-2 gap-2 ${isQuote ? "sm:grid-cols-4 2xl:grid-cols-[100px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,3fr)_auto]" : "sm:grid-cols-[100px_minmax(0,1fr)_auto]"}`}>
+              <div className={`grid grid-cols-2 gap-2 ${isQuote ? "sm:grid-cols-4 xl:grid-cols-[100px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,3fr)_auto]" : "sm:grid-cols-[100px_minmax(0,1fr)_auto]"}`}>
                 <Cell label="Clave">
                   <input className="input text-xs" value={l.code ?? ""} onChange={(e) => update(i, { code: e.target.value })} />
                 </Cell>
@@ -363,11 +364,11 @@ export function DocumentEditor({
                   />
                 </Cell>
                 {isQuote && (
-                  <Cell label="Descripción" className="col-span-2 sm:col-span-4 2xl:col-span-1">
+                  <Cell label="Descripción" className="col-span-2 sm:col-span-4 xl:col-span-1">
                     <textarea rows={1} className="input min-h-[38px] text-xs" value={l.detail ?? ""} onChange={(e) => update(i, { detail: e.target.value })} />
                   </Cell>
                 )}
-                <div className="flex flex-col justify-end gap-1 pb-1.5 text-xs text-slate-600">
+                <div className="flex flex-col justify-end gap-1 pb-1.5 text-xs text-muted-foreground">
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={Boolean(l.atCost)} onChange={(e) => update(i, { atCost: e.target.checked })} /> Al costo
                   </label>
@@ -392,26 +393,26 @@ export function DocumentEditor({
           </datalist>
         </div>
 
-        <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex justify-end border-t border-border bg-muted px-5 py-4">
           <dl className="w-full max-w-xs space-y-1 text-sm">
             {isQuote && <div className="label">Costo mensual estimado</div>}
             <div className="flex justify-between">
-              <dt className="text-slate-500">Subtotal sin IVA</dt>
+              <dt className="text-muted-foreground">Subtotal sin IVA</dt>
               <dd className="tabular-nums">{formatMoney(totals.subtotal)}</dd>
             </div>
             {totals.discount > 0 && (
               <div className="flex justify-between">
-                <dt className="text-slate-500">Descuento</dt>
+                <dt className="text-muted-foreground">Descuento</dt>
                 <dd className="tabular-nums">−{formatMoney(totals.discount)}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-slate-500">IVA</dt>
+              <dt className="text-muted-foreground">IVA</dt>
               <dd className="tabular-nums">{formatMoney(totals.tax)}</dd>
             </div>
-            <div className="flex justify-between border-t border-slate-300 pt-2 text-base font-semibold">
+            <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
               <dt>{isQuote ? "Total estimado" : "Total a pagar"}</dt>
-              <dd className="tabular-nums text-accent">{formatMoney(totals.total)}</dd>
+              <dd className="tabular-nums text-kurier">{formatMoney(totals.total)}</dd>
             </div>
           </dl>
         </div>
@@ -423,10 +424,10 @@ export function DocumentEditor({
             <div className="mb-2 flex items-center justify-between">
               <div>
                 <h2 className="font-semibold">Costo por pedido</h2>
-                <p className="text-xs text-slate-500">Opcional. Combinaciones típicas de pedido y su costo de fulfillment.</p>
+                <p className="text-xs text-muted-foreground">Opcional. Combinaciones típicas de pedido y su costo de fulfillment.</p>
               </div>
               <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setPerOrder((p) => [...p, { label: "", amount: 0 }])}>
-                + Fila
+                <Plus className="size-4" /> Fila
               </button>
             </div>
             <div className="space-y-2">
@@ -446,8 +447,8 @@ export function DocumentEditor({
                     value={r.amount}
                     onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: num(e.target.value) } : x)))}
                   />
-                  <button type="button" title="Quitar" className="px-2 text-rose-400 hover:text-rose-700" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
-                    ✕
+                  <button type="button" title="Quitar" aria-label="Quitar" className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
+                    <Trash2 className="size-4" />
                   </button>
                 </div>
               ))}
@@ -468,7 +469,7 @@ export function DocumentEditor({
 
           <div>
             <h2 className="font-semibold">Costo mensual según volumen</h2>
-            <p className="mb-2 text-xs text-slate-500">
+            <p className="mb-2 text-xs text-muted-foreground">
               Opcional. Recalcula el costo estimado para varios volúmenes. Los conceptos con “Escala con volumen” crecen en proporción; los demás
               (ej. sistema) quedan fijos.
             </p>
@@ -509,7 +510,7 @@ export function DocumentEditor({
                     <tr className="font-semibold">
                       <td>Total con IVA</td>
                       {scenarioPreview.total.map((v, j) => (
-                        <td key={j} className="text-right tabular-nums text-accent">
+                        <td key={j} className="text-right tabular-nums text-kurier">
                           {formatMoney(v)}
                         </td>
                       ))}
@@ -551,7 +552,7 @@ export function DocumentEditor({
 function Cell({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <label className={`block min-w-0 ${className ?? ""}`}>
-      <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
   );

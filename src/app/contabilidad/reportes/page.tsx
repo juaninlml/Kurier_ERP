@@ -1,5 +1,6 @@
+import { Download, Eye } from "lucide-react";
 import Link from "next/link";
-import { PageHeader, Stat } from "@/components/ui";
+import { PageHeader, Stat } from "@/components/kit";
 import { incomeStatement, receivables, parseRange, AGING_BUCKETS } from "@/lib/reports";
 import { formatDate, formatMoney, toInputDate } from "@/lib/money";
 
@@ -35,10 +36,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         actions={
           <>
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}`} target="_blank" className="btn-secondary">
-              Ver PDF
+              <Eye className="size-4" /> Ver PDF
             </a>
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}&download`} className="btn-primary">
-              Descargar PDF
+              <Download className="size-4" /> Descargar PDF
             </a>
           </>
         }
@@ -49,7 +50,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <Link
             key={p.label}
             href={`/contabilidad/reportes?from=${p.from}&to=${p.to}`}
-            className={`btn-secondary ${p.from === fromStr && p.to === toStr ? "ring-2 ring-brand/30" : ""}`}
+            className={`btn-secondary ${p.from === fromStr && p.to === toStr ? "ring-2 ring-primary/30" : ""}`}
           >
             {p.label}
           </Link>
@@ -87,18 +88,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <span className="font-semibold tabular-nums">{formatMoney(total)}</span>
             </div>
             {rows.length === 0 ? (
-              <p className="text-sm text-slate-500">Sin movimientos.</p>
+              <p className="text-sm text-muted-foreground">Sin movimientos.</p>
             ) : (
               <ul className="space-y-3">
                 {rows.map((r) => (
                   <li key={r.category}>
                     <div className="mb-1 flex justify-between text-sm">
                       <span>
-                        {r.category} <span className="text-slate-400">({r.count})</span>
+                        {r.category} <span className="text-muted-foreground">({r.count})</span>
                       </span>
                       <span className="tabular-nums">{formatMoney(r.amount)}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-muted">
                       <div className={`h-2 rounded-full ${bar}`} style={{ width: `${(r.amount / maxCat) * 100}%` }} />
                     </div>
                   </li>
@@ -113,29 +114,29 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <h2 className="mb-3 font-semibold">Resumen de IVA (estimado)</h2>
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-slate-500">IVA cobrado</dt>
+            <dt className="text-muted-foreground">IVA cobrado</dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.incomeTax)}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">IVA pagado</dt>
+            <dt className="text-muted-foreground">IVA pagado</dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.expenseTax)}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Diferencia</dt>
+            <dt className="text-muted-foreground">Diferencia</dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.ivaBalance)}</dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs text-slate-500">Cifras informativas basadas en los movimientos capturados; no sustituyen la declaración de tu contador.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Cifras informativas basadas en los movimientos capturados; no sustituyen la declaración de tu contador.</p>
       </div>
 
       <div className="card mt-6 overflow-x-auto">
-        <div className="border-b border-slate-200 px-4 py-3">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="font-semibold">Antigüedad de saldos (cuentas por cobrar)</h2>
         </div>
-        <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-200 sm:grid-cols-5">
+        <div className="grid grid-cols-2 divide-x divide-border border-b border-border sm:grid-cols-5">
           {AGING_BUCKETS.map((b) => (
             <div key={b} className="p-4">
-              <div className="text-xs uppercase text-slate-500">{b === "corriente" ? "Al corriente" : `${b} días`}</div>
+              <div className="text-xs uppercase text-muted-foreground">{b === "corriente" ? "Al corriente" : `${b} días`}</div>
               <div className={`mt-1 font-semibold tabular-nums ${b !== "corriente" && ar.byBucket[b] > 0 ? "text-rose-700" : ""}`}>{formatMoney(ar.byBucket[b])}</div>
             </div>
           ))}
@@ -155,13 +156,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               {ar.rows.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <Link href={`/facturas/${r.id}`} className="font-medium text-brand hover:underline">
+                    <Link href={`/facturas/${r.id}`} className="font-medium text-primary hover:underline">
                       {r.folio}
                     </Link>
                   </td>
                   <td>{r.client.name}</td>
                   <td>{formatDate(r.dueDate)}</td>
-                  <td className={r.daysOverdue > 0 ? "text-rose-600" : "text-slate-400"}>{r.daysOverdue || "—"}</td>
+                  <td className={r.daysOverdue > 0 ? "text-rose-600" : "text-muted-foreground"}>{r.daysOverdue || "—"}</td>
                   <td className="text-right tabular-nums">{formatMoney(r.balance)}</td>
                 </tr>
               ))}

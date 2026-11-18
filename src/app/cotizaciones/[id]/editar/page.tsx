@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { updateQuote } from "@/app/actions/quotes";
 import { DocumentEditor } from "@/components/DocumentEditor";
-import { PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor, parseProfileJson } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
 import { parsePerOrder } from "@/lib/quote-extras";

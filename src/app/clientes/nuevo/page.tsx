@@ -1,6 +1,6 @@
 import { createClient } from "@/app/actions/clients";
 import { ClientForm } from "@/components/ClientForm";
-import { PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/kit";
 
 export default function NewClientPage() {
   return (

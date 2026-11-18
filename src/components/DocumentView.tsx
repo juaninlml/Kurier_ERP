@@ -56,12 +56,12 @@ export function DocumentView({
             {groups.map(([section, list]) => (
               <Group key={section} section={section} cols={isQuote ? 5 : 4}>
                 {list.map((i) => (
-                  <tr key={i.id} className={isQuote && i.quantity === 0 ? "text-slate-500" : ""}>
-                    <td className="font-medium text-brand">
+                  <tr key={i.id} className={isQuote && i.quantity === 0 ? "text-muted-foreground" : ""}>
+                    <td className="font-medium text-primary">
                       {i.description}
-                      {i.code && <div className="font-mono text-[10px] font-normal text-slate-400">{i.code}</div>}
+                      {i.code && <div className="font-mono text-[10px] font-normal text-muted-foreground">{i.code}</div>}
                     </td>
-                    {isQuote && <td className="whitespace-nowrap font-medium text-accent">{rateLabel(i, formatMoney)}</td>}
+                    {isQuote && <td className="whitespace-nowrap font-medium text-kurier">{rateLabel(i, formatMoney)}</td>}
                     {isQuote && <td className="max-w-md whitespace-pre-line text-xs">{i.detail}</td>}
                     <td className="whitespace-nowrap text-right tabular-nums">
                       {i.quantity > 0 ? `${formatNumber(i.quantity)} ${i.unit.toLowerCase()}` : "—"}
@@ -69,7 +69,7 @@ export function DocumentView({
                     {!isQuote && (
                       <td className="whitespace-nowrap text-right tabular-nums">
                         {i.priceText || (i.atCost ? "Variable (al costo)" : formatMoney(i.unitPrice))}
-                        {i.discountPct > 0 && <div className="text-xs text-slate-400">−{i.discountPct}%</div>}
+                        {i.discountPct > 0 && <div className="text-xs text-muted-foreground">−{i.discountPct}%</div>}
                       </td>
                     )}
                     <td className="whitespace-nowrap text-right font-medium tabular-nums">{i.amount ? formatMoney(i.amount) : "—"}</td>
@@ -80,26 +80,26 @@ export function DocumentView({
           </tbody>
         </table>
       </div>
-      <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-4">
+      <div className="flex justify-end border-t border-border bg-muted px-5 py-4">
         <dl className="w-full max-w-xs space-y-1 text-sm">
           {isQuote && <div className="label">Costo mensual estimado</div>}
           <div className="flex justify-between">
-            <dt className="text-slate-500">Subtotal sin IVA</dt>
+            <dt className="text-muted-foreground">Subtotal sin IVA</dt>
             <dd className="tabular-nums">{formatMoney(subtotal)}</dd>
           </div>
           {discount > 0 && (
             <div className="flex justify-between">
-              <dt className="text-slate-500">Descuento</dt>
+              <dt className="text-muted-foreground">Descuento</dt>
               <dd className="tabular-nums">−{formatMoney(discount)}</dd>
             </div>
           )}
           <div className="flex justify-between">
-            <dt className="text-slate-500">IVA</dt>
+            <dt className="text-muted-foreground">IVA</dt>
             <dd className="tabular-nums">{formatMoney(tax)}</dd>
           </div>
-          <div className="flex justify-between border-t border-slate-300 pt-2 text-base font-semibold">
+          <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
             <dt>{isQuote ? "Total estimado" : "Total a pagar"}</dt>
-            <dd className="tabular-nums text-accent">{formatMoney(total)}</dd>
+            <dd className="tabular-nums text-kurier">{formatMoney(total)}</dd>
           </div>
           {extra}
         </dl>
@@ -113,7 +113,7 @@ function Group({ section, cols, children }: { section: string; cols: number; chi
     <>
       {section && (
         <tr>
-          <td colSpan={cols} className="bg-accent/10 py-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
+          <td colSpan={cols} className="bg-kurier/10 py-1.5 text-xs font-semibold uppercase tracking-wide text-kurier">
             {section}
           </td>
         </tr>

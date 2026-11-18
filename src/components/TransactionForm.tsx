@@ -42,12 +42,12 @@ export function TransactionForm({
 
   return (
     <Form action={action} className="space-y-3">
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+      <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
         {(["INGRESO", "EGRESO"] as const).map((t) => (
           <label
             key={t}
             className={`cursor-pointer rounded-md py-1.5 text-center text-sm font-medium ${
-              type === t ? (t === "INGRESO" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white") : "text-slate-600"
+              type === t ? (t === "INGRESO" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white") : "text-muted-foreground"
             }`}
           >
             <input type="radio" name="type" value={t} checked={type === t} onChange={() => setType(t)} className="sr-only" />
@@ -74,7 +74,7 @@ export function TransactionForm({
         <label className="block">
           <span className="label flex justify-between">
             IVA incluido
-            <button type="button" onClick={calcTax} className="normal-case text-brand hover:underline">
+            <button type="button" onClick={calcTax} className="normal-case text-primary hover:underline">
               calcular {defaultTaxRate}%
             </button>
           </span>

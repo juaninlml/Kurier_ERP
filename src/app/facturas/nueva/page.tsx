@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createInvoice } from "@/app/actions/invoices";
 import { DocumentEditor } from "@/components/DocumentEditor";
-import { PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor } from "@/lib/editor-data";
 import { addDays, toInputDate } from "@/lib/money";
 import { prisma } from "@/lib/db";
@@ -30,7 +30,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
       {clients.length === 0 ? (
         <div className="card p-6 text-sm">
           Primero da de alta un cliente.{" "}
-          <Link href="/clientes/nuevo" className="text-brand underline">
+          <Link href="/clientes/nuevo" className="text-primary underline">
             Crear cliente
           </Link>
         </div>

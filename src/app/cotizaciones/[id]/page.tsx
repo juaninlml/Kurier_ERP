@@ -1,9 +1,10 @@
+import { Check, Copy, Download, Eye, Pencil, ReceiptText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { deleteQuote, duplicateQuote, setQuoteStatus } from "@/app/actions/quotes";
 import { parseProfileJson } from "@/lib/editor-data";
-import { PageHeader, StatusBadge } from "@/components/ui";
+import { PageHeader, StatusBadge } from "@/components/kit";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -34,7 +35,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         subtitle={
           <span className="flex items-center gap-2">
             <StatusBadge status={quote.status} />
-            <Link href={`/clientes/${quote.clientId}`} className="hover:text-brand">
+            <Link href={`/clientes/${quote.clientId}`} className="hover:text-primary">
               {quote.client.name}
             </Link>
             · Emitida {formatDate(quote.issueDate)} · Vigente hasta {formatDate(quote.validUntil)}
@@ -43,18 +44,18 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         actions={
           <>
             <a href={`/api/pdf/cotizacion/${quote.id}`} target="_blank" className="btn-secondary">
-              Ver PDF
+              <Eye className="size-4" /> Ver PDF
             </a>
             <a href={`/api/pdf/cotizacion/${quote.id}?download`} className="btn-secondary">
-              Descargar
+              <Download className="size-4" /> Descargar
             </a>
             {editable && (
               <Link href={`/cotizaciones/${quote.id}/editar`} className="btn-secondary">
-                Editar
+                <Pencil className="size-4" /> Editar
               </Link>
             )}
-            <Link href={`/facturas/nueva?quoteId=${quote.id}`} className="btn-accent">
-              Facturar con estas tarifas
+            <Link href={`/facturas/nueva?quoteId=${quote.id}`} className="btn-kurier">
+              <ReceiptText className="size-4" /> Facturar con estas tarifas
             </Link>
           </>
         }
@@ -78,11 +79,11 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         <div className="min-w-0 space-y-6">
           {(quote.attention || profile.length > 0) && (
             <div className="card overflow-hidden">
-              <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Perfil de la operación cotizada</h2>
-              <dl className="divide-y divide-slate-100 text-sm">
+              <h2 className="border-b border-border px-4 py-3 font-semibold">Perfil de la operación cotizada</h2>
+              <dl className="divide-y divide-border text-sm">
                 {[{ label: "Atención", value: quote.attention }, ...profile].filter((r) => r.value).map((r) => (
                   <div key={r.label} className="grid grid-cols-[200px_1fr] gap-3 px-4 py-2">
-                    <dt className="font-medium text-brand">{r.label}</dt>
+                    <dt className="font-medium text-primary">{r.label}</dt>
                     <dd>{r.value}</dd>
                   </div>
                 ))}
@@ -94,7 +95,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             <div className="grid gap-6 xl:grid-cols-2">
               {perOrder.length > 0 && (
                 <div className="card overflow-hidden">
-                  <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Costo por pedido</h2>
+                  <h2 className="border-b border-border px-4 py-3 font-semibold">Costo por pedido</h2>
                   <table className="table">
                     <thead>
                       <tr>
@@ -106,9 +107,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                     <tbody>
                       {perOrder.map((r) => (
                         <tr key={r.label}>
-                          <td className="font-medium text-brand">{r.label}</td>
+                          <td className="font-medium text-primary">{r.label}</td>
                           <td className="text-right tabular-nums">{formatMoney(r.amount)}</td>
-                          {quote.perOrderFee > 0 && <td className="text-right font-semibold tabular-nums text-brand">{formatMoney(r.amount + quote.perOrderFee)}</td>}
+                          {quote.perOrderFee > 0 && <td className="text-right font-semibold tabular-nums text-primary">{formatMoney(r.amount + quote.perOrderFee)}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -117,7 +118,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               )}
               {scenarios && (
                 <div className="card overflow-hidden">
-                  <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Costo mensual según volumen</h2>
+                  <h2 className="border-b border-border px-4 py-3 font-semibold">Costo mensual según volumen</h2>
                   <div className="overflow-x-auto">
                     <table className="table">
                       <thead>
@@ -144,7 +145,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                         <tr className="font-semibold">
                           <td>Total mensual (con IVA)</td>
                           {scenarios.total.map((v, j) => (
-                            <td key={j} className="text-right tabular-nums text-accent">
+                            <td key={j} className="text-right tabular-nums text-kurier">
                               {formatMoney(v)}
                             </td>
                           ))}
@@ -177,28 +178,36 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         <aside className="space-y-4">
           {editable && (
             <div className="card p-4">
-              <div className="label mb-2">Cambiar estatus</div>
-              <div className="grid gap-2">
-                {(["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const).map((st) => (
-                  <Form key={st} action={setQuoteStatus.bind(null, quote.id, st)}>
-                    <button className={`btn-secondary w-full justify-start ${quote.status === st ? "ring-2 ring-brand/30" : ""}`} disabled={quote.status === st}>
-                      <StatusBadge status={st} />
-                    </button>
-                  </Form>
-                ))}
+              <div className="label mb-2">Estatus</div>
+              <div className="grid gap-1">
+                {(["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const).map((st) => {
+                  const current = quote.status === st;
+                  return (
+                    <Form key={st} action={setQuoteStatus.bind(null, quote.id, st)}>
+                      <button
+                        className={`flex h-9 w-full items-center justify-between rounded-lg px-2.5 text-sm transition-colors ${current ? "bg-muted" : "hover:bg-muted/60"}`}
+                        disabled={current}
+                        aria-current={current ? "true" : undefined}
+                      >
+                        <StatusBadge status={st} />
+                        {current && <Check className="size-4 text-primary" />}
+                      </button>
+                    </Form>
+                  );
+                })}
               </div>
             </div>
           )}
           <div className="card space-y-2 p-4">
             <Form action={duplicateQuote.bind(null, quote.id)}>
               <SubmitButton className="btn-secondary w-full" pendingText="Duplicando…">
-                Duplicar cotización
+                <Copy className="size-4" /> Duplicar cotización
               </SubmitButton>
             </Form>
             {quote.invoices.length === 0 && (
               <Form action={deleteQuote.bind(null, quote.id)}>
                 <ConfirmButton message={`¿Eliminar la cotización ${quote.folio}?`} className="btn-danger w-full">
-                  Eliminar
+                  <Trash2 className="size-4" /> Eliminar
                 </ConfirmButton>
               </Form>
             )}

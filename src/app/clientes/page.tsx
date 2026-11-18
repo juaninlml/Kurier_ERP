@@ -1,14 +1,34 @@
 import Link from "next/link";
+import { Plus, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { PageHeader, Empty } from "@/components/ui";
+import { PageHeader, Empty } from "@/components/kit";
+import { FilterBar } from "@/components/list";
+import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Clientes" };
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter((w) => /[A-Za-zÁÉÍÓÚÑ0-9]/.test(w[0] ?? ""))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const clients = await prisma.client.findMany({
-    where: q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { rfc: { contains: q, mode: "insensitive" as const } }, { legalName: { contains: q, mode: "insensitive" as const } }] } : undefined,
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { rfc: { contains: q, mode: "insensitive" as const } },
+            { legalName: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined,
     orderBy: [{ active: "desc" }, { name: "asc" }],
     include: { invoices: { where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true } } },
   });
@@ -17,51 +37,68 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     <div>
       <PageHeader
         title="Clientes"
-        subtitle={`${clients.length} cliente(s)`}
+        subtitle={`${clients.length} cliente(s) registrados`}
         actions={
           <Link href="/clientes/nuevo" className="btn-primary">
-            + Nuevo cliente
+            <Plus className="size-4" /> Nuevo cliente
           </Link>
         }
       />
-      <form className="mb-4">
-        <input name="q" defaultValue={q} placeholder="Buscar por nombre o RFC…" className="input max-w-sm" />
-      </form>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-hidden">
+        <FilterBar basePath="/clientes" q={q} placeholder="Buscar por nombre o RFC" />
         {clients.length === 0 ? (
-          <Empty>No hay clientes todavía.</Empty>
+          <Empty
+            icon={Users}
+            action={
+              !q ? (
+                <Link href="/clientes/nuevo" className="btn-primary">
+                  <Plus className="size-4" /> Dar de alta un cliente
+                </Link>
+              ) : undefined
+            }
+          >
+            {q ? "Ningún cliente coincide con la búsqueda." : "Aún no hay clientes."}
+          </Empty>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>RFC</th>
-                <th>Contacto</th>
-                <th className="text-right">Saldo por cobrar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((c) => {
-                const balance = c.invoices.reduce((a, i) => a + i.total - i.paidTotal, 0);
-                return (
-                  <tr key={c.id} className={c.active ? "" : "opacity-50"}>
-                    <td>
-                      <Link href={`/clientes/${c.id}`} className="font-medium text-brand hover:underline">
-                        {c.name}
-                      </Link>
-                      {c.legalName && <div className="text-xs text-slate-500">{c.legalName}</div>}
-                    </td>
-                    <td className="font-mono text-xs">{c.rfc || "—"}</td>
-                    <td>
-                      <div>{c.contactName || "—"}</div>
-                      <div className="text-xs text-slate-500">{c.email}</div>
-                    </td>
-                    <td className="text-right tabular-nums">{balance > 0 ? formatMoney(balance) : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>RFC</th>
+                  <th>Contacto</th>
+                  <th className="text-right">Saldo por cobrar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((c) => {
+                  const balance = c.invoices.reduce((a, i) => a + i.total - i.paidTotal, 0);
+                  return (
+                    <tr key={c.id} className={c.active ? "" : "opacity-60"}>
+                      <td>
+                        <Link href={`/clientes/${c.id}`} className="group flex items-center gap-3">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                            {initials(c.name) || "?"}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block font-medium group-hover:text-primary group-hover:underline">{c.name}</span>
+                            {c.legalName && <span className="block truncate text-xs text-muted-foreground">{c.legalName}</span>}
+                          </span>
+                          {!c.active && <Badge variant="secondary">Inactivo</Badge>}
+                        </Link>
+                      </td>
+                      <td className="font-mono text-xs text-muted-foreground">{c.rfc || "—"}</td>
+                      <td>
+                        <div>{c.contactName || <span className="text-muted-foreground">—</span>}</div>
+                        {c.email && <div className="text-xs text-muted-foreground">{c.email}</div>}
+                      </td>
+                      <td className="text-right font-medium tabular-nums">{balance > 0 ? formatMoney(balance) : <span className="text-muted-foreground">—</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

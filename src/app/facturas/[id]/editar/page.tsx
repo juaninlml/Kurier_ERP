@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { updateInvoice } from "@/app/actions/invoices";
 import { DocumentEditor } from "@/components/DocumentEditor";
-import { PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
 

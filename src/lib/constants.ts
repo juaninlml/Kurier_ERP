@@ -15,16 +15,16 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export const STATUS_TONES: Record<string, string> = {
-  BORRADOR: "bg-slate-100 text-slate-700",
-  ENVIADA: "bg-blue-100 text-blue-700",
-  ACEPTADA: "bg-emerald-100 text-emerald-700",
-  RECHAZADA: "bg-rose-100 text-rose-700",
-  FACTURADA: "bg-violet-100 text-violet-700",
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  PARCIAL: "bg-sky-100 text-sky-700",
-  PAGADA: "bg-emerald-100 text-emerald-700",
-  CANCELADA: "bg-slate-200 text-slate-600",
-  VENCIDA: "bg-rose-100 text-rose-700",
+  BORRADOR: "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20",
+  ENVIADA: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20",
+  ACEPTADA: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
+  RECHAZADA: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20",
+  FACTURADA: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20",
+  PENDIENTE: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20",
+  PARCIAL: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/20",
+  PAGADA: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
+  CANCELADA: "bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-600/20",
+  VENCIDA: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20",
 };
 
 export const PAYMENT_METHODS = ["Transferencia", "Efectivo", "Tarjeta", "Cheque", "Depósito", "Otro"] as const;

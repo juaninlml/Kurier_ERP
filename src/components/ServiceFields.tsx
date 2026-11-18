@@ -1,5 +1,5 @@
 import type { Service } from "@prisma/client";
-import { Field } from "./ui";
+import { Field } from "./kit";
 import { UNITS } from "@/lib/constants";
 
 /** Campos del formulario de servicio (alta y edición). */

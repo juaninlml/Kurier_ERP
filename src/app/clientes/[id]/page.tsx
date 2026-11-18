@@ -1,9 +1,10 @@
+import { FileDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { updateClient } from "@/app/actions/clients";
 import { ClientForm } from "@/components/ClientForm";
-import { PageHeader, StatusBadge, Stat, Empty } from "@/components/ui";
+import { PageHeader, StatusBadge, Stat, Empty } from "@/components/kit";
 import { formatDate, formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -32,13 +33,13 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         actions={
           <>
             <a href={`/api/pdf/estado-cuenta/${client.id}`} target="_blank" className="btn-secondary">
-              Estado de cuenta PDF
+              <FileDown className="size-4" /> Estado de cuenta PDF
             </a>
             <Link href={`/cotizaciones/nueva?clientId=${client.id}`} className="btn-secondary">
-              + Cotización
+              <Plus className="size-4" /> Cotización
             </Link>
             <Link href={`/facturas/nueva?clientId=${client.id}`} className="btn-primary">
-              + Factura
+              <Plus className="size-4" /> Factura
             </Link>
           </>
         }
@@ -52,7 +53,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card overflow-x-auto">
-          <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Facturas</h2>
+          <h2 className="border-b border-border px-4 py-3 font-semibold">Facturas</h2>
           {client.invoices.length === 0 ? (
             <Empty>Sin facturas.</Empty>
           ) : (
@@ -61,10 +62,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                 {client.invoices.map((i) => (
                   <tr key={i.id}>
                     <td>
-                      <Link href={`/facturas/${i.id}`} className="font-medium text-brand hover:underline">
+                      <Link href={`/facturas/${i.id}`} className="font-medium text-primary hover:underline">
                         {i.folio}
                       </Link>
-                      <div className="text-xs text-slate-500">{formatDate(i.issueDate)}</div>
+                      <div className="text-xs text-muted-foreground">{formatDate(i.issueDate)}</div>
                     </td>
                     <td>
                       <StatusBadge status={i.status} />
@@ -77,7 +78,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           )}
         </div>
         <div className="card overflow-x-auto">
-          <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Cotizaciones</h2>
+          <h2 className="border-b border-border px-4 py-3 font-semibold">Cotizaciones</h2>
           {client.quotes.length === 0 ? (
             <Empty>Sin cotizaciones.</Empty>
           ) : (
@@ -86,10 +87,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                 {client.quotes.map((q) => (
                   <tr key={q.id}>
                     <td>
-                      <Link href={`/cotizaciones/${q.id}`} className="font-medium text-brand hover:underline">
+                      <Link href={`/cotizaciones/${q.id}`} className="font-medium text-primary hover:underline">
                         {q.folio}
                       </Link>
-                      <div className="text-xs text-slate-500">{formatDate(q.issueDate)}</div>
+                      <div className="text-xs text-muted-foreground">{formatDate(q.issueDate)}</div>
                     </td>
                     <td>
                       <StatusBadge status={q.status} />

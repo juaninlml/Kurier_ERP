@@ -1,6 +1,6 @@
 import { getSettings, hasLogo as checkLogo } from "@/lib/settings";
 import { saveSettings } from "@/app/actions/settings";
-import { PageHeader, Field } from "@/components/ui";
+import { PageHeader, Field } from "@/components/kit";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Form } from "@/components/Form";
 
@@ -20,12 +20,12 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
         <section className="card p-5">
           <h2 className="mb-4 font-semibold">Marca</h2>
           <div className="grid gap-5 md:grid-cols-[220px_1fr]">
-            <div className="grid h-36 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+            <div className="grid h-36 place-items-center rounded-lg border border-dashed border-border bg-muted p-3">
               {hasLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={`/api/logo?v=${s.updatedAt.getTime()}`} alt="Logo" className="max-h-full max-w-full object-contain" />
               ) : (
-                <span className="text-center text-xs text-slate-500">
+                <span className="text-center text-xs text-muted-foreground">
                   Sin logo.
                   <br />
                   Sube un PNG o JPG
@@ -44,10 +44,10 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
                 </label>
               )}
               <Field label="Color principal">
-                <input type="color" name="primaryColor" defaultValue={s.primaryColor} className="input h-10 p-1" />
+                <input type="color" name="primaryColor" defaultValue={s.primaryColor} className="input" />
               </Field>
               <Field label="Color de acento">
-                <input type="color" name="accentColor" defaultValue={s.accentColor} className="input h-10 p-1" />
+                <input type="color" name="accentColor" defaultValue={s.accentColor} className="input" />
               </Field>
               <Field label="Nombre comercial">
                 <input name="tradeName" defaultValue={s.tradeName} className="input" />

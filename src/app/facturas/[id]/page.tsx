@@ -1,8 +1,9 @@
+import { Ban, Download, Eye, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { addPayment, cancelInvoice, deletePayment, reactivateInvoice } from "@/app/actions/invoices";
-import { PageHeader, StatusBadge, Field } from "@/components/ui";
+import { PageHeader, StatusBadge, Field } from "@/components/kit";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -37,14 +38,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <StatusBadge status={late ? "VENCIDA" : inv.status} />
-            <Link href={`/clientes/${inv.clientId}`} className="hover:text-brand">
+            <Link href={`/clientes/${inv.clientId}`} className="hover:text-primary">
               {inv.client.name}
             </Link>
             · Emitida {formatDate(inv.issueDate)} · Vence {formatDate(inv.dueDate)}
             {inv.quote && (
               <>
                 · De{" "}
-                <Link href={`/cotizaciones/${inv.quote.id}`} className="underline hover:text-brand">
+                <Link href={`/cotizaciones/${inv.quote.id}`} className="underline hover:text-primary">
                   {inv.quote.folio}
                 </Link>
               </>
@@ -54,14 +55,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         actions={
           <>
             <a href={`/api/pdf/factura/${inv.id}`} target="_blank" className="btn-secondary">
-              Ver PDF
+              <Eye className="size-4" /> Ver PDF
             </a>
             <a href={`/api/pdf/factura/${inv.id}?download`} className="btn-primary">
-              Descargar PDF
+              <Download className="size-4" /> Descargar PDF
             </a>
             {editable && (
               <Link href={`/facturas/${inv.id}/editar`} className="btn-secondary">
-                Editar
+                <Pencil className="size-4" /> Editar
               </Link>
             )}
           </>
@@ -72,7 +73,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <div className="min-w-0 space-y-6">
           {(inv.period || inv.volume || inv.storage || inv.terms) && (
             <div className="card overflow-hidden">
-              <dl className="divide-y divide-slate-100 text-sm">
+              <dl className="divide-y divide-border text-sm">
                 {[
                   { label: "Periodo facturado", value: inv.period },
                   { label: "Volumen del periodo", value: inv.volume },
@@ -82,7 +83,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   .filter((r) => r.value)
                   .map((r) => (
                     <div key={r.label} className="grid grid-cols-[200px_1fr] gap-3 px-4 py-2">
-                      <dt className="font-medium text-brand">{r.label}</dt>
+                      <dt className="font-medium text-primary">{r.label}</dt>
                       <dd>{r.value}</dd>
                     </div>
                   ))}
@@ -103,7 +104,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                     <dt>Pagado</dt>
                     <dd className="tabular-nums">{formatMoney(inv.paidTotal)}</dd>
                   </div>
-                  <div className="flex justify-between font-semibold text-accent">
+                  <div className="flex justify-between font-semibold text-kurier">
                     <dt>Saldo</dt>
                     <dd className="tabular-nums">{formatMoney(balance)}</dd>
                   </div>
@@ -118,9 +119,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </div>
           )}
           <div className="card overflow-x-auto">
-            <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Pagos registrados</h2>
+            <h2 className="border-b border-border px-4 py-3 font-semibold">Pagos registrados</h2>
             {inv.payments.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-slate-500">Aún no hay pagos.</p>
+              <p className="px-4 py-6 text-sm text-muted-foreground">Aún no hay pagos.</p>
             ) : (
               <table className="table">
                 <thead>
@@ -137,12 +138,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                     <tr key={p.id}>
                       <td>{formatDate(p.date)}</td>
                       <td>{p.method}</td>
-                      <td className="text-slate-500">{p.reference || "—"}</td>
+                      <td className="text-muted-foreground">{p.reference || "—"}</td>
                       <td className="text-right tabular-nums">{formatMoney(p.amount)}</td>
                       <td className="text-right">
                         <Form action={deletePayment.bind(null, p.id)}>
                           <ConfirmButton message="¿Eliminar este pago? También se eliminará el ingreso en contabilidad." className="text-xs text-rose-600 hover:underline">
-                            Eliminar
+                            <Trash2 className="size-4" /> Eliminar
                           </ConfirmButton>
                         </Form>
                       </td>
@@ -158,7 +159,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           {!cancelled && balance > 0 && (
             <Form action={addPayment.bind(null, inv.id)} className="card space-y-3 p-4">
               <h2 className="font-semibold">Registrar pago</h2>
-              <p className="text-xs text-slate-500">Se registra automáticamente como ingreso en contabilidad.</p>
+              <p className="text-xs text-muted-foreground">Se registra automáticamente como ingreso en contabilidad.</p>
               <Field label="Monto">
                 <input name="amount" type="number" step="0.01" min="0.01" max={balance} defaultValue={balance} required className="input" />
               </Field>
@@ -175,7 +176,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <Field label="Referencia">
                 <input name="reference" className="input" placeholder="SPEI, # de cheque…" />
               </Field>
-              <SubmitButton className="btn-accent w-full" pendingText="Registrando…">
+              <SubmitButton className="btn-kurier w-full" pendingText="Registrando…">
                 Registrar pago
               </SubmitButton>
             </Form>
@@ -188,11 +189,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             ) : inv.payments.length === 0 ? (
               <Form action={cancelInvoice.bind(null, inv.id)}>
                 <ConfirmButton message={`¿Cancelar la factura ${inv.folio}?`} className="btn-danger w-full">
-                  Cancelar factura
+                  <Ban className="size-4" /> Cancelar factura
                 </ConfirmButton>
               </Form>
             ) : (
-              <p className="text-xs text-slate-500">Para cancelar o editar, elimina primero los pagos registrados.</p>
+              <p className="text-xs text-muted-foreground">Para cancelar o editar, elimina primero los pagos registrados.</p>
             )}
           </div>
         </aside>

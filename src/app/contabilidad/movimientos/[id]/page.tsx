@@ -1,7 +1,8 @@
+import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { deleteTransaction, updateTransaction } from "@/app/actions/accounting";
-import { PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/kit";
 import { TransactionForm } from "@/components/TransactionForm";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toInputDate } from "@/lib/money";
@@ -33,7 +34,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
         />
         <Form action={deleteTransaction.bind(null, id)} className="mt-3">
           <ConfirmButton message="¿Eliminar este movimiento?" className="btn-danger w-full">
-            Eliminar movimiento
+            <Trash2 className="size-4" /> Eliminar movimiento
           </ConfirmButton>
         </Form>
       </div>
