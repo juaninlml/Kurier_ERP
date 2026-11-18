@@ -1,16 +1,14 @@
-import { getSettings } from "@/lib/settings";
+import { getSettings, hasLogo as checkLogo } from "@/lib/settings";
 import { saveSettings } from "@/app/actions/settings";
 import { PageHeader, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { existsSync } from "node:fs";
-import path from "node:path";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
   const s = await getSettings();
   const { ok } = await searchParams;
-  const hasLogo = existsSync(path.join(process.cwd(), "public", s.logoPath));
+  const hasLogo = await checkLogo();
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -24,21 +22,26 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
             <div className="grid h-36 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
               {hasLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${s.logoPath}?v=${s.updatedAt.getTime()}`} alt="Logo" className="max-h-full max-w-full object-contain" />
+                <img src={`/api/logo?v=${s.updatedAt.getTime()}`} alt="Logo" className="max-h-full max-w-full object-contain" />
               ) : (
                 <span className="text-center text-xs text-slate-500">
                   Sin logo.
                   <br />
-                  Sube un PNG/JPG o colócalo en
+                  Sube un PNG o JPG
                   <br />
-                  <code>public/branding/logo.png</code>
+                  (fondo transparente recomendado)
                 </span>
               )}
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Logo (PNG o JPG, máx. 2 MB)" className="md:col-span-3">
+              <Field label="Logo (PNG o JPG, máx. 1 MB)" className="md:col-span-3">
                 <input type="file" name="logo" accept="image/png,image/jpeg" className="input" />
               </Field>
+              {hasLogo && (
+                <label className="flex items-center gap-2 text-sm md:col-span-3">
+                  <input type="checkbox" name="removeLogo" /> Quitar logo actual
+                </label>
+              )}
               <Field label="Color principal">
                 <input type="color" name="primaryColor" defaultValue={s.primaryColor} className="input h-10 p-1" />
               </Field>

@@ -1,12 +1,12 @@
 // Kurier ERP — Fase 1: Cotizaciones, Facturas (informativas) y Contabilidad básica
-// SQLite para desarrollo local. Para producción: provider = "postgresql".
+// PostgreSQL (Prisma Postgres en Vercel). DATABASE_URL viene de las variables de entorno.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -28,7 +28,9 @@ model CompanySettings {
   clabe             String  @default("")
   primaryColor      String  @default("#0F2A4A")
   accentColor       String  @default("#F28C28")
-  logoPath          String  @default("/branding/logo.png")
+  logoPath          String  @default("/branding/logo.png") // respaldo: archivo en /public
+  logoData          Bytes?  // logo subido desde Configuración (se guarda en BD; Vercel no permite escribir en disco)
+  logoMime          String  @default("")
   quotePrefix       String  @default("COT")
   invoicePrefix     String  @default("FAC")
   nextQuoteNumber   Int     @default(1)

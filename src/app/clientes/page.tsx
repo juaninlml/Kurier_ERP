@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const clients = await prisma.client.findMany({
-    where: q ? { OR: [{ name: { contains: q } }, { rfc: { contains: q } }, { legalName: { contains: q } }] } : undefined,
+    where: q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { rfc: { contains: q, mode: "insensitive" as const } }, { legalName: { contains: q, mode: "insensitive" as const } }] } : undefined,
     orderBy: [{ active: "desc" }, { name: "asc" }],
     include: { invoices: { where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true } } },
   });

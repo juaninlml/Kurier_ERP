@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
+import { getSettingsWithLogo as getSettings } from "@/lib/settings";
 import { incomeStatement, receivables, parseRange } from "@/lib/reports";
 import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf } from "./documents";
 

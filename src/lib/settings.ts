@@ -1,8 +1,19 @@
 import { prisma } from "./db";
 import type { Prisma } from "@prisma/client";
 
+/** Configuración para pantallas (sin los bytes del logo). */
 export async function getSettings() {
+  return prisma.companySettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 }, omit: { logoData: true } });
+}
+
+/** Configuración completa, incluyendo el logo (para PDFs). */
+export async function getSettingsWithLogo() {
   return prisma.companySettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+}
+
+export async function hasLogo() {
+  const r = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { logoMime: true } });
+  return Boolean(r?.logoMime);
 }
 
 /** Reserva el siguiente folio dentro de una transacción para evitar duplicados. */

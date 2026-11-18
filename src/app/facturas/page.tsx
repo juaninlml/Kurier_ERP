@@ -16,7 +16,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ? { status }
         : {};
   const invoices = await prisma.invoice.findMany({
-    where: { ...where, ...(q ? { OR: [{ folio: { contains: q } }, { client: { name: { contains: q } } }] } : {}) },
+    where: { ...where, ...(q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }] } : {}) },
     include: { client: { select: { name: true } } },
     orderBy: { id: "desc" },
     take: 200,

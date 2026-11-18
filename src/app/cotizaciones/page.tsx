@@ -11,7 +11,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const quotes = await prisma.quote.findMany({
     where: {
       ...(status ? { status } : {}),
-      ...(q ? { OR: [{ folio: { contains: q } }, { client: { name: { contains: q } } }] } : {}),
+      ...(q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }] } : {}),
     },
     include: { client: { select: { name: true } } },
     orderBy: { id: "desc" },

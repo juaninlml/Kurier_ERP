@@ -9,20 +9,29 @@ ERP interno de **Kurier Fulfillment**.
 ## Stack
 
 - Next.js 15 (App Router y Server Actions), React 19, TypeScript
-- Prisma con SQLite para desarrollo local (se puede cambiar a PostgreSQL)
+- Prisma + PostgreSQL (Prisma Postgres en Vercel)
 - Tailwind CSS 4
 - `@react-pdf/renderer` para generar los PDFs en el servidor
 
-## Arranque rápido
+## Despliegue en Vercel
+
+1. Importa el repositorio en Vercel.
+2. En **Optional Integrations → Prisma Postgres** da clic en **Add**. Esto crea la base y la variable `DATABASE_URL`.
+3. En **Environment Variables** agrega `ERP_USER` y `ERP_PASSWORD`. Es el acceso que pedirá el navegador; sin ellas el sitio responde 503.
+4. Da clic en **Deploy**. El script `vercel-build` aplica las migraciones, carga el catálogo de servicios (sin sobrescribir lo que ya exista) y compila.
+
+## Desarrollo local
 
 ```bash
 npm install
-cp .env.example .env
-npm run db:push              # crea la base de datos
-npm run db:seed              # configuración y catálogo de servicios de fulfillment
-npm run db:seed -- --demo    # (opcional) clientes, cotización, factura y movimientos de ejemplo
-npm run dev                  # http://localhost:3000
+cp .env.example .env        # pega tu DATABASE_URL de Postgres
+npm run db:migrate          # crea las tablas
+npm run db:seed             # configuración y catálogo de servicios
+npm run db:seed -- --demo   # (opcional) datos de ejemplo; NO lo corras contra producción
+npm run dev                 # http://localhost:3000
 ```
+
+Para cambiar el modelo de datos edita `prisma/schema.prisma` y corre `npm run db:migrate:dev -- --name descripcion`. Esto genera una migración nueva; súbela al repositorio junto con el cambio.
 
 ## Módulos
 
@@ -50,7 +59,7 @@ Agrega `?download` (o `&download`) a cualquier endpoint para descargar el archiv
 
 ### Marca
 
-- **Logo:** súbelo desde *Configuración* o colócalo en `public/branding/logo.png` (también acepta `.jpg`). Si no hay logo, el PDF muestra el nombre comercial con un ícono en el color de acento.
+- **Logo:** súbelo desde *Configuración* (se guarda en la base de datos). Como respaldo, el PDF busca `public/branding/logo.png`. Si no hay logo, muestra el nombre comercial con un ícono en el color de acento.
 - **Colores:** el color principal y el de acento se configuran en *Configuración* y se aplican a encabezados, tablas y totales.
 - **Datos de la empresa:** la razón social, el RFC, la dirección y los datos bancarios aparecen en el encabezado del PDF. Los datos bancarios solo salen en las facturas.
 
@@ -71,4 +80,4 @@ src/lib/                  cálculo de totales, importe con letra, reportes y fol
 - **Folios:** se reservan dentro de una transacción (`COT-00001`, `FAC-00001`). El prefijo y el siguiente número se pueden cambiar en *Configuración*.
 - **Montos:** se redondean a 2 decimales por línea. El IVA se calcula sobre el importe después del descuento.
 - **IVA de los pagos:** cuando se registra un pago, el IVA que contiene se calcula en proporción al total de la factura.
-- **Producción con PostgreSQL:** cambia `provider` a `"postgresql"` en `prisma/schema.prisma` y ajusta `DATABASE_URL`.
+- **Acceso:** `src/middleware.ts` protege todo el sitio con usuario y contraseña (HTTP Basic). En local, si no defines `ERP_USER` y `ERP_PASSWORD`, no pide credenciales.

@@ -3,8 +3,6 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { numv, str } from "./helpers";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -14,17 +12,15 @@ export async function saveSettings(fd: FormData) {
   const accentColor = str(fd, "accentColor");
   if (!HEX.test(primaryColor) || !HEX.test(accentColor)) throw new Error("Los colores deben ser hex de 6 dígitos (#RRGGBB).");
 
-  let logoPath: string | undefined;
-  const logo = fd.get("logo");
-  if (logo instanceof File && logo.size > 0) {
-    const ext = logo.type === "image/png" ? "png" : logo.type === "image/jpeg" ? "jpg" : null;
-    if (!ext) throw new Error("El logo debe ser PNG o JPG.");
-    if (logo.size > 2 * 1024 * 1024) throw new Error("El logo no debe pesar más de 2 MB.");
-    const dir = path.join(process.cwd(), "public", "branding");
-    await mkdir(dir, { recursive: true });
-    const file = `logo.${ext}`;
-    await writeFile(path.join(dir, file), Buffer.from(await logo.arrayBuffer()));
-    logoPath = `/branding/${file}`;
+  // El logo se guarda en la base de datos (en Vercel el disco es de solo lectura).
+  let logo: { logoData: Uint8Array<ArrayBuffer> | null; logoMime: string } | undefined;
+  const file = fd.get("logo");
+  if (fd.get("removeLogo") === "on") {
+    logo = { logoData: null, logoMime: "" };
+  } else if (file instanceof File && file.size > 0) {
+    if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("El logo debe ser PNG o JPG.");
+    if (file.size > 1024 * 1024) throw new Error("El logo no debe pesar más de 1 MB.");
+    logo = { logoData: new Uint8Array(await file.arrayBuffer()), logoMime: file.type };
   }
 
   const data = {
@@ -52,7 +48,7 @@ export async function saveSettings(fd: FormData) {
     paymentTermsDays: Math.floor(numv(fd, "paymentTermsDays", 30)),
     quoteTerms: str(fd, "quoteTerms"),
     invoiceNotes: str(fd, "invoiceNotes"),
-    ...(logoPath ? { logoPath } : {}),
+    ...(logo ?? {}),
   };
   await prisma.companySettings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
   revalidatePath("/", "layout");

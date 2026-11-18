@@ -19,6 +19,9 @@ export function tint(hex: string, t: number) {
 }
 
 function loadLogo(s: CompanySettings) {
+  if (s.logoData && s.logoMime) {
+    return { data: Buffer.from(s.logoData), format: s.logoMime === "image/png" ? "png" : "jpg" } as const;
+  }
   const candidates = [s.logoPath, "/branding/logo.png", "/branding/logo.jpg"];
   for (const rel of candidates) {
     const p = path.join(process.cwd(), "public", rel);
