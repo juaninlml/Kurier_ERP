@@ -12,16 +12,36 @@ export const numv = (fd: FormData, k: string, def = 0) => {
 export const lineSchema = z.object({
   code: z.string().optional().default(""),
   description: z.string().min(1, "Cada concepto necesita descripción"),
+  detail: z.string().optional().default(""),
+  section: z.string().optional().default(""),
+  priceText: z.string().optional().default(""),
   unit: z.string().optional().default("Servicio"),
-  quantity: z.number().positive("La cantidad debe ser mayor a 0"),
+  quantity: z.number().min(0, "La cantidad no puede ser negativa"),
   unitPrice: z.number().min(0, "El precio no puede ser negativo"),
   discountPct: z.number().min(0).max(100).optional().default(0),
   taxRate: z.number().min(0).max(100).optional().default(0),
+  atCost: z.boolean().optional().default(false),
+  amount: z.number().min(0).optional().default(0),
 });
 
-export function parseItems(fd: FormData) {
+/**
+ * Conceptos del formulario. En facturas se descartan los que no tienen cantidad
+ * (o importe, si son al costo); en cotizaciones la cantidad 0 = "solo tarifa".
+ */
+export function parseItems(fd: FormData, kind: "quote" | "invoice") {
   const raw = JSON.parse(str(fd, "items") || "[]");
-  const items = z.array(lineSchema).parse(raw);
-  if (items.length === 0) throw new Error("Agrega al menos un concepto.");
+  const parsed = z.array(lineSchema).safeParse(raw);
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Conceptos inválidos.");
+  const items = kind === "invoice" ? parsed.data.filter((i) => i.quantity > 0 || (i.atCost && i.amount > 0)) : parsed.data;
+  if (items.length === 0) throw new Error(kind === "invoice" ? "Agrega al menos un concepto con cantidad." : "Agrega al menos un servicio.");
   return items;
+}
+
+export function parseProfile(fd: FormData) {
+  try {
+    const raw = JSON.parse(str(fd, "profile") || "[]");
+    return z.array(z.object({ label: z.string(), value: z.string() })).parse(raw).filter((r) => r.label.trim());
+  } catch {
+    throw new Error("Perfil de la operación inválido.");
+  }
 }

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { updateQuote } from "@/app/actions/quotes";
 import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/ui";
-import { editorData, itemsForEditor } from "@/lib/editor-data";
+import { editorData, itemsForEditor, parseProfileJson } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,8 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
           secondDate: toInputDate(quote.validUntil),
           notes: quote.notes,
           terms: quote.terms,
+          attention: quote.attention,
+          profile: parseProfileJson(quote.profile),
           items: itemsForEditor(quote.items),
         }}
       />

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { convertQuoteToInvoice, deleteQuote, duplicateQuote, setQuoteStatus } from "@/app/actions/quotes";
+import { deleteQuote, duplicateQuote, setQuoteStatus } from "@/app/actions/quotes";
+import { parseProfileJson } from "@/lib/editor-data";
 import { PageHeader, StatusBadge } from "@/components/ui";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -18,6 +19,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   });
   if (!quote) notFound();
   const editable = quote.status !== "FACTURADA";
+  const profile = parseProfileJson(quote.profile);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -46,13 +48,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                 Editar
               </Link>
             )}
-            {editable && (
-              <form action={convertQuoteToInvoice.bind(null, quote.id)}>
-                <SubmitButton className="btn-accent" pendingText="Facturando…">
-                  Convertir a factura
-                </SubmitButton>
-              </form>
-            )}
+            <Link href={`/facturas/nueva?quoteId=${quote.id}`} className="btn-accent">
+              Facturar con estas tarifas
+            </Link>
           </>
         }
       />
@@ -60,17 +58,33 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       {quote.invoices.length > 0 && (
         <div className="mb-4 rounded-md bg-violet-50 px-4 py-3 text-sm text-violet-800">
           Facturada en:{" "}
-          {quote.invoices.map((i) => (
-            <Link key={i.id} href={`/facturas/${i.id}`} className="font-medium underline">
-              {i.folio}
-            </Link>
+          {quote.invoices.map((i, n) => (
+            <span key={i.id}>
+              {n > 0 && ", "}
+              <Link href={`/facturas/${i.id}`} className="font-medium underline">
+                {i.folio}
+              </Link>
+            </span>
           ))}
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="min-w-0 space-y-6">
-          <DocumentView items={quote.items} subtotal={quote.subtotal} discount={quote.discount} tax={quote.tax} total={quote.total} />
+          {(quote.attention || profile.length > 0) && (
+            <div className="card overflow-hidden">
+              <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Perfil de la operación cotizada</h2>
+              <dl className="divide-y divide-slate-100 text-sm">
+                {[{ label: "Atención", value: quote.attention }, ...profile].filter((r) => r.value).map((r) => (
+                  <div key={r.label} className="grid grid-cols-[200px_1fr] gap-3 px-4 py-2">
+                    <dt className="font-medium text-brand">{r.label}</dt>
+                    <dd>{r.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+          <DocumentView kind="quote" items={quote.items} subtotal={quote.subtotal} discount={quote.discount} tax={quote.tax} total={quote.total} />
           {(quote.notes || quote.terms) && (
             <div className="card grid gap-4 p-5 text-sm md:grid-cols-2">
               {quote.notes && (
@@ -81,7 +95,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               )}
               {quote.terms && (
                 <div>
-                  <div className="label">Términos</div>
+                  <div className="label">Condiciones comerciales</div>
                   <p className="whitespace-pre-line">{quote.terms}</p>
                 </div>
               )}

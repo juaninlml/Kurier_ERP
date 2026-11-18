@@ -51,6 +51,9 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
               <Field label="Nombre comercial">
                 <input name="tradeName" defaultValue={s.tradeName} className="input" />
               </Field>
+              <Field label="Leyenda bajo el nombre" className="md:col-span-3">
+                <input name="tagline" defaultValue={s.tagline} className="input" placeholder="MICROHUB CDMX · 3PL" />
+              </Field>
             </div>
           </div>
         </section>
@@ -129,11 +132,17 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
             </Field>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <Field label="Términos y condiciones por defecto (cotizaciones)">
+            <Field label="Condiciones comerciales por defecto (cotizaciones; una por línea, “Título: texto”)">
               <textarea name="quoteTerms" rows={5} defaultValue={s.quoteTerms} className="input" />
             </Field>
-            <Field label="Notas por defecto (facturas)">
+            <Field label="Nota por defecto bajo el detalle (facturas)">
               <textarea name="invoiceNotes" rows={5} defaultValue={s.invoiceNotes} className="input" />
+            </Field>
+            <Field label="Condiciones de pago por defecto (facturas)">
+              <input name="paymentTerms" defaultValue={s.paymentTerms} className="input" />
+            </Field>
+            <Field label="Aviso al pie de la factura (usa **texto** para negritas)">
+              <textarea name="invoiceDisclaimer" rows={5} defaultValue={s.invoiceDisclaimer} className="input" />
             </Field>
           </div>
         </section>

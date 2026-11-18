@@ -17,6 +17,10 @@ function header(fd: FormData) {
     issueDate: fromInputDate(str(fd, "issueDate")),
     dueDate: fromInputDate(str(fd, "secondDate")),
     notes: str(fd, "notes"),
+    period: str(fd, "period"),
+    volume: str(fd, "volume"),
+    storage: str(fd, "storage"),
+    terms: str(fd, "terms"),
   };
 }
 
@@ -38,12 +42,16 @@ async function syncInvoice(tx: Prisma.TransactionClient, id: number) {
 
 export async function createInvoice(fd: FormData) {
   const h = header(fd);
-  const { items, ...totals } = computeLines(parseItems(fd));
+  const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
+  const quoteId = numv(fd, "quoteId") || null;
   const inv = await prisma.$transaction(async (tx) => {
     const folio = await nextFolio(tx, "invoice");
-    return tx.invoice.create({ data: { ...h, ...totals, folio, items: { create: items } } });
+    const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, items: { create: items } } });
+    if (quoteId) await tx.quote.update({ where: { id: quoteId }, data: { status: "FACTURADA" } });
+    return created;
   });
   revalidateAll();
+  revalidatePath("/cotizaciones");
   redirect(`/facturas/${inv.id}`);
 }
 
@@ -52,7 +60,7 @@ export async function updateInvoice(id: number, fd: FormData) {
   if (current._count.payments > 0) throw new Error("No se puede editar una factura con pagos registrados.");
   if (current.status === "CANCELADA") throw new Error("No se puede editar una factura cancelada.");
   const h = header(fd);
-  const { items, ...totals } = computeLines(parseItems(fd));
+  const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
   await prisma.$transaction([
     prisma.invoiceItem.deleteMany({ where: { invoiceId: id } }),
     prisma.invoice.update({ where: { id }, data: { ...h, ...totals, items: { create: items } } }),

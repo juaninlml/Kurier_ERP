@@ -33,6 +33,10 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           issueDate: toInputDate(inv.issueDate),
           secondDate: toInputDate(inv.dueDate),
           notes: inv.notes,
+          period: inv.period,
+          volume: inv.volume,
+          storage: inv.storage,
+          terms: inv.terms,
           items: itemsForEditor(inv.items),
         }}
       />

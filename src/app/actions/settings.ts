@@ -25,6 +25,9 @@ export async function saveSettings(fd: FormData) {
 
   const data = {
     tradeName: str(fd, "tradeName") || "Kurier Fulfillment",
+    tagline: str(fd, "tagline"),
+    paymentTerms: str(fd, "paymentTerms"),
+    invoiceDisclaimer: str(fd, "invoiceDisclaimer"),
     legalName: str(fd, "legalName"),
     rfc: str(fd, "rfc").toUpperCase(),
     address: str(fd, "address"),

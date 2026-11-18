@@ -10,7 +10,7 @@ const NAV = [
   { href: "/contabilidad", label: "Contabilidad", icon: "⇅" },
   { href: "/contabilidad/reportes", label: "Reportes", icon: "▥" },
   { href: "/clientes", label: "Clientes", icon: "☺" },
-  { href: "/servicios", label: "Servicios", icon: "▦" },
+  { href: "/servicios", label: "Tarifario", icon: "▦" },
   { href: "/configuracion", label: "Configuración", icon: "⚙" },
 ];
 

@@ -7,7 +7,7 @@ import { computeLines } from "@/lib/totals";
 import { addDays, fromInputDate } from "@/lib/money";
 import { getSettings, nextFolio } from "@/lib/settings";
 import { QUOTE_STATUSES } from "@/lib/constants";
-import { numv, parseItems, str } from "./helpers";
+import { numv, parseItems, parseProfile, str } from "./helpers";
 
 function header(fd: FormData) {
   const clientId = numv(fd, "clientId");
@@ -18,14 +18,35 @@ function header(fd: FormData) {
     validUntil: fromInputDate(str(fd, "secondDate")),
     notes: str(fd, "notes"),
     terms: str(fd, "terms"),
+    attention: str(fd, "attention"),
+    profile: JSON.stringify(parseProfile(fd)),
   };
 }
 
-type ItemRow = { id: number; position: number; code: string; description: string; unit: string; quantity: number; unitPrice: number; discountPct: number; taxRate: number; amount: number };
+type ItemRow = {
+  id: number;
+  position: number;
+  code: string;
+  description: string;
+  detail: string;
+  section: string;
+  priceText: string;
+  atCost: boolean;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  discountPct: number;
+  taxRate: number;
+  amount: number;
+};
 const copyItem = (it: ItemRow) => ({
   position: it.position,
   code: it.code,
   description: it.description,
+  detail: it.detail,
+  section: it.section,
+  priceText: it.priceText,
+  atCost: it.atCost,
   unit: it.unit,
   quantity: it.quantity,
   unitPrice: it.unitPrice,
@@ -36,7 +57,7 @@ const copyItem = (it: ItemRow) => ({
 
 export async function createQuote(fd: FormData) {
   const h = header(fd);
-  const { items, ...totals } = computeLines(parseItems(fd));
+  const { items, ...totals } = computeLines(parseItems(fd, "quote"));
   const q = await prisma.$transaction(async (tx) => {
     const folio = await nextFolio(tx, "quote");
     return tx.quote.create({ data: { ...h, ...totals, folio, items: { create: items } } });
@@ -49,7 +70,7 @@ export async function updateQuote(id: number, fd: FormData) {
   const current = await prisma.quote.findUniqueOrThrow({ where: { id } });
   if (current.status === "FACTURADA") throw new Error("Una cotización facturada no se puede editar.");
   const h = header(fd);
-  const { items, ...totals } = computeLines(parseItems(fd));
+  const { items, ...totals } = computeLines(parseItems(fd, "quote"));
   await prisma.$transaction([
     prisma.quoteItem.deleteMany({ where: { quoteId: id } }),
     prisma.quote.update({ where: { id }, data: { ...h, ...totals, items: { create: items } } }),
@@ -79,6 +100,8 @@ export async function duplicateQuote(id: number) {
         validUntil: addDays(now, s.quoteValidityDays),
         notes: src.notes,
         terms: src.terms,
+        attention: src.attention,
+        profile: src.profile,
         subtotal: src.subtotal,
         discount: src.discount,
         tax: src.tax,
@@ -97,35 +120,4 @@ export async function deleteQuote(id: number) {
   await prisma.quote.delete({ where: { id } });
   revalidatePath("/cotizaciones");
   redirect("/cotizaciones");
-}
-
-/** Convierte una cotización en factura copiando conceptos y totales. */
-export async function convertQuoteToInvoice(id: number) {
-  const q = await prisma.quote.findUniqueOrThrow({ where: { id }, include: { items: true } });
-  if (q.status === "FACTURADA") throw new Error("Esta cotización ya fue facturada.");
-  const s = await getSettings();
-  const now = new Date();
-  const inv = await prisma.$transaction(async (tx) => {
-    const folio = await nextFolio(tx, "invoice");
-    const created = await tx.invoice.create({
-      data: {
-        folio,
-        clientId: q.clientId,
-        quoteId: q.id,
-        issueDate: now,
-        dueDate: addDays(now, s.paymentTermsDays),
-        notes: s.invoiceNotes,
-        subtotal: q.subtotal,
-        discount: q.discount,
-        tax: q.tax,
-        total: q.total,
-        items: { create: q.items.map(copyItem) },
-      },
-    });
-    await tx.quote.update({ where: { id }, data: { status: "FACTURADA" } });
-    return created;
-  });
-  revalidatePath("/cotizaciones");
-  revalidatePath("/facturas");
-  redirect(`/facturas/${inv.id}`);
 }

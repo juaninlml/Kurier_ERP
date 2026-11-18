@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createQuote } from "@/app/actions/quotes";
 import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/ui";
-import { editorData } from "@/lib/editor-data";
+import { DEFAULT_PROFILE, editorData } from "@/lib/editor-data";
 import { addDays, toInputDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,8 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
             secondDate: toInputDate(addDays(today, settings.quoteValidityDays)),
             notes: "",
             terms: settings.quoteTerms,
+            attention: "Por confirmar",
+            profile: DEFAULT_PROFILE,
             items: [],
           }}
         />

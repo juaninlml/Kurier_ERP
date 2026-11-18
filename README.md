@@ -38,12 +38,12 @@ Para cambiar el modelo de datos edita `prisma/schema.prisma` y corre `npm run db
 | Módulo | Ruta | Qué hace |
 |---|---|---|
 | Inicio | `/` | Indicadores del mes, saldo por cobrar, últimas facturas y cotizaciones |
-| Cotizaciones | `/cotizaciones` | Alta con conceptos del catálogo o conceptos libres, descuentos por línea, estatus (borrador, enviada, aceptada, rechazada), duplicar y **convertir a factura** |
-| Facturas | `/facturas` | Alta directa o desde una cotización, vencimientos, **registro de pagos** (parciales o totales), cancelación |
+| Cotizaciones | `/cotizaciones` | Propuesta de tarifas por sección del tarifario: perfil de la operación, servicios con tarifa y descripción, costo mensual estimado (conceptos con cantidad) y condiciones comerciales. Estatus, duplicar y **facturar con estas tarifas** |
+| Facturas | `/facturas` | Formato semanal de Kurier: periodo, volumen, almacenamiento, condiciones de pago y conceptos **al costo** (guías). Alta directa o con las tarifas de una cotización, **registro de pagos** y cancelación |
 | Contabilidad | `/contabilidad` | Movimientos de ingreso y egreso por categoría. Cada pago de factura genera su ingreso automáticamente |
 | Reportes | `/contabilidad/reportes` | Estado de resultados (flujo), resumen de IVA estimado y antigüedad de cuentas por cobrar |
 | Clientes | `/clientes` | Datos fiscales y de contacto, saldo y **estado de cuenta en PDF** |
-| Servicios | `/servicios` | Catálogo de precios (almacenaje, pick & pack, envíos…) |
+| Tarifario | `/servicios` | Tarifario estándar V5 por secciones, con la nota de cada sección (se imprime en la cotización) |
 | Configuración | `/configuracion` | Logo, colores, razón social, RFC, datos bancarios, folios, IVA y plazos |
 
 ## PDFs
@@ -67,7 +67,8 @@ Agrega `?download` (o `&download`) a cualquier endpoint para descargar el archiv
 
 ```
 prisma/schema.prisma      modelo de datos
-prisma/seed.ts            catálogo base y datos demo
+prisma/tarifario.ts       tarifario estándar V5 (secciones, servicios y condiciones)
+prisma/seed.ts            carga idempotente del tarifario y datos demo
 src/app/                  páginas (App Router)
 src/app/actions/          server actions (lógica de negocio)
 src/app/api/pdf/          endpoints que generan los PDFs

@@ -69,7 +69,27 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
+          {(inv.period || inv.volume || inv.storage || inv.terms) && (
+            <div className="card overflow-hidden">
+              <dl className="divide-y divide-slate-100 text-sm">
+                {[
+                  { label: "Periodo facturado", value: inv.period },
+                  { label: "Volumen del periodo", value: inv.volume },
+                  { label: "Almacenamiento", value: inv.storage },
+                  { label: "Condiciones de pago", value: inv.terms },
+                ]
+                  .filter((r) => r.value)
+                  .map((r) => (
+                    <div key={r.label} className="grid grid-cols-[200px_1fr] gap-3 px-4 py-2">
+                      <dt className="font-medium text-brand">{r.label}</dt>
+                      <dd>{r.value}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          )}
           <DocumentView
+            kind="invoice"
             items={inv.items}
             subtotal={inv.subtotal}
             discount={inv.discount}

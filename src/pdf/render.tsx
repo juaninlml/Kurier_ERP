@@ -11,7 +11,12 @@ export async function renderQuote(id: number) {
     prisma.quote.findUnique({ where: { id }, include: { client: true, items: { orderBy: { position: "asc" } } } }),
   ]);
   if (!quote) return null;
-  return { filename: `${quote.folio}.pdf`, buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} />) };
+  const sections = await prisma.serviceSection.findMany();
+  const sectionNotes = Object.fromEntries(sections.map((x) => [x.name, x.note]));
+  return {
+    filename: `Cotizacion_${slug(s.tradeName)}_${slug(quote.client.name)}_${quote.folio}.pdf`,
+    buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} />),
+  };
 }
 
 export async function renderInvoice(id: number) {
@@ -23,7 +28,7 @@ export async function renderInvoice(id: number) {
     }),
   ]);
   if (!invoice) return null;
-  return { filename: `${invoice.folio}.pdf`, buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} />) };
+  return { filename: `Factura_${invoice.folio}_${slug(invoice.client.name)}.pdf`, buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} />) };
 }
 
 export async function renderStatement(clientId: number) {
@@ -36,9 +41,8 @@ export async function renderStatement(clientId: number) {
   ]);
   if (!client) return null;
   const { invoices, ...c } = client;
-  const safe = c.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_");
   return {
-    filename: `Estado_de_cuenta_${safe}.pdf`,
+    filename: `Estado_de_cuenta_${slug(c.name)}.pdf`,
     buffer: await renderToBuffer(<StatementPdf s={s} data={{ client: c as typeof client, invoices }} />),
   };
 }
@@ -48,4 +52,16 @@ export async function renderReport(fromStr?: string, toStr?: string) {
   const [s, stmt, ar] = await Promise.all([getSettings(), incomeStatement(from, to), receivables()]);
   const tag = `${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}`;
   return { filename: `Reporte_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} />) };
+}
+
+/** "Cestco Dental" → "CestcoDental" (sin acentos ni símbolos, apto para nombre de archivo). */
+function slug(t: string) {
+  return t
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("");
 }

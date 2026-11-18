@@ -1,0 +1,52 @@
+import type { Service } from "@prisma/client";
+import { Field } from "./ui";
+import { UNITS } from "@/lib/constants";
+
+/** Campos del formulario de servicio (alta y edición). */
+export function ServiceFields({ sv, sections, defaultTaxRate }: { sv?: Service; sections: string[]; defaultTaxRate: number }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Clave *">
+          <input name="code" required defaultValue={sv?.code} className="input uppercase" placeholder="FUL-08" />
+        </Field>
+        <Field label="Sección del tarifario">
+          <input name="section" list="sections-list" defaultValue={sv?.section} className="input" placeholder="Fulfillment (pick & pack)" />
+        </Field>
+      </div>
+      <Field label="Servicio *">
+        <input name="name" required defaultValue={sv?.name} className="input" placeholder="Orden Estándar +" />
+      </Field>
+      <Field label="Descripción (aparece en la cotización)">
+        <textarea name="description" rows={3} defaultValue={sv?.description} className="input" />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Precio unitario (sin IVA)">
+          <input name="unitPrice" type="number" step="0.01" min="0" defaultValue={sv?.unitPrice ?? 0} className="input" />
+        </Field>
+        <Field label="Unidad de cobro">
+          <input name="unit" list="units-list" defaultValue={sv?.unit ?? "Orden"} className="input" />
+        </Field>
+        <Field label="Tarifa en texto (opcional)">
+          <input name="priceText" defaultValue={sv?.priceText} className="input" placeholder="Sin costo · A cotizar · $110 + $15 / kg" />
+        </Field>
+        <Field label="IVA %">
+          <input name="taxRate" type="number" step="any" min="0" defaultValue={sv?.taxRate ?? defaultTaxRate} className="input" />
+        </Field>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="atCost" defaultChecked={sv?.atCost} /> Se factura al costo (el importe se captura en cada factura, ej. guías de envío)
+      </label>
+      <datalist id="units-list">
+        {UNITS.map((u) => (
+          <option key={u} value={u} />
+        ))}
+      </datalist>
+      <datalist id="sections-list">
+        {sections.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+    </>
+  );
+}
