@@ -28,7 +28,10 @@ export function ClientForm({ action, client }: { action: (fd: FormData) => Promi
         <Field label="Dirección" className="md:col-span-3">
           <input name="address" defaultValue={client?.address} className="input" />
         </Field>
-        <Field label="Notas internas" className="md:col-span-3">
+        <Field label="Nombre en el WMS" hint="Como aparece en los estados de cobro del WMS (ej. Basic&Pure). Sirve para reconocer al cliente al importar.">
+          <input name="wmsName" defaultValue={client?.wmsName} className="input" placeholder="Basic&Pure" />
+        </Field>
+        <Field label="Notas internas" className="md:col-span-2">
           <textarea name="notes" rows={3} defaultValue={client?.notes} className="input" />
         </Field>
       </div>

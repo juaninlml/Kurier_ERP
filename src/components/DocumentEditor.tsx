@@ -29,6 +29,8 @@ export type ProfileRow = { label: string; value: string };
 export type DocumentDefaults = {
   clientId?: number;
   quoteId?: number;
+  /** Estado de cobro del WMS del que sale esta factura. */
+  importId?: number;
   issueDate: string;
   secondDate: string;
   notes: string;
@@ -85,7 +87,8 @@ const lineAmount = (l: LineInput) =>
 export function DocumentEditor({
   action,
   clients,
-  services,
+  services: catalog,
+  clientRates = {},
   defaults,
   kind,
   defaultTaxRate,
@@ -94,12 +97,17 @@ export function DocumentEditor({
   action: (formData: FormData) => Promise<unknown>;
   clients: ClientOpt[];
   services: ServiceOpt[];
+  /** Tarifas negociadas por cliente; aparecen primero en el selector de servicios. */
+  clientRates?: Record<number, ServiceOpt[]>;
   defaults: DocumentDefaults;
   kind: "quote" | "invoice";
   defaultTaxRate: number;
   submitLabel: string;
 }) {
   const isQuote = kind === "quote";
+  const [clientId, setClientId] = useState<number | undefined>(defaults.clientId);
+  const ownRates = (clientId && clientRates[clientId]) || [];
+  const services = useMemo(() => [...ownRates, ...catalog], [ownRates, catalog]);
   const [lines, setLines] = useState<LineInput[]>(defaults.items.length ? defaults.items : [emptyLine(defaultTaxRate)]);
   const [profile, setProfile] = useState<ProfileRow[]>(defaults.profile ?? []);
 
@@ -155,11 +163,12 @@ export function DocumentEditor({
       {isQuote && <input type="hidden" name="profile" value={JSON.stringify(profile.filter((r) => r.label.trim()))} />}
       {isQuote && <input type="hidden" name="perOrder" value={JSON.stringify(perOrder.filter((r) => r.label.trim()))} />}
       {defaults.quoteId && <input type="hidden" name="quoteId" value={defaults.quoteId} />}
+      {defaults.importId && <input type="hidden" name="importId" value={defaults.importId} />}
 
       <div className="card grid gap-4 p-5 md:grid-cols-3">
         <label className="block">
           <span className="label">Cliente</span>
-          <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input">
+          <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input" onChange={(e) => setClientId(Number(e.target.value) || undefined)}>
             <option value="" disabled>
               Selecciona un cliente…
             </option>

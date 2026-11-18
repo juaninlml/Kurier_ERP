@@ -45,14 +45,21 @@ async function createInvoiceImpl(fd: FormData) {
   const h = header(fd);
   const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
   const quoteId = numv(fd, "quoteId") || null;
+  const importId = numv(fd, "importId") || null;
   const inv = await prisma.$transaction(async (tx) => {
+    if (importId) {
+      const imp = await tx.wmsImport.findUnique({ where: { id: importId } });
+      if (imp?.status === "FACTURADO") throw new Error(`El estado de cobro ${imp.folio} ya se facturó.`);
+    }
     const folio = await nextFolio(tx, "invoice");
     const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, items: { create: items } } });
     if (quoteId) await tx.quote.update({ where: { id: quoteId }, data: { status: "FACTURADA" } });
+    if (importId) await tx.wmsImport.update({ where: { id: importId }, data: { status: "FACTURADO", invoiceId: created.id } });
     return created;
   });
   revalidateAll();
   revalidatePath("/cotizaciones");
+  revalidatePath("/facturas/importar");
   redirect(`/facturas/${inv.id}`);
 }
 
@@ -119,8 +126,13 @@ async function deletePaymentImpl(paymentId: number) {
 async function cancelInvoiceImpl(id: number) {
   const inv = await prisma.invoice.findUniqueOrThrow({ where: { id }, include: { _count: { select: { payments: true } } } });
   if (inv._count.payments > 0) throw new Error("Elimina primero los pagos registrados para cancelar la factura.");
-  await prisma.invoice.update({ where: { id }, data: { status: "CANCELADA" } });
+  await prisma.$transaction([
+    prisma.invoice.update({ where: { id }, data: { status: "CANCELADA" } }),
+    // El estado de cobro del WMS vuelve a quedar disponible para facturarse de nuevo.
+    prisma.wmsImport.updateMany({ where: { invoiceId: id }, data: { status: "PENDIENTE", invoiceId: null } }),
+  ]);
   revalidateAll(id);
+  revalidatePath("/facturas/importar");
 }
 
 async function reactivateInvoiceImpl(id: number) {

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { updateClient } from "@/app/actions/clients";
 import { ClientForm } from "@/components/ClientForm";
+import { ClientRates } from "@/components/ClientRates";
 import { PageHeader, StatusBadge, Stat, Empty } from "@/components/kit";
 import { formatDate, formatMoney } from "@/lib/money";
 
@@ -102,6 +103,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             </table>
           )}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <ClientRates clientId={client.id} />
       </div>
 
       <h2 className="mb-3 mt-8 font-semibold">Datos del cliente</h2>

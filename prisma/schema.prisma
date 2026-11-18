@@ -59,12 +59,61 @@ model Client {
   phone        String        @default("")
   address      String        @default("")
   notes        String        @default("")
+  wmsName      String        @default("") // nombre del cliente tal como aparece en el WMS (ej. "Basic&Pure")
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   quotes       Quote[]
   invoices     Invoice[]
   transactions Transaction[]
+  rates        ClientRate[]
+  wmsImports   WmsImport[]
+}
+
+/// Tarifa negociada con un cliente. Al importar movimientos del WMS se busca por wmsConcept.
+model ClientRate {
+  id          Int      @id @default(autoincrement())
+  clientId    Int
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  code        String   @default("")
+  name        String // como aparece en la factura
+  description String   @default("")
+  wmsConcept  String   @default("") // concepto del WMS que corresponde (ej. "Procesamiento de pedido")
+  unit        String   @default("Servicio")
+  unitPrice   Float    @default(0)
+  priceText   String   @default("")
+  atCost      Boolean  @default(false) // se factura al importe que reporta el WMS (fletes)
+  taxRate     Float    @default(16)
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+/// Estado de cobro recibido del WMS (PDF o API). Se revisa y luego se convierte en factura.
+/// status: PENDIENTE | FACTURADO | DESCARTADO
+model WmsImport {
+  id          Int       @id @default(autoincrement())
+  folio       String    @unique // folio del WMS (ej. COB-2026-10-19-0006)
+  source      String    @default("pdf") // pdf | api
+  clientName  String    @default("")
+  clientId    Int?
+  client      Client?   @relation(fields: [clientId], references: [id])
+  periodLabel String    @default("")
+  periodFrom  DateTime?
+  periodTo    DateTime?
+  issuedAt    DateTime?
+  payload     String    @default("{}") // JSON con los movimientos (WmsStatement)
+  subtotal    Float     @default(0)
+  tax         Float     @default(0)
+  total       Float     @default(0)
+  status      String    @default("PENDIENTE")
+  invoiceId   Int?      @unique
+  invoice     Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 /// Catálogo de servicios de fulfillment (almacenaje, pick & pack, envíos, etc.)
@@ -79,6 +128,7 @@ model Service {
   section     String   @default("") // sección del tarifario (Almacenamiento, Fulfillment…)
   priceText   String   @default("") // tarifa en texto cuando no es un precio simple ("Gratis", "A cotizar"…)
   atCost      Boolean  @default(false) // se factura al costo (ej. guía de envío): el importe se captura directo
+  wmsConcept  String   @default("") // concepto del WMS para la tarifa estándar
   sortOrder   Int      @default(0)
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -163,6 +213,7 @@ model Invoice {
   paidTotal Float         @default(0)
   items     InvoiceItem[]
   payments  Payment[]
+  wmsImport WmsImport?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }

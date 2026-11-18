@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ clientId?: string }> }) {
   const { clientId } = await searchParams;
-  const { clients, services, settings } = await editorData();
+  const { clients, services, clientRates, settings } = await editorData();
   const today = new Date();
 
   return (
@@ -28,6 +28,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
           action={createQuote}
           clients={clients}
           services={services}
+          clientRates={clientRates}
           defaultTaxRate={settings.defaultTaxRate}
           submitLabel="Crear cotización"
           defaults={{

@@ -40,5 +40,6 @@ function safeEqual(a: string, b: string) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // /api/wms usa su propio token (WMS_API_TOKEN), no la contraseña del ERP.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/wms/).*)"],
 };

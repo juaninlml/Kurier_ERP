@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
   experimental: {
     // Permite subir el logo (hasta 1 MB) desde Configuración
-    serverActions: { bodySizeLimit: "2mb" },
+    serverActions: { bodySizeLimit: "4mb" },
   },
   // Incluye el logo de respaldo (public/branding) en las funciones que generan PDFs
   outputFileTracingIncludes: {

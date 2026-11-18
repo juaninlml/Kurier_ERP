@@ -18,6 +18,7 @@ function clientData(fd: FormData) {
     phone: str(fd, "phone"),
     address: str(fd, "address"),
     notes: str(fd, "notes"),
+    wmsName: str(fd, "wmsName"),
   };
 }
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  FileUp,
   FileText,
   LayoutDashboard,
   Menu,
@@ -27,6 +28,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/cotizaciones", label: "Cotizaciones", icon: FileText },
       { href: "/facturas", label: "Facturas", icon: ReceiptText },
+      { href: "/facturas/importar", label: "Importar del WMS", icon: FileUp },
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/servicios", label: "Tarifario", icon: Tags },
     ],
@@ -45,6 +47,7 @@ function useIsActive() {
   const pathname = usePathname();
   return (href: string) => {
     if (href === "/") return pathname === "/";
+    if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar");
     if (href === "/contabilidad") return pathname === "/contabilidad" || pathname.startsWith("/contabilidad/movimientos");
     return pathname.startsWith(href);
   };

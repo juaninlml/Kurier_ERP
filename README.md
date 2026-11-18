@@ -83,3 +83,24 @@ src/lib/                  cálculo de totales, importe con letra, reportes y fol
 - **Montos:** se redondean a 2 decimales por línea. El IVA se calcula sobre el importe después del descuento.
 - **IVA de los pagos:** cuando se registra un pago, el IVA que contiene se calcula en proporción al total de la factura.
 - **Acceso:** `src/middleware.ts` protege todo el sitio con usuario y contraseña (HTTP Basic). En local, si no defines `ERP_USER` y `ERP_PASSWORD`, no pide credenciales.
+
+## Integración con el WMS
+
+**Hoy (PDF):** en *Facturas → Importar del WMS* sube los estados de cobro (`invoice-COB-….pdf`). El ERP los lee, reconoce al cliente por su *Nombre en el WMS*, agrupa los movimientos por concepto y aplica las **tarifas negociadas del cliente** (ficha del cliente → *Tarifas negociadas*). Lo que no tenga tarifa del cliente usa el tarifario estándar y, si tampoco existe, el precio del WMS. Los fletes se facturan al costo. Antes de crear la factura se muestran las diferencias contra lo que cobró el WMS.
+
+**Después (API):** el WMS puede enviar el mismo estado de cobro en JSON:
+
+```
+POST /api/wms/statements
+Authorization: Bearer <WMS_API_TOKEN>
+Content-Type: application/json
+
+{ "folio": "COB-2026-10-19-0006", "clientName": "Basic&Pure",
+  "periodFrom": "2026-10-19", "periodTo": "2026-10-25",
+  "lines": [ { "date": "2026-10-24", "section": "MANIOBRAS", "concept": "Procesamiento de pedido",
+               "description": "Procesamiento de pedido P-1158", "quantity": 1, "unit": "pedido",
+               "unitPrice": 25, "amount": 25, "orderRef": "P-1158" } ],
+  "subtotal": 25, "tax": 4, "total": 29 }
+```
+
+Acepta también `{ "statements": [ … ] }` (hasta 100). Define `WMS_API_TOKEN` en Vercel para activarla; sin esa variable responde 503. Los estados recibidos quedan *por facturar* para revisarlos, igual que los PDF. El formato completo está en `src/lib/wms/types.ts`.

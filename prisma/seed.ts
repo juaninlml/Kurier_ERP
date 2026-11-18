@@ -22,6 +22,12 @@ import {
 const ALL_SECTIONS = [...SECTIONS.slice(0, 5), FULL_FBA_SECTION, ...SECTIONS.slice(5)];
 const ALL_TARIFAS = [...TARIFAS, ...FULL_FBA];
 
+/** Concepto con el que el WMS reporta cada servicio estándar (para importar estados de cobro). */
+const WMS_CONCEPTS: Record<string, string> = {
+  "GUI-02": "Envío de pedido",
+  "FUL-07": "Picking pieza/bulto adicional",
+};
+
 const prisma = new PrismaClient();
 
 /** Servicios de ejemplo de la primera versión; se reemplazan por el tarifario real si no se editaron. */
@@ -123,6 +129,10 @@ async function seedTarifario() {
       // Existía con la misma clave pero sin sección (versión anterior): completar sección y orden.
       await prisma.service.update({ where: { id: found.id }, data: { section: t.section, sortOrder: i } });
     }
+  }
+  // Conceptos del WMS que corresponden a servicios estándar (solo si no se han configurado).
+  for (const [code, wmsConcept] of Object.entries(WMS_CONCEPTS)) {
+    await prisma.service.updateMany({ where: { code, wmsConcept: "" }, data: { wmsConcept } });
   }
   return created;
 }

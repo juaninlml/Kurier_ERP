@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlarmClock, CircleCheck, Plus, ReceiptText, Wallet } from "lucide-react";
+import { AlarmClock, CircleCheck, FileUp, Plus, ReceiptText, Wallet } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
@@ -19,7 +19,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ? { status }
         : {};
   const search = q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }] } : {};
-  const [invoices, open, grouped] = await Promise.all([
+  const [invoices, open, grouped, pendingImports] = await Promise.all([
     prisma.invoice.findMany({
       where: { ...where, ...search },
       include: { client: { select: { name: true } } },
@@ -28,6 +28,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     }),
     prisma.invoice.findMany({ where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true, dueDate: true } }),
     prisma.invoice.groupBy({ by: ["status"], where: search, _count: true }),
+    prisma.wmsImport.count({ where: { status: "PENDIENTE" } }),
   ]);
   const receivable = round2(open.reduce((a, i) => a + i.total - i.paidTotal, 0));
   const lateOpen = open.filter((i) => i.dueDate < now);
@@ -40,9 +41,15 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         title="Facturas"
         subtitle="Formato interno de facturación y estado de cuenta (no sustituye al CFDI)."
         actions={
-          <Link href="/facturas/nueva" className="btn-primary">
-            <Plus className="size-4" /> Nueva factura
-          </Link>
+          <>
+            <Link href="/facturas/importar" className="btn-secondary">
+              <FileUp className="size-4" /> Importar del WMS
+              {pendingImports > 0 && <span className="rounded-md bg-kurier px-1.5 text-[11px] text-white tabular-nums">{pendingImports}</span>}
+            </Link>
+            <Link href="/facturas/nueva" className="btn-primary">
+              <Plus className="size-4" /> Nueva factura
+            </Link>
+          </>
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
