@@ -1,10 +1,11 @@
 import type { Client } from "@prisma/client";
 import { Field } from "./ui";
 import { SubmitButton } from "./SubmitButton";
+import { Form } from "./Form";
 
-export function ClientForm({ action, client }: { action: (fd: FormData) => void | Promise<void>; client?: Client }) {
+export function ClientForm({ action, client }: { action: (fd: FormData) => Promise<unknown>; client?: Client }) {
   return (
-    <form action={action} className="card space-y-4 p-5">
+    <Form action={action} className="card space-y-4 p-5">
       <div className="grid gap-4 md:grid-cols-3">
         <Field label="Nombre / Marca *" className="md:col-span-2">
           <input name="name" required defaultValue={client?.name} className="input" />
@@ -41,6 +42,6 @@ export function ClientForm({ action, client }: { action: (fd: FormData) => void 
         )}
         <SubmitButton>{client ? "Guardar cambios" : "Crear cliente"}</SubmitButton>
       </div>
-    </form>
+    </Form>
   );
 }

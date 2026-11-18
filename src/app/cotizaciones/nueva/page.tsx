@@ -38,6 +38,10 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
             terms: settings.quoteTerms,
             attention: "Por confirmar",
             profile: DEFAULT_PROFILE,
+            perOrder: [],
+            perOrderFee: 5,
+            baseVolume: 0,
+            scenarios: "",
             items: [],
           }}
         />

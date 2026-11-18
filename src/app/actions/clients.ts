@@ -1,5 +1,6 @@
 "use server";
 
+import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,15 +21,19 @@ function clientData(fd: FormData) {
   };
 }
 
-export async function createClient(fd: FormData) {
+async function createClientImpl(fd: FormData) {
   const c = await prisma.client.create({ data: clientData(fd) });
   revalidatePath("/clientes");
   redirect(`/clientes/${c.id}`);
 }
 
-export async function updateClient(id: number, fd: FormData) {
+async function updateClientImpl(id: number, fd: FormData) {
   await prisma.client.update({ where: { id }, data: { ...clientData(fd), active: fd.get("active") === "on" } });
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
   redirect(`/clientes/${id}`);
 }
+
+// Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
+export const createClient = safe(createClientImpl);
+export const updateClient = safe(updateClientImpl);

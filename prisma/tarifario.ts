@@ -193,3 +193,96 @@ export const QUOTE_TERMS = [
 
 export const INVOICE_DISCLAIMER =
   "Este documento es un **formato interno de facturación / estado de cuenta** de Kurier Fulfillment y no sustituye el CFDI fiscal, que se timbra a través de nuestro proveedor autorizado (PAC) conforme al SAT una vez confirmados los datos fiscales del cliente. La guía de envío se factura al costo, sin ningún indirecto agregado por Kurier Fulfillment. Todos los precios de este formato se expresan sin IVA; al total facturado se agrega el 16% correspondiente.";
+
+/** Sección y servicios de preparación para Mercado Libre Full y Amazon FBA (formato de cotización Cestco Dental). */
+export const FULL_FBA_SECTION: TarifaSection = {
+  name: "Preparación para Mercado Libre Full y Amazon FBA",
+  note: "Si el envío se arma con las cajas master originales del producto, solo se cobra la preparación y, en su caso, el etiquetado. El flete hacia el centro de distribución se factura al costo o se genera desde la plataforma.",
+};
+export const FULL_FBA: Tarifa[] = [
+  { code: "PRE-01", section: FULL_FBA_SECTION.name, name: "Preparación por caja", unitPrice: 50, unit: "Caja", description: "Armado de la caja conforme a la orden de ingreso de cada plataforma. Solo cubre la preparación." },
+  { code: "PRE-02", section: FULL_FBA_SECTION.name, name: "Preparación por tarima", unitPrice: 400, unit: "Tarima", description: "Armado y emplayado de tarima completa conforme a la orden de ingreso, y gestión de la cita." },
+  { code: "PRE-03", section: FULL_FBA_SECTION.name, name: "Etiquetado adicional", unitPrice: 3, unit: "Etiqueta", description: "Etiquetas de producto, de caja o de tarima que exija cada plataforma. Se cobra solo si se requiere." },
+  { code: "PRE-04", section: FULL_FBA_SECTION.name, name: "Caja de envío", unitPrice: 0, unit: "Caja", priceText: "A cotización", description: "Solo si se requiere caja nueva. Referencia: de $40.00 a $100.00 por caja, según tamaño." },
+];
+
+/** Tablas informativas del PDF del tarifario. columns: "Título:ancho%|…"; rows: celdas separadas por |. */
+export type TablaInfo = { title: string; afterSection: string; columns: string; rows: string; note?: string; inQuotes?: boolean };
+export const TARIFF_TABLES: TablaInfo[] = [
+  {
+    title: "Incluido en todos nuestros planes",
+    afterSection: "Recibo de mercancía",
+    columns: "Concepto:32|Detalle:68",
+    rows: [
+      "Sin volumen mínimo|No exigimos un mínimo de órdenes mensuales para operar con nosotros. Paga únicamente por lo que utiliza.",
+      "Ejecutivo de cuenta asignado|Un contacto directo para incidencias, altas de SKU y seguimiento operativo.",
+      "Conteo cíclico trimestral|Un inventario físico por trimestre incluido sin costo, con reporte de diferencias.",
+    ].join("\n"),
+  },
+  {
+    title: "Tarifas preferenciales por volumen — Última milla",
+    afterSection: "Última milla CDMX",
+    columns: "Promedio de entregas diarias:44|Zona 1:28|Zona 2:28",
+    rows: [
+      "Menos de 10 entregas (tarifa base)|$130.00 / parada|$160.00 / parada",
+      "De 10 a 19 entregas|$110.00 / parada|$130.00 / parada",
+      "20 entregas o más|$90.00 / parada|$110.00 / parada",
+    ].join("\n"),
+    note: "El promedio diario se calcula por cliente y por mes calendario (entregas del mes ÷ días hábiles de entrega) y la tarifa correspondiente aplica a todas las entregas del mes. El descuento aplica solo a las tarifas de entrega; picking, almacenamiento, reintentos y tiempos de espera no cambian.",
+  },
+  {
+    title: "Cobertura por zonas — Última milla CDMX",
+    afterSection: "Última milla CDMX",
+    columns: "Zona:18|Alcaldía:28|Colonias de referencia:54",
+    rows: [
+      "Zona 1 · $130.00 / parada base|Benito Juárez|Álamos, Del Valle, Narvarte, Portales, Nápoles",
+      "|Cuauhtémoc|Roma, Condesa, Centro, Juárez, Doctores",
+      "|Iztacalco|Agrícola Oriental, Granjas México, Viaducto Piedad",
+      "|Venustiano Carranza|Moctezuma, Jardín Balbuena, zona aeropuerto",
+      "|Coyoacán|Centro de Coyoacán, Copilco, Pedregal, Santo Domingo",
+      "|Miguel Hidalgo|Polanco, Anzures, Escandón, Tacubaya",
+      "Zona 2 · $160.00 / parada base|Iztapalapa|Iztapalapa centro, Santa Cruz Meyehualco, Ermita",
+      "|Gustavo A. Madero|Lindavista, La Villa, Aragón",
+      "|Azcapotzalco|Centro de Azcapotzalco, Clavería, Vallejo",
+      "|Álvaro Obregón|San Ángel, Mixcoac, Santa Fe",
+      "|Tlalpan|Centro de Tlalpan, Coapa, Ajusco",
+      "|Xochimilco|Centro de Xochimilco, Huipulco",
+      "|Tláhuac|Centro de Tláhuac, Zapotitlán",
+      "|Magdalena Contreras|San Jerónimo, Contreras",
+      "|Cuajimalpa|Cuajimalpa centro, Santa Fe poniente",
+      "|Milpa Alta|Villa Milpa Alta",
+    ].join("\n"),
+    note: "Zonas definidas a partir de nuestro almacén en Castilla 262, Col. Álamos, Benito Juárez. Zona 1: alcaldías vecinas o a menos de ~12 km. Zona 2: resto de las alcaldías de la Ciudad de México.",
+  },
+  {
+    title: "Niveles de servicio (SLA)",
+    afterSection: "Servicios de valor agregado",
+    columns: "Concepto:32|Compromiso:68",
+    rows: [
+      "Horario de corte|Órdenes recibidas antes de las 13:00 hrs se surten el mismo día hábil; posteriores, al siguiente día hábil.",
+      "Corte de última milla|Órdenes de entrega local recibidas antes de las 16:00 hrs se entregan el siguiente día hábil (lunes a viernes).",
+      "Exactitud de picking|99.5% de órdenes surtidas correctamente. Los errores atribuibles a Kurier se corrigen sin costo, incluyendo el reenvío.",
+      "Ingreso de mercancía|Disponible en el WMS dentro de las 24 horas hábiles posteriores a la recepción con cita.",
+      "Procesamiento de devoluciones|Inspección y reporte dentro de 48 horas hábiles desde la recepción.",
+      "Horarios|Operaciones / almacén: lunes a viernes de 7:00 a 14:30 hrs y sábados de 7:00 a 13:00 hrs. Administrativo: lunes a viernes de 9:00 a 17:00 hrs. Días festivos, bajo acuerdo previo.",
+      "Atención a cliente|Ejecutivo asignado con respuesta dentro de 4 horas hábiles.",
+    ].join("\n"),
+  },
+];
+
+export const TARIFF_INTRO =
+  "Almacenamiento, pick & pack, última milla en CDMX, logística inversa y servicios de valor agregado para marcas de e-commerce que venden en Shopify, Mercado Libre y Amazon.";
+
+export const TARIFF_TERMS = [
+  "Vigencia de la cotización: 30 días naturales a partir de su emisión.",
+  "Facturación: semanal para clientes nuevos durante los primeros meses de operación; posteriormente puede migrarse a esquema quincenal o mensual, según se acuerde. Almacenamiento se factura por adelantado; fulfillment y servicios variables, por consumo real del periodo.",
+  "Condiciones de pago: pago contra recepción de factura a 8 días naturales. Clientes nuevos operan con depósito en garantía equivalente a un mes de almacenamiento estimado.",
+  "Contratos con compromiso: los clientes que firmen a 12 meses o más obtienen protección de precio durante toda la vigencia del contrato.",
+  "Ajuste anual: las tarifas se revisan cada 12 meses, con tope de incremento equivalente al INPC del periodo.",
+  "Seguro de mercancía: la mercancía en nuestras instalaciones está cubierta por póliza de responsabilidad civil. Coberturas ampliadas o mercancía de alto valor requieren póliza específica bajo cotización.",
+  "Terminación: cualquiera de las partes puede terminar el servicio con 30 días naturales de aviso previo por escrito. El retiro de inventario se coordina en ese periodo sin cargo adicional.",
+  "IVA: todos los precios de este documento se expresan sin IVA. Al total facturado se agrega el 16% correspondiente.",
+].join("\n");
+
+export const TARIFF_CLOSING =
+  "¿Quiere una cotización a la medida? Envíenos su volumen mensual de órdenes, número de SKUs, peso y dimensiones promedio, y le preparamos una propuesta personalizada en 48 horas.";

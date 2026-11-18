@@ -1,5 +1,6 @@
 "use server";
 
+import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -7,7 +8,7 @@ import { numv, str } from "./helpers";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
-export async function saveSettings(fd: FormData) {
+async function saveSettingsImpl(fd: FormData) {
   const primaryColor = str(fd, "primaryColor");
   const accentColor = str(fd, "accentColor");
   if (!HEX.test(primaryColor) || !HEX.test(accentColor)) throw new Error("Los colores deben ser hex de 6 dígitos (#RRGGBB).");
@@ -57,3 +58,6 @@ export async function saveSettings(fd: FormData) {
   revalidatePath("/", "layout");
   redirect("/configuracion?ok=1");
 }
+
+// Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
+export const saveSettings = safe(saveSettingsImpl);

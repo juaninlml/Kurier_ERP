@@ -1,5 +1,6 @@
 "use server";
 
+import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -31,7 +32,7 @@ async function ensureSection(name: string) {
   await prisma.serviceSection.create({ data: { name, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
 }
 
-export async function createService(fd: FormData) {
+async function createServiceImpl(fd: FormData) {
   const data = serviceData(fd);
   if (await prisma.service.findUnique({ where: { code: data.code } })) throw new Error(`Ya existe un servicio con la clave ${data.code}.`);
   await ensureSection(data.section);
@@ -41,7 +42,7 @@ export async function createService(fd: FormData) {
   redirect("/servicios");
 }
 
-export async function updateService(id: number, fd: FormData) {
+async function updateServiceImpl(id: number, fd: FormData) {
   const data = serviceData(fd);
   await ensureSection(data.section);
   await prisma.service.update({ where: { id }, data: { ...data, active: fd.get("active") === "on" } });
@@ -49,7 +50,12 @@ export async function updateService(id: number, fd: FormData) {
   redirect("/servicios");
 }
 
-export async function updateSectionNote(id: number, fd: FormData) {
+async function updateSectionNoteImpl(id: number, fd: FormData) {
   await prisma.serviceSection.update({ where: { id }, data: { note: str(fd, "note") } });
   revalidatePath("/servicios");
 }
+
+// Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
+export const createService = safe(createServiceImpl);
+export const updateService = safe(updateServiceImpl);
+export const updateSectionNote = safe(updateSectionNoteImpl);

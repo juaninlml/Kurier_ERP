@@ -5,7 +5,22 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { computeLines } from "../src/lib/totals";
-import { SECTIONS, TARIFAS, QUOTE_TERMS, INVOICE_DISCLAIMER } from "./tarifario";
+import {
+  SECTIONS,
+  TARIFAS,
+  QUOTE_TERMS,
+  INVOICE_DISCLAIMER,
+  FULL_FBA_SECTION,
+  FULL_FBA,
+  TARIFF_TABLES,
+  TARIFF_INTRO,
+  TARIFF_TERMS,
+  TARIFF_CLOSING,
+} from "./tarifario";
+
+/** Orden final de secciones y servicios (Full/FBA va después de Envíos nacionales). */
+const ALL_SECTIONS = [...SECTIONS.slice(0, 5), FULL_FBA_SECTION, ...SECTIONS.slice(5)];
+const ALL_TARIFAS = [...TARIFAS, ...FULL_FBA];
 
 const prisma = new PrismaClient();
 
@@ -41,6 +56,9 @@ async function seedSettings() {
         quoteTerms: QUOTE_TERMS,
         invoiceDisclaimer: INVOICE_DISCLAIMER,
         invoiceNotes: "",
+        tariffIntro: TARIFF_INTRO,
+        tariffTerms: TARIFF_TERMS,
+        tariffClosing: TARIFF_CLOSING,
       },
     });
     return;
@@ -59,14 +77,23 @@ async function seedSettings() {
     patch.quoteValidityDays = 30;
   }
   if (!current.invoiceDisclaimer) patch.invoiceDisclaimer = INVOICE_DISCLAIMER;
+  if (!current.tariffIntro) patch.tariffIntro = TARIFF_INTRO;
+  if (!current.tariffTerms) patch.tariffTerms = TARIFF_TERMS;
+  if (!current.tariffClosing) patch.tariffClosing = TARIFF_CLOSING;
   if (current.invoiceNotes === "Favor de indicar el folio de esta factura como referencia en su pago.") patch.invoiceNotes = "";
   if (current.paymentTermsDays === 30) patch.paymentTermsDays = 8;
   if (Object.keys(patch).length) await prisma.companySettings.update({ where: { id: 1 }, data: patch });
 }
 
 async function seedTarifario() {
-  for (const [i, sec] of SECTIONS.entries()) {
-    await prisma.serviceSection.upsert({ where: { name: sec.name }, update: {}, create: { ...sec, sortOrder: i } });
+  for (const [i, sec] of ALL_SECTIONS.entries()) {
+    // Solo se ajusta el orden; la nota que hayas editado se respeta.
+    await prisma.serviceSection.upsert({ where: { name: sec.name }, update: { sortOrder: i }, create: { ...sec, sortOrder: i } });
+  }
+  if ((await prisma.tariffTable.count()) === 0) {
+    await prisma.tariffTable.createMany({
+      data: TARIFF_TABLES.map((t, i) => ({ ...t, note: t.note ?? "", inQuotes: t.inQuotes ?? false, sortOrder: i })),
+    });
   }
 
   // Quita los servicios de ejemplo que no se editaron
@@ -76,7 +103,7 @@ async function seedTarifario() {
   }
 
   let created = 0;
-  for (const [i, t] of TARIFAS.entries()) {
+  for (const [i, t] of ALL_TARIFAS.entries()) {
     const data = {
       name: t.name,
       section: t.section,
@@ -103,7 +130,7 @@ async function seedTarifario() {
 async function main() {
   await seedSettings();
   const created = await seedTarifario();
-  console.log(`✔ Configuración y tarifario (${created} servicios nuevos, ${TARIFAS.length} en el tarifario V5)`);
+  console.log(`✔ Configuración y tarifario (${created} servicios nuevos, ${ALL_TARIFAS.length} en el tarifario)`);
 
   if (!process.argv.includes("--demo")) return;
 
@@ -127,11 +154,15 @@ async function main() {
   const q = computeLines([
     line("SET-01", 0),
     line("SIS-01", 1),
-    { code: "", description: "Pedido de 1 a 2 piezas", detail: "Pick & pack con bolsa de envío estándar incluida.", section: "Fulfillment — AliExpress y sitio web", unit: "Pedido", quantity: 250, unitPrice: 35, taxRate: 16 },
+    { code: "", description: "Pedido de 1 a 2 piezas", detail: "Pick & pack con bolsa de envío estándar incluida.", section: "Fulfillment — AliExpress y sitio web", unit: "Pedido", quantity: 250, unitPrice: 35, taxRate: 16, scales: true },
     { code: "", description: "Pedido de 3 a 4 piezas", detail: "Pick & pack con bolsa de envío estándar incluida.", section: "Fulfillment — AliExpress y sitio web", unit: "Pedido", quantity: 0, unitPrice: 45, taxRate: 16 },
     { code: "", description: "Caja tear strip premium", detail: "En lugar de la bolsa estándar, para pedidos que lo requieran.", section: "Fulfillment — AliExpress y sitio web", priceText: "+ $10.00 / pedido", unit: "Pedido", quantity: 0, unitPrice: 10, taxRate: 16 },
     line("FUL-07", 0, { section: "Fulfillment — AliExpress y sitio web", detail: "Por cada pieza arriba de las 4 incluidas." }),
-    line("GUI-01", 250, { section: "Fulfillment — AliExpress y sitio web" }),
+    line("GUI-01", 250, { section: "Fulfillment — AliExpress y sitio web", scales: true }),
+    line("PRE-01", 0),
+    line("PRE-02", 0),
+    line("PRE-03", 0),
+    line("PRE-04", 0),
     line("REC-01", 0),
     line("REC-02", 0),
     line("REC-03", 0),
@@ -155,7 +186,16 @@ async function main() {
           { label: "Composición del pedido", value: "De 1 a 4 piezas por pedido." },
           { label: "Volumen mensual", value: "Por confirmar." },
         ]),
-        notes: "Ejemplo con 250 pedidos de 1 a 2 piezas en bolsa estándar y guía generada por Kurier. No incluye almacenamiento, devoluciones ni flete, que se cobran por consumo real.",
+        notes: "Ejemplo con todos los pedidos de 1 a 2 piezas en bolsa estándar y guía generada por Kurier. No incluye almacenamiento, preparación para Full y FBA, devoluciones ni flete, que se cobran por consumo real.",
+        perOrder: JSON.stringify([
+          { label: "1 a 2 piezas, bolsa estándar", amount: 35 },
+          { label: "1 a 2 piezas, caja tear strip premium", amount: 45 },
+          { label: "3 a 4 piezas, bolsa estándar", amount: 45 },
+          { label: "3 a 4 piezas, caja tear strip premium", amount: 55 },
+        ]),
+        perOrderFee: 5,
+        baseVolume: 250,
+        scenarios: "250, 500, 1000",
         terms: s.quoteTerms,
         ...totals,
         items: { create: items },

@@ -7,6 +7,7 @@ import { ServiceFields } from "@/components/ServiceFields";
 import { formatMoney } from "@/lib/money";
 import { rateLabel } from "@/lib/totals";
 import { getSettings } from "@/lib/settings";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,16 @@ export default async function ServicesPage() {
       <PageHeader
         title="Tarifario de servicios"
         subtitle={`${services.filter((x) => x.active).length} servicios activos · Precios sin IVA, MXN. Es la base para armar cotizaciones y facturas.`}
+        actions={
+          <>
+            <a href="/servicios/tablas" className="btn-secondary">
+              Textos y tablas del PDF
+            </a>
+            <a href="/api/pdf/tarifario" target="_blank" className="btn-primary">
+              PDF del tarifario
+            </a>
+          </>
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -74,7 +85,7 @@ export default async function ServicesPage() {
                 </table>
               </div>
               {sec && (
-                <form action={updateSectionNote.bind(null, sec.id)} className="flex items-start gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3">
+                <Form action={updateSectionNote.bind(null, sec.id)} className="flex items-start gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3">
                   <textarea
                     name="note"
                     rows={sec.note ? 2 : 1}
@@ -85,17 +96,17 @@ export default async function ServicesPage() {
                   <SubmitButton className="btn-secondary whitespace-nowrap text-xs" pendingText="…">
                     Guardar nota
                   </SubmitButton>
-                </form>
+                </Form>
               )}
             </div>
           ))}
         </div>
 
-        <form action={createService} className="card h-fit space-y-3 p-5 xl:sticky xl:top-6">
+        <Form action={createService} className="card h-fit space-y-3 p-5 xl:sticky xl:top-6">
           <h2 className="font-semibold">Nuevo servicio</h2>
           <ServiceFields sections={sections.map((x) => x.name)} defaultTaxRate={s.defaultTaxRate} />
           <SubmitButton className="btn-primary w-full">Agregar al tarifario</SubmitButton>
-        </form>
+        </Form>
       </div>
     </div>
   );

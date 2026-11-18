@@ -7,7 +7,9 @@ import { PageHeader, StatusBadge } from "@/components/ui";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
-import { formatDate } from "@/lib/money";
+import { formatDate, formatMoney } from "@/lib/money";
+import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   if (!quote) notFound();
   const editable = quote.status !== "FACTURADA";
   const profile = parseProfileJson(quote.profile);
+  const perOrder = parsePerOrder(quote.perOrder);
+  const volumes = parseVolumes(quote.scenarios);
+  const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -85,6 +90,72 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             </div>
           )}
           <DocumentView kind="quote" items={quote.items} subtotal={quote.subtotal} discount={quote.discount} tax={quote.tax} total={quote.total} />
+          {(perOrder.length > 0 || scenarios) && (
+            <div className="grid gap-6 xl:grid-cols-2">
+              {perOrder.length > 0 && (
+                <div className="card overflow-hidden">
+                  <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Costo por pedido</h2>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Tipo de pedido</th>
+                        <th className="text-right">Fulfillment</th>
+                        {quote.perOrderFee > 0 && <th className="text-right">Con guía de Kurier</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {perOrder.map((r) => (
+                        <tr key={r.label}>
+                          <td className="font-medium text-brand">{r.label}</td>
+                          <td className="text-right tabular-nums">{formatMoney(r.amount)}</td>
+                          {quote.perOrderFee > 0 && <td className="text-right font-semibold tabular-nums text-brand">{formatMoney(r.amount + quote.perOrderFee)}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {scenarios && (
+                <div className="card overflow-hidden">
+                  <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">Costo mensual según volumen</h2>
+                  <div className="overflow-x-auto">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Concepto</th>
+                          {volumes.map((v) => (
+                            <th key={v} className="text-right">
+                              {v.toLocaleString("es-MX")} pedidos
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scenarios.rows.map((r) => (
+                          <tr key={r.label}>
+                            <td>{r.label}</td>
+                            {r.values.map((v, j) => (
+                              <td key={j} className="text-right tabular-nums">
+                                {formatMoney(v)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                        <tr className="font-semibold">
+                          <td>Total mensual (con IVA)</td>
+                          {scenarios.total.map((v, j) => (
+                            <td key={j} className="text-right tabular-nums text-accent">
+                              {formatMoney(v)}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {(quote.notes || quote.terms) && (
             <div className="card grid gap-4 p-5 text-sm md:grid-cols-2">
               {quote.notes && (
@@ -109,27 +180,27 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               <div className="label mb-2">Cambiar estatus</div>
               <div className="grid gap-2">
                 {(["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const).map((st) => (
-                  <form key={st} action={setQuoteStatus.bind(null, quote.id, st)}>
+                  <Form key={st} action={setQuoteStatus.bind(null, quote.id, st)}>
                     <button className={`btn-secondary w-full justify-start ${quote.status === st ? "ring-2 ring-brand/30" : ""}`} disabled={quote.status === st}>
                       <StatusBadge status={st} />
                     </button>
-                  </form>
+                  </Form>
                 ))}
               </div>
             </div>
           )}
           <div className="card space-y-2 p-4">
-            <form action={duplicateQuote.bind(null, quote.id)}>
+            <Form action={duplicateQuote.bind(null, quote.id)}>
               <SubmitButton className="btn-secondary w-full" pendingText="Duplicando…">
                 Duplicar cotización
               </SubmitButton>
-            </form>
+            </Form>
             {quote.invoices.length === 0 && (
-              <form action={deleteQuote.bind(null, quote.id)}>
+              <Form action={deleteQuote.bind(null, quote.id)}>
                 <ConfirmButton message={`¿Eliminar la cotización ${quote.folio}?`} className="btn-danger w-full">
                   Eliminar
                 </ConfirmButton>
-              </form>
+              </Form>
             )}
           </div>
         </aside>

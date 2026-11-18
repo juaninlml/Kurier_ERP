@@ -5,6 +5,10 @@ import { SubmitButton } from "./SubmitButton";
 import { computeLines, type LineInput } from "@/lib/totals";
 import { formatMoney } from "@/lib/money";
 import { UNITS } from "@/lib/constants";
+import { Form } from "./Form";
+import { parseVolumes, scenarioTable, type PerOrderRow } from "@/lib/quote-extras";
+
+const SCALING_UNITS = ["orden", "pedido", "guía", "guia", "pieza", "envío", "envio"];
 
 type ClientOpt = { id: number; name: string };
 export type ServiceOpt = {
@@ -31,6 +35,10 @@ export type DocumentDefaults = {
   // cotización
   attention?: string;
   profile?: ProfileRow[];
+  perOrder?: PerOrderRow[];
+  perOrderFee?: number;
+  baseVolume?: number;
+  scenarios?: string;
   // factura
   period?: string;
   volume?: string;
@@ -66,6 +74,8 @@ const fromService = (s: ServiceOpt, quantity: number): LineInput => ({
   taxRate: s.taxRate,
   atCost: s.atCost,
   amount: 0,
+  // Lo que se cobra por pedido/guía/pieza crece con el volumen en los escenarios.
+  scales: SCALING_UNITS.includes(s.unit.trim().toLowerCase()),
 });
 
 const lineAmount = (l: LineInput) =>
@@ -80,7 +90,7 @@ export function DocumentEditor({
   defaultTaxRate,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   clients: ClientOpt[];
   services: ServiceOpt[];
   defaults: DocumentDefaults;
@@ -96,6 +106,14 @@ export function DocumentEditor({
   const billable = (l: LineInput) => l.description.trim() && (isQuote || l.quantity > 0 || (l.atCost && (l.amount ?? 0) > 0));
   const kept = lines.filter(billable);
   const totals = useMemo(() => computeLines(kept), [kept]);
+
+  // Cotización: tablas "Costo por pedido" y "Costo mensual según volumen"
+  const [perOrder, setPerOrder] = useState<PerOrderRow[]>(defaults.perOrder ?? []);
+  const [perOrderFee, setPerOrderFee] = useState(defaults.perOrderFee ?? 0);
+  const [baseVolume, setBaseVolume] = useState(defaults.baseVolume ?? 0);
+  const [scenarios, setScenarios] = useState(defaults.scenarios ?? "");
+  const volumes = parseVolumes(scenarios);
+  const scenarioPreview = isQuote ? scenarioTable(kept, baseVolume, volumes, formatMoney) : null;
 
   const sections = useMemo(() => {
     const map = new Map<string, ServiceOpt[]>();
@@ -131,9 +149,10 @@ export function DocumentEditor({
   const num = (v: string) => (v === "" ? 0 : Number(v));
 
   return (
-    <form action={action} className="space-y-6">
+    <Form action={action} className="space-y-6">
       <input type="hidden" name="items" value={JSON.stringify(kept)} />
       {isQuote && <input type="hidden" name="profile" value={JSON.stringify(profile.filter((r) => r.label.trim()))} />}
+      {isQuote && <input type="hidden" name="perOrder" value={JSON.stringify(perOrder.filter((r) => r.label.trim()))} />}
       {defaults.quoteId && <input type="hidden" name="quoteId" value={defaults.quoteId} />}
 
       <div className="card grid gap-4 p-5 md:grid-cols-3">
@@ -348,9 +367,16 @@ export function DocumentEditor({
                     <textarea rows={1} className="input min-h-[38px] text-xs" value={l.detail ?? ""} onChange={(e) => update(i, { detail: e.target.value })} />
                   </Cell>
                 )}
-                <label className="flex items-end gap-2 pb-2.5 text-xs text-slate-600">
-                  <input type="checkbox" checked={Boolean(l.atCost)} onChange={(e) => update(i, { atCost: e.target.checked })} /> Al costo
-                </label>
+                <div className="flex flex-col justify-end gap-1 pb-1.5 text-xs text-slate-600">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={Boolean(l.atCost)} onChange={(e) => update(i, { atCost: e.target.checked })} /> Al costo
+                  </label>
+                  {isQuote && (
+                    <label className="flex items-center gap-2 whitespace-nowrap" title="En los escenarios por volumen, la cantidad crece en proporción a los pedidos">
+                      <input type="checkbox" checked={Boolean(l.scales)} onChange={(e) => update(i, { scales: e.target.checked })} /> Escala con volumen
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -391,6 +417,117 @@ export function DocumentEditor({
         </div>
       </div>
 
+      {isQuote && (
+        <div className="card grid gap-6 p-5 lg:grid-cols-2">
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Costo por pedido</h2>
+                <p className="text-xs text-slate-500">Opcional. Combinaciones típicas de pedido y su costo de fulfillment.</p>
+              </div>
+              <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setPerOrder((p) => [...p, { label: "", amount: 0 }])}>
+                + Fila
+              </button>
+            </div>
+            <div className="space-y-2">
+              {perOrder.map((r, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_110px_auto] gap-2">
+                  <input
+                    className="input"
+                    placeholder="1 a 2 piezas, bolsa estándar"
+                    value={r.label}
+                    onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input text-right"
+                    value={r.amount}
+                    onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: num(e.target.value) } : x)))}
+                  />
+                  <button type="button" title="Quitar" className="px-2 text-rose-400 hover:text-rose-700" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <label className="mt-3 block">
+              <span className="label">Comisión de guía para la columna “Con guía de Kurier” (0 = no se muestra)</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="perOrderFee"
+                className="input w-40 text-right"
+                value={perOrderFee}
+                onChange={(e) => setPerOrderFee(num(e.target.value))}
+              />
+            </label>
+          </div>
+
+          <div>
+            <h2 className="font-semibold">Costo mensual según volumen</h2>
+            <p className="mb-2 text-xs text-slate-500">
+              Opcional. Recalcula el costo estimado para varios volúmenes. Los conceptos con “Escala con volumen” crecen en proporción; los demás
+              (ej. sistema) quedan fijos.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="label">Pedidos del costo estimado</span>
+                <input type="number" min="0" step="1" name="baseVolume" className="input text-right" value={baseVolume} onChange={(e) => setBaseVolume(num(e.target.value))} />
+              </label>
+              <label className="block">
+                <span className="label">Volúmenes a comparar</span>
+                <input name="scenarios" className="input" placeholder="250, 500, 1000" value={scenarios} onChange={(e) => setScenarios(e.target.value)} />
+              </label>
+            </div>
+            {scenarioPreview ? (
+              <div className="mt-3 overflow-x-auto">
+                <table className="table text-xs">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      {volumes.map((v) => (
+                        <th key={v} className="text-right">
+                          {v.toLocaleString("es-MX")}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scenarioPreview.rows.map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.label}</td>
+                        {r.values.map((v, j) => (
+                          <td key={j} className="text-right tabular-nums">
+                            {formatMoney(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    <tr className="font-semibold">
+                      <td>Total con IVA</td>
+                      {scenarioPreview.total.map((v, j) => (
+                        <td key={j} className="text-right tabular-nums text-accent">
+                          {formatMoney(v)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              (baseVolume > 0 || volumes.length > 0) && (
+                <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Para ver los escenarios indica los pedidos del estimado, los volúmenes y al menos un concepto con cantidad.
+                </p>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
       <div className={`card grid gap-4 p-5 ${isQuote ? "md:grid-cols-2" : ""}`}>
         <label className="block">
           <span className="label">{isQuote ? "Nota del costo estimado (aparece en el PDF)" : "Nota bajo el detalle (aparece en el PDF)"}</span>
@@ -407,7 +544,7 @@ export function DocumentEditor({
       <div className="flex justify-end gap-2">
         <SubmitButton>{submitLabel}</SubmitButton>
       </div>
-    </form>
+    </Form>
   );
 }
 

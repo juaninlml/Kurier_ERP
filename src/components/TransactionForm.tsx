@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS } from "@/lib/constants";
 import { SubmitButton } from "./SubmitButton";
+import { Form } from "./Form";
 
 type Tx = {
   type: string;
@@ -23,7 +24,7 @@ export function TransactionForm({
   defaultTaxRate,
   submitLabel,
 }: {
-  action: (fd: FormData) => void | Promise<void>;
+  action: (fd: FormData) => Promise<unknown>;
   clients: { id: number; name: string }[];
   tx: Tx;
   defaultTaxRate: number;
@@ -40,7 +41,7 @@ export function TransactionForm({
   };
 
   return (
-    <form action={action} className="space-y-3">
+    <Form action={action} className="space-y-3">
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
         {(["INGRESO", "EGRESO"] as const).map((t) => (
           <label
@@ -114,6 +115,6 @@ export function TransactionForm({
         </select>
       </label>
       <SubmitButton className="btn-primary w-full">{submitLabel}</SubmitButton>
-    </form>
+    </Form>
   );
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -40,7 +41,7 @@ async function syncInvoice(tx: Prisma.TransactionClient, id: number) {
   await tx.invoice.update({ where: { id }, data: { paidTotal: paid, status } });
 }
 
-export async function createInvoice(fd: FormData) {
+async function createInvoiceImpl(fd: FormData) {
   const h = header(fd);
   const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
   const quoteId = numv(fd, "quoteId") || null;
@@ -55,7 +56,7 @@ export async function createInvoice(fd: FormData) {
   redirect(`/facturas/${inv.id}`);
 }
 
-export async function updateInvoice(id: number, fd: FormData) {
+async function updateInvoiceImpl(id: number, fd: FormData) {
   const current = await prisma.invoice.findUniqueOrThrow({ where: { id }, include: { _count: { select: { payments: true } } } });
   if (current._count.payments > 0) throw new Error("No se puede editar una factura con pagos registrados.");
   if (current.status === "CANCELADA") throw new Error("No se puede editar una factura cancelada.");
@@ -69,7 +70,7 @@ export async function updateInvoice(id: number, fd: FormData) {
   redirect(`/facturas/${id}`);
 }
 
-export async function addPayment(invoiceId: number, fd: FormData) {
+async function addPaymentImpl(invoiceId: number, fd: FormData) {
   const amount = round2(numv(fd, "amount"));
   if (amount <= 0) throw new Error("El monto debe ser mayor a 0.");
   const inv = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { client: true } });
@@ -105,7 +106,7 @@ export async function addPayment(invoiceId: number, fd: FormData) {
   revalidateAll(invoiceId);
 }
 
-export async function deletePayment(paymentId: number) {
+async function deletePaymentImpl(paymentId: number) {
   const p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
   await prisma.$transaction(async (tx) => {
     await tx.transaction.deleteMany({ where: { paymentId } });
@@ -115,17 +116,25 @@ export async function deletePayment(paymentId: number) {
   revalidateAll(p.invoiceId);
 }
 
-export async function cancelInvoice(id: number) {
+async function cancelInvoiceImpl(id: number) {
   const inv = await prisma.invoice.findUniqueOrThrow({ where: { id }, include: { _count: { select: { payments: true } } } });
   if (inv._count.payments > 0) throw new Error("Elimina primero los pagos registrados para cancelar la factura.");
   await prisma.invoice.update({ where: { id }, data: { status: "CANCELADA" } });
   revalidateAll(id);
 }
 
-export async function reactivateInvoice(id: number) {
+async function reactivateInvoiceImpl(id: number) {
   await prisma.$transaction(async (tx) => {
     await tx.invoice.update({ where: { id }, data: { status: "PENDIENTE" } });
     await syncInvoice(tx, id);
   });
   revalidateAll(id);
 }
+
+// Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
+export const createInvoice = safe(createInvoiceImpl);
+export const updateInvoice = safe(updateInvoiceImpl);
+export const addPayment = safe(addPaymentImpl);
+export const deletePayment = safe(deletePaymentImpl);
+export const cancelInvoice = safe(cancelInvoiceImpl);
+export const reactivateInvoice = safe(reactivateInvoiceImpl);

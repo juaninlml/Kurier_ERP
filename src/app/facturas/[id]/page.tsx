@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { PAYMENT_METHODS } from "@/lib/constants";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -139,11 +140,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                       <td className="text-slate-500">{p.reference || "—"}</td>
                       <td className="text-right tabular-nums">{formatMoney(p.amount)}</td>
                       <td className="text-right">
-                        <form action={deletePayment.bind(null, p.id)}>
+                        <Form action={deletePayment.bind(null, p.id)}>
                           <ConfirmButton message="¿Eliminar este pago? También se eliminará el ingreso en contabilidad." className="text-xs text-rose-600 hover:underline">
                             Eliminar
                           </ConfirmButton>
-                        </form>
+                        </Form>
                       </td>
                     </tr>
                   ))}
@@ -155,7 +156,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
         <aside className="space-y-4">
           {!cancelled && balance > 0 && (
-            <form action={addPayment.bind(null, inv.id)} className="card space-y-3 p-4">
+            <Form action={addPayment.bind(null, inv.id)} className="card space-y-3 p-4">
               <h2 className="font-semibold">Registrar pago</h2>
               <p className="text-xs text-slate-500">Se registra automáticamente como ingreso en contabilidad.</p>
               <Field label="Monto">
@@ -177,19 +178,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <SubmitButton className="btn-accent w-full" pendingText="Registrando…">
                 Registrar pago
               </SubmitButton>
-            </form>
+            </Form>
           )}
           <div className="card space-y-2 p-4">
             {cancelled ? (
-              <form action={reactivateInvoice.bind(null, inv.id)}>
+              <Form action={reactivateInvoice.bind(null, inv.id)}>
                 <SubmitButton className="btn-secondary w-full">Reactivar factura</SubmitButton>
-              </form>
+              </Form>
             ) : inv.payments.length === 0 ? (
-              <form action={cancelInvoice.bind(null, inv.id)}>
+              <Form action={cancelInvoice.bind(null, inv.id)}>
                 <ConfirmButton message={`¿Cancelar la factura ${inv.folio}?`} className="btn-danger w-full">
                   Cancelar factura
                 </ConfirmButton>
-              </form>
+              </Form>
             ) : (
               <p className="text-xs text-slate-500">Para cancelar o editar, elimina primero los pagos registrados.</p>
             )}

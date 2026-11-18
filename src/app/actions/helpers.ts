@@ -21,6 +21,7 @@ export const lineSchema = z.object({
   discountPct: z.number().min(0).max(100).optional().default(0),
   taxRate: z.number().min(0).max(100).optional().default(0),
   atCost: z.boolean().optional().default(false),
+  scales: z.boolean().optional().default(false),
   amount: z.number().min(0).optional().default(0),
 });
 
@@ -35,6 +36,19 @@ export function parseItems(fd: FormData, kind: "quote" | "invoice") {
   const items = kind === "invoice" ? parsed.data.filter((i) => i.quantity > 0 || (i.atCost && i.amount > 0)) : parsed.data;
   if (items.length === 0) throw new Error(kind === "invoice" ? "Agrega al menos un concepto con cantidad." : "Agrega al menos un servicio.");
   return items;
+}
+
+/** Tabla "Costo por pedido" capturada en el editor. */
+export function parsePerOrderForm(fd: FormData) {
+  try {
+    const raw = JSON.parse(str(fd, "perOrder") || "[]");
+    return z
+      .array(z.object({ label: z.string(), amount: z.number().min(0, "El costo por pedido no puede ser negativo") }))
+      .parse(raw)
+      .filter((r) => r.label.trim());
+  } catch (e) {
+    throw new Error(e instanceof z.ZodError ? (e.issues[0]?.message ?? "Costo por pedido inválido.") : "Costo por pedido inválido.");
+  }
 }
 
 export function parseProfile(fd: FormData) {

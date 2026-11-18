@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text } from "@react-pdf/renderer";
-import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, QuoteItem } from "@prisma/client";
-import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, base, palette, tint, GRAY } from "./brand";
+import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Service, ServiceSection, TariffTable } from "@prisma/client";
+import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, Callout, InfoTable, base, palette, tint, GRAY } from "./brand";
+import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { formatDate, formatDateLong, formatDateNum, formatMoney, formatNumber, amountInWords, round2 } from "@/lib/money";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
@@ -51,10 +52,13 @@ export function QuotePdf({
   s,
   quote,
   sectionNotes,
+  infoTables = [],
 }: {
   s: CompanySettings;
   quote: Quote & { client: Client; items: QuoteItem[] };
   sectionNotes: Record<string, string>;
+  /** Tablas informativas del tarifario marcadas para imprimirse en cotizaciones (SLA, etc.). */
+  infoTables?: TariffTable[];
 }) {
   const c = palette(s);
   const profile: { label: string; value: string }[] = (() => {
@@ -71,6 +75,9 @@ export function QuotePdf({
   ];
   const groups = groupBySection(quote.items);
   const estimate = quote.items.filter((i) => i.quantity > 0 && i.amount > 0);
+  const perOrder = parsePerOrder(quote.perOrder);
+  const volumes = parseVolumes(quote.scenarios);
+  const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
   const subtitle = [quote.client.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLong(quote.issueDate)].filter(Boolean).join(" · ");
 
   return (
@@ -102,7 +109,49 @@ export function QuotePdf({
           </View>
         ))}
 
-        {estimate.length > 0 && (
+        {perOrder.length > 0 && (
+          <View wrap={false}>
+            <SectionTab s={s} full>
+              Costo por pedido
+            </SectionTab>
+            <Table
+              s={s}
+              cols={
+                quote.perOrderFee > 0
+                  ? [
+                      { title: "Tipo de pedido", width: "58%" },
+                      { title: "Fulfillment", width: "20%", align: "right" },
+                      { title: "Con guía de Kurier", width: "22%", align: "right" },
+                    ]
+                  : [
+                      { title: "Tipo de pedido", width: "75%" },
+                      { title: "Fulfillment", width: "25%", align: "right" },
+                    ]
+              }
+              styles={["label", "normal", "label"]}
+              rows={perOrder.map((r) =>
+                quote.perOrderFee > 0 ? [r.label, formatMoney(r.amount), formatMoney(round2(r.amount + quote.perOrderFee))] : [r.label, formatMoney(r.amount)],
+              )}
+            />
+            <Note>
+              {quote.perOrderFee > 0
+                ? `Precios sin IVA. La columna "Con guía de Kurier" suma la comisión de ${formatMoney(quote.perOrderFee)} por guía; no incluye el flete.`
+                : "Precios sin IVA."}
+            </Note>
+          </View>
+        )}
+
+        {scenarios && (
+          <View wrap={scenarios.rows.length > 12}>
+            <SectionTab s={s} full>
+              Costo mensual de fulfillment según volumen
+            </SectionTab>
+            <ScenarioTable s={s} volumes={volumes} data={scenarios} taxText={taxLabel(quote.items)} />
+            <Note>{quote.notes}</Note>
+          </View>
+        )}
+
+        {!scenarios && estimate.length > 0 && (
           <View wrap={estimate.length > 12}>
             <SectionTab s={s} full>
               Costo mensual estimado
@@ -142,7 +191,11 @@ export function QuotePdf({
             <Note>{quote.notes}</Note>
           </View>
         )}
-        {estimate.length === 0 && <Note>{quote.notes}</Note>}
+        {!scenarios && estimate.length === 0 && <Note>{quote.notes}</Note>}
+
+        {infoTables.map((t) => (
+          <InfoTable key={t.id} s={s} full title={t.title} columns={t.columns} rows={t.rows} note={t.note} />
+        ))}
 
         {quote.terms.trim() && (
           <View>
@@ -426,6 +479,143 @@ export function ReportPdf({
             />
           </View>
         )}
+      </BrandedPage>
+    </PdfDoc>
+  );
+}
+
+// ───────────────────── Escenarios por volumen (cotización) ─────────────────────
+
+function ScenarioTable({
+  s,
+  volumes,
+  data,
+  taxText,
+}: {
+  s: CompanySettings;
+  volumes: number[];
+  data: NonNullable<ReturnType<typeof scenarioTable>>;
+  taxText: string;
+}) {
+  const c = palette(s);
+  const w = volumes.length <= 3 ? 17 : 14;
+  const first = `${100 - w * volumes.length}%`;
+  const cols = [
+    { title: "Concepto", width: first },
+    ...volumes.map((v) => ({ title: `${formatNumber(v)} pedidos`, width: `${w}%`, align: "right" as const })),
+  ];
+  const row = (label: string, values: number[], kind: "sub" | "tax" | "total") => (
+    <View
+      key={label}
+      style={{
+        flexDirection: "row",
+        paddingVertical: kind === "total" ? 7 : 6,
+        borderBottomWidth: 0.5,
+        borderBottomColor: "#e8e1da",
+        borderTopWidth: kind === "tax" ? 0 : 1,
+        borderTopColor: kind === "total" ? c.orange : c.blue,
+        backgroundColor: kind === "tax" ? c.peach : "#fff",
+      }}
+    >
+      {[label, ...values.map((v) => formatMoney(v))].map((v, j) => (
+        <Text
+          key={j}
+          style={{
+            width: cols[j].width,
+            paddingHorizontal: 7,
+            textAlign: j === 0 ? "left" : "right",
+            fontSize: kind === "total" ? 10 : 9,
+            fontFamily: kind === "tax" ? "Helvetica" : "Helvetica-Bold",
+            color: kind === "total" ? c.orange : undefined,
+          }}
+        >
+          {v}
+        </Text>
+      ))}
+    </View>
+  );
+  return (
+    <View>
+      <Table s={s} cols={cols} rows={data.rows.map((r) => [r.label, ...r.values.map((v) => formatMoney(v))])} />
+      <View wrap={false}>
+        {row("Subtotal sin IVA", data.subtotal, "sub")}
+        {row(taxText, data.tax, "tax")}
+        {row("Total mensual estimado", data.total, "total")}
+      </View>
+    </View>
+  );
+}
+
+// ───────────────────────────── Tarifario ─────────────────────────────
+
+export function TariffPdf({
+  s,
+  sections,
+  services,
+  tables,
+}: {
+  s: CompanySettings;
+  sections: ServiceSection[];
+  services: Service[];
+  tables: TariffTable[];
+}) {
+  const known = new Set(sections.map((x) => x.name));
+  const groups = [
+    ...sections.map((sec) => ({ name: sec.name, note: sec.note, items: services.filter((x) => x.section === sec.name) })),
+    { name: "Otros servicios", note: "", items: services.filter((x) => !known.has(x.section)) },
+  ];
+  const placed = new Set<number>();
+  const tablesAfter = (name: string) =>
+    tables.filter((t) => t.afterSection === name).map((t) => {
+      placed.add(t.id);
+      return <InfoTable key={t.id} s={s} title={t.title} columns={t.columns} rows={t.rows} note={t.note} />;
+    });
+  const rate = (x: Service) => x.priceText || (x.atCost ? "Al costo" : formatMoney(x.unitPrice));
+
+  // Lista plana (sin Views anidados): react-pdf calcula mal los saltos de página con contenedores profundos.
+  const body = groups.flatMap((g) => [
+    ...(g.items.length > 0
+      ? [
+          <Table
+            key={`t-${g.name}`}
+            s={s}
+            head={
+              <SectionTab s={s} bare>
+                {g.name}
+              </SectionTab>
+            }
+            cols={[
+              { title: "Servicio", width: "21%" },
+              { title: "Tarifa", width: "14%" },
+              { title: "Unidad de cobro", width: "14%" },
+              { title: "Descripción detallada", width: "51%" },
+            ]}
+            styles={["label", "rate", "normal", "normal"]}
+            rows={g.items.map((x) => [x.name, rate(x), x.unit, x.description])}
+          />,
+          <Callout key={`n-${g.name}`} s={s} text={g.note} />,
+        ]
+      : []),
+    ...tablesAfter(g.name),
+  ]);
+  const rest = tables.filter((t) => !placed.has(t.id) && !known.has(t.afterSection));
+
+  return (
+    <PdfDoc title={`Tarifario de Servicios — ${s.tradeName}`}>
+      <BrandedPage s={s} footerLabel="Tarifario de Servicios">
+        <DocTitle s={s} title="Tarifario de Servicios" subtitle="* Todos los precios mostrados son sin IVA · Moneda: pesos mexicanos (MXN)" />
+        {s.tariffIntro ? <Text style={{ textAlign: "center", fontSize: 10.5, color: "#334155", lineHeight: 1.4, marginTop: -4, marginBottom: 6, paddingHorizontal: 30 }}>{s.tariffIntro}</Text> : null}
+        {body}
+        {rest.map((t) => (
+          <InfoTable key={t.id} s={s} title={t.title} columns={t.columns} rows={t.rows} note={t.note} />
+        ))}
+        {(s.tariffTerms || s.quoteTerms).trim() && (
+          <View>
+            <SectionTab s={s}>Condiciones comerciales</SectionTab>
+            <Conditions s={s} text={s.tariffTerms || s.quoteTerms} />
+          </View>
+        )}
+        <Callout s={s} text={s.tariffClosing} />
       </BrandedPage>
     </PdfDoc>
   );

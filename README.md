@@ -38,12 +38,13 @@ Para cambiar el modelo de datos edita `prisma/schema.prisma` y corre `npm run db
 | Módulo | Ruta | Qué hace |
 |---|---|---|
 | Inicio | `/` | Indicadores del mes, saldo por cobrar, últimas facturas y cotizaciones |
-| Cotizaciones | `/cotizaciones` | Propuesta de tarifas por sección del tarifario: perfil de la operación, servicios con tarifa y descripción, costo mensual estimado (conceptos con cantidad) y condiciones comerciales. Estatus, duplicar y **facturar con estas tarifas** |
+| Cotizaciones | `/cotizaciones` | Propuesta de tarifas por sección del tarifario: perfil de la operación, servicios con tarifa y descripción, costo mensual estimado (conceptos con cantidad), tabla **costo por pedido**, **escenarios por volumen** (ej. 250 / 500 / 1,000 pedidos) y condiciones comerciales. Estatus, duplicar y **facturar con estas tarifas** |
 | Facturas | `/facturas` | Formato semanal de Kurier: periodo, volumen, almacenamiento, condiciones de pago y conceptos **al costo** (guías). Alta directa o con las tarifas de una cotización, **registro de pagos** y cancelación |
 | Contabilidad | `/contabilidad` | Movimientos de ingreso y egreso por categoría. Cada pago de factura genera su ingreso automáticamente |
 | Reportes | `/contabilidad/reportes` | Estado de resultados (flujo), resumen de IVA estimado y antigüedad de cuentas por cobrar |
 | Clientes | `/clientes` | Datos fiscales y de contacto, saldo y **estado de cuenta en PDF** |
-| Tarifario | `/servicios` | Tarifario estándar V5 por secciones, con la nota de cada sección (se imprime en la cotización) |
+| Tarifario | `/servicios` | Tarifario estándar V5 por secciones (incluye Preparación Full / FBA), con la nota de cada sección (se imprime en la cotización) |
+| PDF del tarifario | `/servicios/tablas` | Genera el PDF del tarifario completo. Aquí se editan la introducción, las condiciones, el recuadro final y las tablas informativas (Incluido en todos los planes, tarifas preferenciales, cobertura por zonas, SLA); cada tabla puede imprimirse también en las cotizaciones |
 | Configuración | `/configuracion` | Logo, colores, razón social, RFC, datos bancarios, folios, IVA y plazos |
 
 ## PDFs

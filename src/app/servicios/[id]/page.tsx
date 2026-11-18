@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ServiceFields } from "@/components/ServiceFields";
 import { getSettings } from "@/lib/settings";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={sv.name} subtitle={`${sv.code}${sv.section ? ` · ${sv.section}` : ""}`} back={{ href: "/servicios", label: "Tarifario" }} />
-      <form action={updateService.bind(null, sv.id)} className="card space-y-4 p-5">
+      <Form action={updateService.bind(null, sv.id)} className="card space-y-4 p-5">
         <ServiceFields sv={sv} sections={sections.map((x) => x.name)} defaultTaxRate={s.defaultTaxRate} />
         <p className="text-xs text-slate-500">Los cambios aplican a cotizaciones y facturas nuevas; los documentos ya emitidos conservan sus precios.</p>
         <div className="flex items-center justify-between">
@@ -28,7 +29,7 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
           </label>
           <SubmitButton>Guardar</SubmitButton>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

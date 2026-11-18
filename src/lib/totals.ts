@@ -15,6 +15,8 @@ export type LineInput = {
   atCost?: boolean;
   /** Importe capturado cuando atCost = true. */
   amount?: number;
+  /** En escenarios por volumen, la cantidad crece en proporción a los pedidos. */
+  scales?: boolean;
 };
 
 export function computeLines(lines: LineInput[]) {
@@ -43,6 +45,7 @@ export function computeLines(lines: LineInput[]) {
       discountPct: atCost ? 0 : (l.discountPct ?? 0),
       taxRate: l.taxRate ?? 0,
       atCost,
+      scales: Boolean(l.scales),
       amount,
     };
   });

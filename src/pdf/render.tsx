@@ -3,7 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/db";
 import { getSettingsWithLogo as getSettings } from "@/lib/settings";
 import { incomeStatement, receivables, parseRange } from "@/lib/reports";
-import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf } from "./documents";
+import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf, TariffPdf } from "./documents";
 
 export async function renderQuote(id: number) {
   const [s, quote] = await Promise.all([
@@ -11,11 +11,14 @@ export async function renderQuote(id: number) {
     prisma.quote.findUnique({ where: { id }, include: { client: true, items: { orderBy: { position: "asc" } } } }),
   ]);
   if (!quote) return null;
-  const sections = await prisma.serviceSection.findMany();
+  const [sections, infoTables] = await Promise.all([
+    prisma.serviceSection.findMany(),
+    prisma.tariffTable.findMany({ where: { inQuotes: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
+  ]);
   const sectionNotes = Object.fromEntries(sections.map((x) => [x.name, x.note]));
   return {
     filename: `Cotizacion_${slug(s.tradeName)}_${slug(quote.client.name)}_${quote.folio}.pdf`,
-    buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} />),
+    buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} infoTables={infoTables} />),
   };
 }
 
@@ -52,6 +55,19 @@ export async function renderReport(fromStr?: string, toStr?: string) {
   const [s, stmt, ar] = await Promise.all([getSettings(), incomeStatement(from, to), receivables()]);
   const tag = `${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}`;
   return { filename: `Reporte_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} />) };
+}
+
+export async function renderTariff() {
+  const [s, sections, services, tables] = await Promise.all([
+    getSettings(),
+    prisma.serviceSection.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.service.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
+    prisma.tariffTable.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
+  ]);
+  return {
+    filename: `Tarifario_${slug(s.tradeName)}.pdf`,
+    buffer: await renderToBuffer(<TariffPdf s={s} sections={sections} services={services} tables={tables} />),
+  };
 }
 
 /** "Cestco Dental" → "CestcoDental" (sin acentos ni símbolos, apto para nombre de archivo). */

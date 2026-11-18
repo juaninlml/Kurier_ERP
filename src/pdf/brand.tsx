@@ -120,11 +120,11 @@ export function DocTitle({ s, title, subtitle, extra }: { s: CompanySettings; ti
 }
 
 /** Pestaña naranja de sección. `full` = barra a todo lo ancho. */
-export function SectionTab({ s, children, full }: { s: CompanySettings; children: string; full?: boolean }) {
+export function SectionTab({ s, children, full, bare }: { s: CompanySettings; children: string; full?: boolean; /** dentro de un bloque que ya no se parte */ bare?: boolean }) {
   return (
     <View
-      wrap={false}
-      minPresenceAhead={90}
+      wrap={bare ? undefined : false}
+      minPresenceAhead={bare ? undefined : 90}
       style={{
         alignSelf: full ? "stretch" : "flex-start",
         backgroundColor: s.accentColor,
@@ -153,12 +153,15 @@ export function Table({
   cols,
   rows,
   styles = [],
+  head,
 }: {
   s: CompanySettings;
   cols: Col[];
   rows: (string | React.ReactNode)[][];
   /** Estilo por columna. */
   styles?: CellStyle[];
+  /** Título (pestaña) que viaja pegado al encabezado y la primera fila. */
+  head?: React.ReactNode;
 }) {
   const c = palette(s);
   const cell = { paddingVertical: 6.5, paddingHorizontal: 7 } as const;
@@ -186,6 +189,7 @@ export function Table({
         // El encabezado viaja con la primera fila para no quedar huérfano al final de una página.
         return (
           <View key="head" wrap={false}>
+            {head}
             <View style={{ flexDirection: "row", backgroundColor: c.blue }}>
               {cols.map((col) => (
                 <Text key={col.title} style={[cell, { width: col.width, color: "#fff", fontFamily: "Helvetica-Bold", fontSize: 8.5, textAlign: col.align ?? "left" }]}>
@@ -284,5 +288,72 @@ export function PdfDoc({ title, children }: { title: string; children: React.Rea
     <Document title={title} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
       {children}
     </Document>
+  );
+}
+
+/** Recuadro informativo con barra lateral (notas del tarifario). tone: "blue" (fondo azul claro) o "peach". */
+export function Callout({ s, text, tone = "blue" }: { s: CompanySettings; text: string; tone?: "blue" | "peach" }) {
+  if (!text?.trim()) return null;
+  const c = palette(s);
+  return (
+    <View
+      wrap={false}
+      style={{
+        marginTop: 8,
+        backgroundColor: tone === "blue" ? tint(c.blue, 0.92) : c.peach,
+        borderLeftWidth: 3,
+        borderLeftColor: tone === "blue" ? c.blue : c.orange,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+      }}
+    >
+      <Rich text={text} style={{ fontSize: 8.5, lineHeight: 1.45 }} />
+    </View>
+  );
+}
+
+/**
+ * Tabla informativa definida como texto: columnas "Título:ancho|…" y una fila por línea con celdas separadas por |.
+ * La primera columna va en negritas azules; las celdas con "$" se resaltan como tarifa.
+ */
+export function InfoTable({ s, title, columns, rows, note, full }: { s: CompanySettings; title: string; columns: string; rows: string; note?: string; full?: boolean }) {
+  const defs = columns
+    .split("|")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => {
+      const m = c.match(/^(.*?):\s*(\d{1,3})\s*%?$/);
+      return { title: m ? m[1].trim() : c, width: m ? Number(m[2]) : 0 };
+    });
+  if (!defs.length) return null;
+  const fixed = defs.reduce((a, d) => a + d.width, 0);
+  const free = defs.filter((d) => !d.width).length;
+  const rest = free ? Math.max(0, 100 - fixed) / free : 0;
+  const cols: Col[] = defs.map((d) => ({ title: d.title, width: `${d.width || rest}%` }));
+  const data = rows
+    .split("\n")
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim())
+    .map((l) => {
+      const cells = l.split("|").map((x) => x.trim());
+      return cols.map((_, i) => cells[i] ?? "");
+    });
+  if (!data.length) return null;
+  const isRate = data.every((r) => r.slice(1).every((v) => !v || v.includes("$")));
+  return (
+    <View>
+      <Table
+        s={s}
+        head={
+          <SectionTab s={s} full={full} bare>
+            {title}
+          </SectionTab>
+        }
+        cols={cols}
+        rows={data}
+        styles={["label", ...cols.slice(1).map((): CellStyle => (isRate ? "rate" : "normal"))]}
+      />
+      {note ? <Callout s={s} text={note} /> : null}
+    </View>
   );
 }

@@ -6,6 +6,7 @@ import { TransactionForm } from "@/components/TransactionForm";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { toInputDate } from "@/lib/money";
 import { getSettings } from "@/lib/settings";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,11 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
           submitLabel="Guardar cambios"
           tx={{ ...t, date: toInputDate(t.date) }}
         />
-        <form action={deleteTransaction.bind(null, id)} className="mt-3">
+        <Form action={deleteTransaction.bind(null, id)} className="mt-3">
           <ConfirmButton message="¿Eliminar este movimiento?" className="btn-danger w-full">
             Eliminar movimiento
           </ConfirmButton>
-        </form>
+        </Form>
       </div>
     </div>
   );

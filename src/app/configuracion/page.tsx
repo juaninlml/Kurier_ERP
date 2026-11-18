@@ -2,6 +2,7 @@ import { getSettings, hasLogo as checkLogo } from "@/lib/settings";
 import { saveSettings } from "@/app/actions/settings";
 import { PageHeader, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
+import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
       <PageHeader title="Configuración" subtitle="Datos de la empresa y marca que aparecen en todos los PDFs" />
       {ok && <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Configuración guardada.</div>}
 
-      <form action={saveSettings} className="space-y-6">
+      <Form action={saveSettings} className="space-y-6">
         <section className="card p-5">
           <h2 className="mb-4 font-semibold">Marca</h2>
           <div className="grid gap-5 md:grid-cols-[220px_1fr]">
@@ -150,7 +151,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
         <div className="flex justify-end">
           <SubmitButton>Guardar configuración</SubmitButton>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

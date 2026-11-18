@@ -12,37 +12,40 @@ datasource db {
 
 /// Configuración única de la empresa (id = 1). Alimenta el branding de los PDFs.
 model CompanySettings {
-  id                Int     @id @default(1)
-  tradeName         String  @default("Kurier Fulfillment")
-  tagline           String  @default("MICROHUB CDMX · 3PL")
-  legalName         String  @default("")
-  rfc               String  @default("")
-  address           String  @default("")
-  city              String  @default("")
-  state             String  @default("")
-  zip               String  @default("")
-  phone             String  @default("")
-  email             String  @default("")
-  website           String  @default("")
-  bankName          String  @default("")
-  bankAccount       String  @default("")
-  clabe             String  @default("")
-  primaryColor      String  @default("#1F4E79")
-  accentColor       String  @default("#ED7D31")
-  logoPath          String  @default("/branding/logo.png") // respaldo: archivo en /public
-  logoData          Bytes?  // logo subido desde Configuración (se guarda en BD; Vercel no permite escribir en disco)
-  logoMime          String  @default("")
-  quotePrefix       String  @default("COT")
-  invoicePrefix     String  @default("FAC")
-  nextQuoteNumber   Int     @default(1)
-  nextInvoiceNumber Int     @default(1)
-  defaultTaxRate    Float   @default(16)
-  quoteValidityDays Int     @default(15)
-  paymentTermsDays  Int     @default(30)
-  quoteTerms        String  @default("")
-  invoiceNotes      String  @default("")
-  paymentTerms      String  @default("Pago contra recepción de factura a 8 días naturales.")
-  invoiceDisclaimer String  @default("")
+  id                Int      @id @default(1)
+  tradeName         String   @default("Kurier Fulfillment")
+  tagline           String   @default("MICROHUB CDMX · 3PL")
+  legalName         String   @default("")
+  rfc               String   @default("")
+  address           String   @default("")
+  city              String   @default("")
+  state             String   @default("")
+  zip               String   @default("")
+  phone             String   @default("")
+  email             String   @default("")
+  website           String   @default("")
+  bankName          String   @default("")
+  bankAccount       String   @default("")
+  clabe             String   @default("")
+  primaryColor      String   @default("#1F4E79")
+  accentColor       String   @default("#ED7D31")
+  logoPath          String   @default("/branding/logo.png") // respaldo: archivo en /public
+  logoData          Bytes? // logo subido desde Configuración (se guarda en BD; Vercel no permite escribir en disco)
+  logoMime          String   @default("")
+  quotePrefix       String   @default("COT")
+  invoicePrefix     String   @default("FAC")
+  nextQuoteNumber   Int      @default(1)
+  nextInvoiceNumber Int      @default(1)
+  defaultTaxRate    Float    @default(16)
+  quoteValidityDays Int      @default(15)
+  paymentTermsDays  Int      @default(30)
+  quoteTerms        String   @default("")
+  invoiceNotes      String   @default("")
+  paymentTerms      String   @default("Pago contra recepción de factura a 8 días naturales.")
+  invoiceDisclaimer String   @default("")
+  tariffIntro       String   @default("") // párrafo bajo el título del PDF del tarifario
+  tariffTerms       String   @default("") // condiciones comerciales del tarifario (una por línea)
+  tariffClosing     String   @default("") // recuadro final del tarifario
   updatedAt         DateTime @updatedAt
 }
 
@@ -92,44 +95,49 @@ model ServiceSection {
 
 /// status: BORRADOR | ENVIADA | ACEPTADA | RECHAZADA | FACTURADA
 model Quote {
-  id         Int         @id @default(autoincrement())
-  folio      String      @unique
-  clientId   Int
-  client     Client      @relation(fields: [clientId], references: [id])
-  issueDate  DateTime    @default(now())
-  validUntil DateTime
-  status     String      @default("BORRADOR")
-  attention  String      @default("")
-  profile    String      @default("[]") // JSON: [{ label, value }] — "Perfil de la operación cotizada"
-  notes      String      @default("")
-  terms      String      @default("")
-  subtotal   Float       @default(0)
-  discount   Float       @default(0)
-  tax        Float       @default(0)
-  total      Float       @default(0)
-  items      QuoteItem[]
-  invoices   Invoice[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id          Int         @id @default(autoincrement())
+  folio       String      @unique
+  clientId    Int
+  client      Client      @relation(fields: [clientId], references: [id])
+  issueDate   DateTime    @default(now())
+  validUntil  DateTime
+  status      String      @default("BORRADOR")
+  attention   String      @default("")
+  profile     String      @default("[]") // JSON: [{ label, value }] — "Perfil de la operación cotizada"
+  notes       String      @default("")
+  terms       String      @default("")
+  perOrder    String      @default("[]") // JSON: [{ label, amount }] — tabla "Costo por pedido"
+  perOrderFee Float       @default(0) // comisión de guía que se suma en la 2a columna ("Con guía de Kurier")
+  baseVolume  Float       @default(0) // pedidos que representa el costo estimado
+  scenarios   String      @default("") // volúmenes a comparar: "250, 500, 1000"
+  subtotal    Float       @default(0)
+  discount    Float       @default(0)
+  tax         Float       @default(0)
+  total       Float       @default(0)
+  items       QuoteItem[]
+  invoices    Invoice[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 model QuoteItem {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   quoteId     Int
-  quote       Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  position    Int    @default(0)
-  code        String @default("")
+  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  position    Int     @default(0)
+  code        String  @default("")
   description String
-  detail      String @default("") // descripción detallada (columna "Descripción" de la cotización)
-  section     String @default("")
-  priceText   String @default("")
+  detail      String  @default("") // descripción detallada (columna "Descripción" de la cotización)
+  section     String  @default("")
+  priceText   String  @default("")
   atCost      Boolean @default(false)
-  unit        String @default("Servicio")
+  scales      Boolean @default(false) // escenarios por volumen: la cantidad crece en proporción
+  unit        String  @default("Servicio")
   quantity    Float
   unitPrice   Float
-  discountPct Float  @default(0)
-  taxRate     Float  @default(16)
-  amount      Float  @default(0) // importe sin IVA, después de descuento
+  discountPct Float   @default(0)
+  taxRate     Float   @default(16)
+  amount      Float   @default(0) // importe sin IVA, después de descuento
 }
 
 /// status: PENDIENTE | PARCIAL | PAGADA | CANCELADA
@@ -166,10 +174,11 @@ model InvoiceItem {
   position    Int     @default(0)
   code        String  @default("")
   description String
-  detail      String @default("") // descripción detallada (columna "Descripción" de la cotización)
-  section     String @default("")
-  priceText   String @default("")
+  detail      String  @default("") // descripción detallada (columna "Descripción" de la cotización)
+  section     String  @default("")
+  priceText   String  @default("")
   atCost      Boolean @default(false)
+  scales      Boolean @default(false) // escenarios por volumen: la cantidad crece en proporción
   unit        String  @default("Servicio")
   quantity    Float
   unitPrice   Float
@@ -199,7 +208,7 @@ model Transaction {
   type        String
   category    String
   description String   @default("")
-  amount      Float    // monto total (con IVA)
+  amount      Float // monto total (con IVA)
   tax         Float    @default(0) // IVA incluido en el monto
   method      String   @default("Transferencia")
   reference   String   @default("")
@@ -209,4 +218,17 @@ model Transaction {
   payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+/// Tablas informativas del tarifario (Incluido en todos los planes, SLA, cobertura…).
+/// columns: "Concepto|Detalle" (opcional "Título:30" = ancho %); rows: una fila por línea, celdas separadas por |
+model TariffTable {
+  id           Int     @id @default(autoincrement())
+  title        String
+  afterSection String  @default("") // se imprime después de esta sección del tarifario (vacío = al final)
+  columns      String  @default("Concepto|Detalle")
+  rows         String  @default("")
+  note         String  @default("")
+  inQuotes     Boolean @default(false) // también se imprime en las cotizaciones
+  sortOrder    Int     @default(0)
 }

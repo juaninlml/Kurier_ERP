@@ -1,5 +1,6 @@
 "use server";
 
+import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,13 +36,13 @@ function revalidate() {
   revalidatePath("/");
 }
 
-export async function createTransaction(fd: FormData) {
+async function createTransactionImpl(fd: FormData) {
   await prisma.transaction.create({ data: txData(fd) });
   revalidate();
   redirect("/contabilidad");
 }
 
-export async function updateTransaction(id: number, fd: FormData) {
+async function updateTransactionImpl(id: number, fd: FormData) {
   const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
   if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; edítalo desde la factura.");
   await prisma.transaction.update({ where: { id }, data: txData(fd) });
@@ -49,10 +50,15 @@ export async function updateTransaction(id: number, fd: FormData) {
   redirect("/contabilidad");
 }
 
-export async function deleteTransaction(id: number) {
+async function deleteTransactionImpl(id: number) {
   const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
   if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; elimina el pago desde la factura.");
   await prisma.transaction.delete({ where: { id } });
   revalidate();
   redirect("/contabilidad");
 }
+
+// Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
+export const createTransaction = safe(createTransactionImpl);
+export const updateTransaction = safe(updateTransactionImpl);
+export const deleteTransaction = safe(deleteTransactionImpl);

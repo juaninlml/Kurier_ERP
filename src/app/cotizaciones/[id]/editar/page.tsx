@@ -5,6 +5,7 @@ import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/ui";
 import { editorData, itemsForEditor, parseProfileJson } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
+import { parsePerOrder } from "@/lib/quote-extras";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,10 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
           terms: quote.terms,
           attention: quote.attention,
           profile: parseProfileJson(quote.profile),
+          perOrder: parsePerOrder(quote.perOrder),
+          perOrderFee: quote.perOrderFee,
+          baseVolume: quote.baseVolume,
+          scenarios: quote.scenarios,
           items: itemsForEditor(quote.items),
         }}
       />

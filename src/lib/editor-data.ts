@@ -27,6 +27,7 @@ type ItemRow = {
   section: string;
   priceText: string;
   atCost: boolean;
+  scales?: boolean;
   unit: string;
   quantity: number;
   unitPrice: number;
@@ -43,6 +44,7 @@ export const itemsForEditor = (items: ItemRow[]): LineInput[] =>
     section: i.section,
     priceText: i.priceText,
     atCost: i.atCost,
+    scales: Boolean(i.scales),
     unit: i.unit,
     quantity: i.quantity,
     unitPrice: i.unitPrice,
