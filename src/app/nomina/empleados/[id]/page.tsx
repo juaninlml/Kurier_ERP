@@ -7,7 +7,7 @@ import { EmployeeForm } from "@/components/EmployeeForm";
 import { PageHeader, Panel, Stat, Empty } from "@/components/kit";
 import { Badge } from "@/components/ui/badge";
 import { vacationTakenMap } from "@/lib/payroll-data";
-import { AGUINALDO_DAYS, benefits, monthlyCost, seniorityLabel, vacationDaysFor } from "@/lib/payroll";
+import { aguinaldoDaysFor, benefits, monthlyCost, seniorityLabel, vacationDaysFor } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -55,12 +55,12 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           <dl className="divide-y text-sm">
             {[
               ["Salario diario", formatMoney(e.dailySalary)],
-              ["Salario semanal (7 días)", formatMoney(b.weeklySalary)],
-              ["Salario mensual (365 ÷ 12)", formatMoney(b.monthlySalary)],
+              ["Salario semanal (6 días pagados)", `${formatMoney(e.dailySalary)} × 6 = ${formatMoney(b.weeklySalary)}`],
+              ["Salario mensual promedio", `${formatMoney(b.monthlySalary)} (6 días × 52 semanas ÷ 12)`],
               ["Vacaciones del periodo actual", s.years >= 1 ? `${b.vacationEntitled} días (desde ${formatDate(s.lastAnniversary)})` : "Aún no cumple 1 año"],
               ["Vacaciones acumuladas hacia el próximo aniversario", `${formatNumber(b.vacationAccrued)} de ${b.nextEntitlement} días`],
               ["Prima vacacional (25%)", `${formatMoney(b.vacationPremiumPerDay)} por día · ${formatMoney(b.vacationPremiumAvailable)} por los días disponibles`],
-              [`Aguinaldo (${AGUINALDO_DAYS} días por año)`, `${formatMoney(b.aguinaldoToDate)} a hoy · ${formatMoney(b.aguinaldoYear)} al 31 de diciembre`],
+              [`Aguinaldo ${new Date().getFullYear()} (${b.aguinaldoDays} días)`, `${formatMoney(b.aguinaldoToDate)} a hoy · ${formatMoney(b.aguinaldoYear)} al 31 de diciembre`],
               ["Bono fijo semanal", formatMoney(e.weeklyBonus)],
             ].map(([k, v]) => (
               <div key={k} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 px-5 py-2.5">
@@ -70,7 +70,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             ))}
           </dl>
           <div className="border-t px-5 py-3 text-xs text-muted-foreground">
-            Tabla de vacaciones: {[1, 2, 3, 4, 5, 6, 11, 16].map((y) => `${y}${y >= 6 ? "+" : ""} año${y === 1 ? "" : "s"}: ${vacationDaysFor(y)}`).join(" · ")}
+            <div>Vacaciones (LFT): {[1, 2, 3, 4, 5, 6, 11, 16].map((y) => `${y}${y >= 6 ? "+" : ""} año${y === 1 ? "" : "s"}: ${vacationDaysFor(y)}`).join(" · ")}</div>
+            <div className="mt-1">
+              Aguinaldo: {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((y) => `${y === 0 ? "1er año" : `${y} año${y === 1 ? "" : "s"}`}: ${aguinaldoDaysFor(y)}`).join(" · ")} (tope 30 días)
+            </div>
           </div>
         </Panel>
 

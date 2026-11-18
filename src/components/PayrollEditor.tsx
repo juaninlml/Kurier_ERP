@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { payrollLine } from "@/lib/payroll";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatNumber } from "@/lib/money";
 
 export type EditorLine = {
   id: number;
@@ -30,7 +30,7 @@ export type EditorLine = {
 };
 
 const NUM: { key: keyof EditorLine; label: string; title: string; money?: boolean }[] = [
-  { key: "days", label: "Días", title: "Días pagados (incluye séptimo día)" },
+  { key: "days", label: "Días", title: "Días a pagar en la semana (6; el 7º es descanso sin goce)" },
   { key: "absences", label: "Faltas", title: "Días de falta: se descuentan" },
   { key: "vacationDays", label: "Vac.", title: "Días de vacaciones tomados: se pagan dentro de los días + 25% de prima vacacional" },
   { key: "overtime", label: "Extras", title: "Importe de horas extra", money: true },
@@ -67,7 +67,10 @@ export function PayrollEditor({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
           <div>
             <h2 className="text-[0.95rem] font-semibold">Detalle por empleado</h2>
-            <p className="text-xs text-muted-foreground">Sueldo = salario diario × (días − faltas). Las vacaciones se pagan dentro de los días; aparte se suma la prima vacacional del 25%.</p>
+            <p className="text-xs text-muted-foreground">
+              Se pagan 6 días por semana (el 7º es descanso). Sueldo = salario diario × (días − faltas). Las vacaciones se pagan dentro de los días y aparte se suma
+              la prima vacacional del 25%.
+            </p>
           </div>
           {!readOnly && (
             <button
@@ -81,16 +84,24 @@ export function PayrollEditor({
           )}
         </div>
         <div className="overflow-x-auto">
-          <table className="table text-sm">
+          <table className="table text-sm [&_td]:px-2 [&_th]:px-2">
             <thead>
               <tr>
                 <th>Empleado</th>
-                {NUM.map((c) => (
+                <th className="text-right">Salario diario</th>
+                {NUM.slice(0, 2).map((c) => (
                   <th key={c.key} className="text-right" title={c.title}>
                     {c.label}
                   </th>
                 ))}
-                <th className="text-right">Percepciones</th>
+                <th className="text-right" title="Salario diario × (días − faltas)">
+                  Sueldo
+                </th>
+                {NUM.slice(2).map((c) => (
+                  <th key={c.key} className="text-right" title={c.title}>
+                    {c.label}
+                  </th>
+                ))}
                 <th className="text-right">Neto</th>
               </tr>
             </thead>
@@ -99,12 +110,13 @@ export function PayrollEditor({
                 const overVacation = l.vacationDays > l.vacationAvailable;
                 return (
                   <tr key={l.id} className="align-top">
-                    <td className="min-w-48">
+                    <td className="min-w-40">
                       <Link href={`/nomina/empleados/${l.employeeId}`} className="font-medium hover:text-primary hover:underline">
                         {l.name}
                       </Link>
                       <div className="text-xs text-muted-foreground">
-                        {formatMoney(l.dailySalary)} diario · {l.vacationAvailable} días de vac. disponibles
+                        {l.position ? `${l.position} · ` : ""}
+                        {l.vacationAvailable} días de vac. disponibles
                       </div>
                       {!readOnly ? (
                         <input
@@ -117,7 +129,16 @@ export function PayrollEditor({
                         l.notes && <div className="text-xs text-muted-foreground">{l.notes}</div>
                       )}
                     </td>
-                    {NUM.map((c) => (
+                    <td className="text-right font-medium whitespace-nowrap tabular-nums">{formatMoney(l.dailySalary)}</td>
+                    {NUM.map((c, ci) => [
+                      ci === 2 ? (
+                        <td key="sueldo" className="text-right whitespace-nowrap tabular-nums">
+                          <div className="font-medium">{formatMoney(t.base)}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {formatNumber(Math.max(0, l.days - l.absences))} × {formatMoney(l.dailySalary)}
+                          </div>
+                        </td>
+                      ) : null,
                       <td key={c.key} className="px-1 text-right">
                         {readOnly ? (
                           <span className="tabular-nums">{c.money ? (l[c.key] ? formatMoney(l[c.key] as number) : "—") : String(l[c.key])}</span>
@@ -127,18 +148,18 @@ export function PayrollEditor({
                             min="0"
                             step={c.money ? "0.01" : "0.5"}
                             aria-label={`${c.title} · ${l.name}`}
-                            className={`input h-8 text-right tabular-nums ${c.money ? "w-[5.5rem]" : "w-14"} ${c.key === "vacationDays" && overVacation ? "border-amber-500" : ""}`}
+                            className={`input h-8 text-right tabular-nums ${c.money ? "w-20" : "w-12"} ${c.key === "vacationDays" && overVacation ? "border-amber-500" : ""}`}
                             value={l[c.key] as number}
                             onChange={(e) => update(l.id, c.key, Number(e.target.value) || 0)}
                           />
                         )}
-                      </td>
-                    ))}
+                      </td>,
+                    ])}
                     <td className="text-right whitespace-nowrap tabular-nums">
-                      {formatMoney(t.gross)}
+                      <div className="font-semibold">{formatMoney(t.net)}</div>
+                      <div className="text-[11px] text-muted-foreground">Percep. {formatMoney(t.gross)}</div>
                       {t.vacationPremium > 0 && <div className="text-[11px] text-muted-foreground">incl. prima {formatMoney(t.vacationPremium)}</div>}
                     </td>
-                    <td className="text-right font-semibold whitespace-nowrap tabular-nums">{formatMoney(t.net)}</td>
                   </tr>
                 );
               })}

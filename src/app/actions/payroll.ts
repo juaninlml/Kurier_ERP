@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromInputDate, round2, formatDate } from "@/lib/money";
-import { FREQUENCIES, payrollLine } from "@/lib/payroll";
+import { FREQUENCIES, PAID_DAYS_PER_WEEK, payrollLine } from "@/lib/payroll";
 import { numv, str } from "./helpers";
 
 // ───────────── Gastos fijos ─────────────
@@ -102,7 +102,7 @@ async function updateEmployeeImpl(id: number, fd: FormData) {
 
 // ───────────── Nómina semanal ─────────────
 
-/** Crea la nómina del periodo con todos los empleados activos (7 días y su bono fijo). */
+/** Crea la nómina del periodo con todos los empleados activos (6 días pagados y su bono fijo). */
 async function createPayrollRunImpl(fd: FormData) {
   const periodStart = fromInputDate(str(fd, "periodStart"));
   const periodEnd = fromInputDate(str(fd, "periodEnd"));
@@ -110,7 +110,9 @@ async function createPayrollRunImpl(fd: FormData) {
   if (periodEnd < periodStart) throw new Error("La fecha final del periodo es anterior a la inicial.");
   const employees = await prisma.employee.findMany({ where: { active: true, startDate: { lte: periodEnd } }, orderBy: { name: "asc" } });
   if (!employees.length) throw new Error("No hay empleados activos para este periodo.");
-  const days = Math.min(7, Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1);
+  // Se pagan 6 días por semana; el 7º es descanso sin goce de sueldo (por ahora).
+  const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
+  const days = Math.min(PAID_DAYS_PER_WEEK, calendarDays);
   const lines = employees.map((e) => {
     const input = { dailySalary: e.dailySalary, days, absences: 0, vacationDays: 0, overtime: 0, bonus: e.weeklyBonus, aguinaldo: 0, otherIncome: 0, deductions: 0 };
     const t = payrollLine(input);

@@ -362,7 +362,7 @@ model PayrollLine {
   employeeId      Int
   employee        Employee   @relation(fields: [employeeId], references: [id])
   dailySalary     Float // salario diario al momento de la nómina
-  days            Float      @default(7) // días pagados (incluye séptimo día)
+  days            Float      @default(6) // días pagados (6 por semana; el 7º es descanso)
   absences        Float      @default(0) // faltas (se descuentan)
   vacationDays    Float      @default(0) // días de vacaciones tomados (pagados dentro de los días + prima vacacional)
   vacationPremium Float      @default(0)

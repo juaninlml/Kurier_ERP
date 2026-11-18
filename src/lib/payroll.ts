@@ -5,9 +5,21 @@ import { round2 } from "./money";
  * - Vacaciones (art. 76, reforma 2023): 12 días al cumplir el 1er año, +2 por año hasta 20 días al 5º año,
  *   y después +2 cada 5 años (22 del 6º al 10º, 24 del 11º al 15º…).
  * - Prima vacacional (art. 80): 25% del salario de los días de vacaciones.
- * - Aguinaldo (art. 87): 15 días de salario por año, proporcional al tiempo trabajado en el año calendario.
+ * - Aguinaldo (política de Kurier, arriba del mínimo de ley de 15 días): 15 días el primer año, +1 día por
+ *   año de antigüedad hasta el 5º año y +2 días por año después, con tope de 30 días. Proporcional al tiempo
+ *   trabajado en el año calendario.
+ * - Semana: se pagan 6 días; el 7º es de descanso y no se paga (por ahora).
  */
-export const AGUINALDO_DAYS = 15;
+export const AGUINALDO_BASE_DAYS = 15;
+export const AGUINALDO_MAX_DAYS = 30;
+/** Días que se pagan por semana (el 7º es descanso sin goce, por ahora). */
+export const PAID_DAYS_PER_WEEK = 6;
+
+/** Días de aguinaldo según los años de antigüedad cumplidos. 0→15, 1→16 … 5→20, 6→22, 7→24 … 10→30 (tope). */
+export function aguinaldoDaysFor(years: number) {
+  const y = Math.max(0, Math.floor(years));
+  return Math.min(AGUINALDO_MAX_DAYS, AGUINALDO_BASE_DAYS + Math.min(y, 5) + 2 * Math.max(0, y - 5));
+}
 export const VACATION_PREMIUM = 0.25;
 const DAY = 86400000;
 
@@ -67,8 +79,10 @@ export function benefits(e: { startDate: Date; dailySalary: number }, vacationTa
   const daysInYear = (Date.UTC(at.getUTCFullYear() + 1, 0, 1) - yearStart.getTime()) / DAY;
   const workedToDate = Math.max(0, Math.floor((at.getTime() - from.getTime()) / DAY) + 1);
   const workedFullYear = Math.max(0, Math.floor((yearEnd.getTime() - from.getTime()) / DAY) + 1);
-  const aguinaldoToDate = round2((AGUINALDO_DAYS * daily * Math.min(workedToDate, daysInYear)) / daysInYear);
-  const aguinaldoYear = round2((AGUINALDO_DAYS * daily * Math.min(workedFullYear, daysInYear)) / daysInYear);
+  // Días de aguinaldo según la antigüedad cumplida al 31 de diciembre
+  const aguinaldoDays = aguinaldoDaysFor(seniority(e.startDate, yearEnd).years);
+  const aguinaldoToDate = round2((aguinaldoDays * daily * Math.min(workedToDate, daysInYear)) / daysInYear);
+  const aguinaldoYear = round2((aguinaldoDays * daily * Math.min(workedFullYear, daysInYear)) / daysInYear);
 
   return {
     seniority: s,
@@ -81,18 +95,20 @@ export function benefits(e: { startDate: Date; dailySalary: number }, vacationTa
     vacationPremiumAvailable: round2(vacationAvailable * daily * VACATION_PREMIUM),
     aguinaldoToDate,
     aguinaldoYear,
-    aguinaldoDaysToDate: round2((AGUINALDO_DAYS * Math.min(workedToDate, daysInYear)) / daysInYear),
-    weeklySalary: round2(daily * 7),
-    monthlySalary: round2((daily * 365) / 12),
+    aguinaldoDays,
+    aguinaldoDaysToDate: round2((aguinaldoDays * Math.min(workedToDate, daysInYear)) / daysInYear),
+    weeklySalary: round2(daily * PAID_DAYS_PER_WEEK),
+    // 6 días pagados por semana × 52 semanas ÷ 12 meses
+    monthlySalary: round2((daily * PAID_DAYS_PER_WEEK * 52) / 12),
   };
 }
 
 /** Costo mensual promedio de un empleado: sueldo + aguinaldo y prima vacacional prorrateados (sin carga patronal). */
 export function monthlyCost(e: { startDate: Date; dailySalary: number; weeklyBonus?: number }, at = new Date()) {
   const years = seniority(e.startDate, at).years;
-  const salary = (e.dailySalary * 365) / 12;
+  const salary = (e.dailySalary * PAID_DAYS_PER_WEEK * 52) / 12;
   const bonus = ((e.weeklyBonus ?? 0) * 52) / 12;
-  const aguinaldo = (AGUINALDO_DAYS * e.dailySalary) / 12;
+  const aguinaldo = (aguinaldoDaysFor(years) * e.dailySalary) / 12;
   const premium = (vacationDaysFor(Math.max(1, years + 1)) * e.dailySalary * VACATION_PREMIUM) / 12;
   return round2(salary + bonus + aguinaldo + premium);
 }

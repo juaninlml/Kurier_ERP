@@ -30,7 +30,7 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
           <Field label="Fecha de baja" hint="Déjala vacía si sigue activo">
             <input name="endDate" type="date" defaultValue={e?.endDate ? toInputDate(e.endDate) : undefined} className="input" />
           </Field>
-          <Field label="Salario diario *" hint="Semanal = salario diario × 7 (incluye séptimo día)">
+          <Field label="Salario diario *" hint="Semanal = salario diario × 6 días (el 7º es descanso)">
             <input name="dailySalary" type="number" step="0.01" min="0" required defaultValue={e?.dailySalary} className="input text-right" />
           </Field>
           <Field label="Bono fijo semanal" hint="Puntualidad, asistencia… (opcional)">

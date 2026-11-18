@@ -7,7 +7,7 @@ import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Badge } from "@/components/ui/badge";
 import { employeeBenefits } from "@/lib/payroll-data";
-import { monthlyCost, seniorityLabel } from "@/lib/payroll";
+import { monthlyCost, PAID_DAYS_PER_WEEK, seniorityLabel } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export default async function PayrollPage() {
   ]);
   const active = employees.filter((e) => e.active);
   const rows = await employeeBenefits(employees);
-  const weekly = round2(active.reduce((a, e) => a + e.dailySalary * 7 + e.weeklyBonus, 0));
+  const weekly = round2(active.reduce((a, e) => a + e.dailySalary * PAID_DAYS_PER_WEEK + e.weeklyBonus, 0));
   const monthly = round2(active.reduce((a, e) => a + monthlyCost(e), 0));
   const aguinaldo = round2(rows.filter((r) => r.employee.active).reduce((a, r) => a + r.b.aguinaldoYear, 0));
   const { start, end } = lastWeek();
@@ -48,7 +48,7 @@ export default async function PayrollPage() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Empleados activos" value={String(active.length)} icon={Users} />
-        <Stat label="Nómina semanal" value={formatMoney(weekly)} hint="Salario × 7 + bonos fijos" icon={CalendarDays} />
+        <Stat label="Nómina semanal" value={formatMoney(weekly)} hint="Salario diario × 6 días + bonos fijos" icon={CalendarDays} />
         <Stat label="Costo mensual" value={formatMoney(monthly)} hint="Con aguinaldo y prima prorrateados" icon={Wallet} href="/contabilidad/gastos-fijos" />
         <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint="Proyección al 31 de diciembre" icon={Gift} />
       </div>
@@ -74,7 +74,7 @@ export default async function PayrollPage() {
                     <th>Empleado</th>
                     <th>Antigüedad</th>
                     <th className="text-right">Salario diario</th>
-                    <th className="text-right">Semanal</th>
+                    <th className="text-right">Semanal (6 días)</th>
                     <th className="text-right">Vacaciones</th>
                     <th className="text-right">Aguinaldo a hoy</th>
                   </tr>
