@@ -28,7 +28,8 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         defaultTaxRate={settings.defaultTaxRate}
         submitLabel="Guardar cambios"
         defaults={{
-          clientId: quote.clientId,
+          clientId: quote.clientId ?? undefined,
+          prospect: { name: quote.prospectName, legalName: quote.prospectLegalName, rfc: quote.prospectRfc, email: quote.prospectEmail, phone: quote.prospectPhone },
           issueDate: toInputDate(quote.issueDate),
           secondDate: toInputDate(quote.validUntil),
           notes: quote.notes,

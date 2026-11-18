@@ -14,7 +14,7 @@ export default async function Dashboard() {
     receivables(),
     prisma.quote.findMany({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, select: { total: true } }),
     prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } }),
-    prisma.quote.findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } }),
+    prisma.quote.findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } }).then((qs) => qs.map((q) => ({ ...q, client: { name: q.client?.name ?? `${q.prospectName || "Prospecto"} (prospecto)` } }))),
   ]);
   const pipeline = round2(openQuotes.reduce((a, q) => a + q.total, 0));
   const overdue = round2(ar.total - ar.byBucket.corriente);

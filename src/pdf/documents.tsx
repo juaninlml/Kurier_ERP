@@ -3,6 +3,7 @@ import { View, Text } from "@react-pdf/renderer";
 import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Service, ServiceSection, TariffTable } from "@prisma/client";
 import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, Callout, InfoTable, base, palette, tint, GRAY } from "./brand";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
+import { quoteParty } from "@/lib/quote-party";
 import { formatDate, formatDateLong, formatDateNum, formatMoney, formatNumber, amountInWords, round2 } from "@/lib/money";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
@@ -55,7 +56,7 @@ export function QuotePdf({
   infoTables = [],
 }: {
   s: CompanySettings;
-  quote: Quote & { client: Client; items: QuoteItem[] };
+  quote: Quote & { client: Client | null; items: QuoteItem[] };
   sectionNotes: Record<string, string>;
   /** Tablas informativas del tarifario marcadas para imprimirse en cotizaciones (SLA, etc.). */
   infoTables?: TariffTable[];
@@ -68,9 +69,10 @@ export function QuotePdf({
       return [];
     }
   })();
+  const party = quoteParty(quote);
   const profileRows: [string, string][] = [
-    ["Cliente", quote.client.legalName || quote.client.name],
-    ...(quote.client.rfc ? ([["RFC", quote.client.rfc]] as [string, string][]) : []),
+    ["Cliente", party.legalName || party.name],
+    ...(party.rfc ? ([["RFC", party.rfc]] as [string, string][]) : []),
     ...profile.filter((r) => r.value.trim()).map((r) => [r.label, r.value] as [string, string]),
   ];
   const groups = groupBySection(quote.items);
@@ -78,11 +80,11 @@ export function QuotePdf({
   const perOrder = parsePerOrder(quote.perOrder);
   const volumes = parseVolumes(quote.scenarios);
   const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
-  const subtitle = [quote.client.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLong(quote.issueDate)].filter(Boolean).join(" · ");
+  const subtitle = [party.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLong(quote.issueDate)].filter(Boolean).join(" · ");
 
   return (
-    <PdfDoc title={`Cotización ${quote.folio} — ${quote.client.name}`}>
-      <BrandedPage s={s} footerLabel={`Cotización de Fulfillment · ${quote.client.name}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
+    <PdfDoc title={`Cotización ${quote.folio} — ${party.name}`}>
+      <BrandedPage s={s} footerLabel={`Cotización de Fulfillment · ${party.name}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
         <DocTitle s={s} title="Cotización de Fulfillment" subtitle={subtitle} extra={`Folio ${quote.folio} · Vigente hasta el ${formatDateLong(quote.validUntil)}`} />
 
         <SectionTab s={s} full>

@@ -52,7 +52,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   } else if (quoteId) {
     const quote = await prisma.quote.findUnique({ where: { id: Number(quoteId) }, include: { items: { orderBy: { position: "asc" } } } });
     if (quote) {
-      defaults = { ...base, clientId: quote.clientId, quoteId: quote.id, items: itemsForEditor(quote.items) };
+      defaults = { ...base, clientId: quote.clientId ?? undefined, quoteId: quote.id, items: itemsForEditor(quote.items) };
       subtitle = `Con las tarifas de la cotización ${quote.folio}. Captura las cantidades del periodo; los conceptos con cantidad 0 no se facturan.`;
       back = { href: `/cotizaciones/${quote.id}`, label: quote.folio };
     }

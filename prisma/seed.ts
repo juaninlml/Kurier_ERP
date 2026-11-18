@@ -156,7 +156,6 @@ async function main() {
     return { code, description: t.name, detail: t.description, section: t.section, priceText: t.priceText, unit: t.unit, quantity, unitPrice: t.unitPrice, taxRate: 16, atCost: t.atCost, ...over };
   };
 
-  const cestco = await prisma.client.create({ data: { name: "Cestco Dental" } });
   const basic = await prisma.client.create({ data: { name: "Basic & Pure", contactName: "Compras" } });
   const now = new Date();
 
@@ -186,7 +185,7 @@ async function main() {
     await tx.quote.create({
       data: {
         folio: `${s.quotePrefix}-${String(s.nextQuoteNumber - 1).padStart(5, "0")}`,
-        clientId: cestco.id,
+        prospectName: "Cestco Dental", // prospecto: se vuelve cliente al aceptar la propuesta
         validUntil: new Date(now.getTime() + 30 * 86400000),
         status: "ENVIADA",
         attention: "Por confirmar",

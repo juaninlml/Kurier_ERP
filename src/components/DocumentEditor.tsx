@@ -37,6 +37,8 @@ export type DocumentDefaults = {
   terms?: string;
   // cotización
   attention?: string;
+  /** Cotización para un prospecto (todavía no es cliente). */
+  prospect?: { name: string; legalName: string; rfc: string; email: string; phone: string };
   profile?: ProfileRow[];
   perOrder?: PerOrderRow[];
   perOrderFee?: number;
@@ -106,7 +108,11 @@ export function DocumentEditor({
 }) {
   const isQuote = kind === "quote";
   const [clientId, setClientId] = useState<number | undefined>(defaults.clientId);
-  const ownRates = (clientId && clientRates[clientId]) || [];
+  // En cotizaciones: propuesta a un prospecto (por defecto) o a un cliente actual (renegociación)
+  const [partyType, setPartyType] = useState<"prospect" | "client">(isQuote && !defaults.clientId ? "prospect" : "client");
+  const forProspect = isQuote && partyType === "prospect";
+  const effectiveClientId = forProspect ? undefined : clientId;
+  const ownRates = (effectiveClientId && clientRates[effectiveClientId]) || [];
   const services = useMemo(() => [...ownRates, ...catalog], [ownRates, catalog]);
   const [lines, setLines] = useState<LineInput[]>(defaults.items.length ? defaults.items : [emptyLine(defaultTaxRate)]);
   const [profile, setProfile] = useState<ProfileRow[]>(defaults.profile ?? []);
@@ -166,6 +172,60 @@ export function DocumentEditor({
       {defaults.importId && <input type="hidden" name="importId" value={defaults.importId} />}
 
       <div className="card grid gap-4 p-5 md:grid-cols-3">
+        {isQuote && (
+          <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-3">
+            <input type="hidden" name="partyType" value={partyType} />
+            <div className="inline-flex rounded-lg bg-muted p-1" role="radiogroup" aria-label="Destinatario de la propuesta">
+              {(
+                [
+                  ["prospect", "Prospecto nuevo"],
+                  ["client", "Cliente actual"],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={partyType === v}
+                  onClick={() => setPartyType(v)}
+                  className={`h-8 rounded-md px-3 text-sm transition-colors ${partyType === v ? "bg-background font-medium shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {forProspect
+                ? "Al aceptarse la propuesta se da de alta el cliente con estos datos y sus tarifas."
+                : "Renegociación: al aceptarse, las tarifas se actualizan en las tarifas negociadas del cliente."}
+            </p>
+          </div>
+        )}
+        {forProspect ? (
+          <>
+            <label className="block md:col-span-1">
+              <span className="label">Prospecto (empresa o marca) *</span>
+              <input name="prospectName" required defaultValue={defaults.prospect?.name} placeholder="Cestco Dental" className="input" />
+            </label>
+            <label className="block">
+              <span className="label">Razón social</span>
+              <input name="prospectLegalName" defaultValue={defaults.prospect?.legalName} className="input" />
+            </label>
+            <label className="block">
+              <span className="label">RFC</span>
+              <input name="prospectRfc" defaultValue={defaults.prospect?.rfc} className="input uppercase" />
+            </label>
+            <label className="block">
+              <span className="label">Correo</span>
+              <input name="prospectEmail" type="email" defaultValue={defaults.prospect?.email} className="input" />
+            </label>
+            <label className="block">
+              <span className="label">Teléfono</span>
+              <input name="prospectPhone" defaultValue={defaults.prospect?.phone} className="input" />
+            </label>
+            <div className="hidden md:block" />
+          </>
+        ) : (
         <label className="block">
           <span className="label">Cliente</span>
           <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input" onChange={(e) => setClientId(Number(e.target.value) || undefined)}>
@@ -179,6 +239,7 @@ export function DocumentEditor({
             ))}
           </select>
         </label>
+        )}
         <label className="block">
           <span className="label">Fecha de emisión</span>
           <input type="date" name="issueDate" defaultValue={defaults.issueDate} required className="input" />
@@ -190,7 +251,7 @@ export function DocumentEditor({
 
         {isQuote ? (
           <label className="block md:col-span-3">
-            <span className="label">Atención</span>
+            <span className="label">{forProspect ? "Contacto (atención)" : "Atención"}</span>
             <input name="attention" defaultValue={defaults.attention} placeholder="Nombre del contacto (o “Por confirmar”)" className="input" />
           </label>
         ) : (

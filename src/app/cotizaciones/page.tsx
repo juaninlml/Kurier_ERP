@@ -5,17 +5,18 @@ import { PageHeader, StatusBadge, Empty } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
 import { formatDate, formatMoney } from "@/lib/money";
 import { QUOTE_STATUSES } from "@/lib/constants";
+import { quoteParty } from "@/lib/quote-party";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cotizaciones" };
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const { status, q = "" } = await searchParams;
-  const search = q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }] } : {};
+  const search = q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }, { prospectName: { contains: q, mode: "insensitive" as const } }] } : {};
   const [quotes, grouped] = await Promise.all([
     prisma.quote.findMany({
       where: { ...(status ? { status } : {}), ...search },
-      include: { client: { select: { name: true } } },
+      include: { client: { select: { name: true, legalName: true, rfc: true } } },
       orderBy: { id: "desc" },
       take: 200,
     }),
@@ -28,7 +29,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
     <div>
       <PageHeader
         title="Cotizaciones"
-        subtitle="Propuestas de tarifas para clientes nuevos y actuales."
+        subtitle="Propuestas comerciales para prospectos. Al aceptarse, el prospecto se da de alta como cliente con sus tarifas."
         actions={
           <Link href="/cotizaciones/nueva" className="btn-primary">
             <Plus className="size-4" /> Nueva cotización
@@ -36,7 +37,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         }
       />
       <div className="card overflow-hidden">
-        <FilterBar basePath="/cotizaciones" q={q} status={status} statuses={QUOTE_STATUSES} counts={counts} placeholder="Buscar folio o cliente" />
+        <FilterBar basePath="/cotizaciones" q={q} status={status} statuses={QUOTE_STATUSES} counts={counts} placeholder="Buscar folio, prospecto o cliente" />
         {quotes.length === 0 ? (
           <Empty
             icon={FileText}
@@ -76,7 +77,10 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                           {qt.folio}
                         </Link>
                       </td>
-                      <td className="font-medium">{qt.client.name}</td>
+                      <td>
+                        <div className="font-medium">{quoteParty(qt).name}</div>
+                        {!qt.client && <div className="text-xs text-muted-foreground">Prospecto</div>}
+                      </td>
                       <td className="text-muted-foreground">{formatDate(qt.issueDate)}</td>
                       <td className={expired ? "text-rose-600" : "text-muted-foreground"}>
                         {formatDate(qt.validUntil)}

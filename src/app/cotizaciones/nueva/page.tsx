@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { createQuote } from "@/app/actions/quotes";
 import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/kit";
@@ -14,15 +13,12 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Nueva cotización" back={{ href: "/cotizaciones", label: "Cotizaciones" }} />
-      {clients.length === 0 ? (
-        <div className="card p-6 text-sm">
-          Primero da de alta un cliente.{" "}
-          <Link href="/clientes/nuevo" className="text-primary underline">
-            Crear cliente
-          </Link>
-        </div>
-      ) : (
+      <PageHeader
+        title="Nueva cotización"
+        subtitle="Propuesta comercial para un prospecto (o renegociación con un cliente actual). Al aceptarse se da de alta el cliente con sus tarifas."
+        back={{ href: "/cotizaciones", label: "Cotizaciones" }}
+      />
+      {(
         <DocumentEditor
           kind="quote"
           action={createQuote}

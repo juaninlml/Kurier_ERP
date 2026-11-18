@@ -42,6 +42,9 @@ export default async function AccountingPage({
         subtitle={`Movimientos del ${formatDate(from)} al ${formatDate(to)}`}
         actions={
           <>
+            <Link href="/contabilidad/gastos-fijos" className="btn-secondary">
+              Gastos fijos y punto de equilibrio
+            </Link>
             <Link href={`/contabilidad/reportes?from=${fromStr}&to=${toStr}`} className="btn-secondary">
               Ver reportes
             </Link>

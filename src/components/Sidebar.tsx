@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  Building2,
+  HandCoins,
   FileUp,
   FileText,
   LayoutDashboard,
@@ -37,6 +39,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: "Finanzas",
     items: [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
+      { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
+      { href: "/nomina", label: "Nómina", icon: HandCoins },
       { href: "/contabilidad/reportes", label: "Reportes", icon: BarChart3 },
     ],
   },

@@ -3,6 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/db";
 import { getSettingsWithLogo as getSettings } from "@/lib/settings";
 import { incomeStatement, receivables, parseRange } from "@/lib/reports";
+import { quoteParty } from "@/lib/quote-party";
 import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf, TariffPdf } from "./documents";
 
 export async function renderQuote(id: number) {
@@ -17,7 +18,7 @@ export async function renderQuote(id: number) {
   ]);
   const sectionNotes = Object.fromEntries(sections.map((x) => [x.name, x.note]));
   return {
-    filename: `Cotizacion_${slug(s.tradeName)}_${slug(quote.client.name)}_${quote.folio}.pdf`,
+    filename: `Cotizacion_${slug(s.tradeName)}_${slug(quoteParty(quote).name)}_${quote.folio}.pdf`,
     buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} infoTables={infoTables} />),
   };
 }

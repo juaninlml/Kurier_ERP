@@ -1,8 +1,10 @@
-import { Check, Copy, Download, Eye, Pencil, ReceiptText, Trash2 } from "lucide-react";
+import { BadgeCheck, Check, Copy, Download, Eye, Pencil, ReceiptText, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { deleteQuote, duplicateQuote, setQuoteStatus } from "@/app/actions/quotes";
+import { acceptQuote, deleteQuote, duplicateQuote, setQuoteStatus } from "@/app/actions/quotes";
+import { quoteParty } from "@/lib/quote-party";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseProfileJson } from "@/lib/editor-data";
 import { PageHeader, StatusBadge } from "@/components/kit";
 import { DocumentView } from "@/components/DocumentView";
@@ -14,8 +16,15 @@ import { Form } from "@/components/Form";
 
 export const dynamic = "force-dynamic";
 
-export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function QuotePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ aceptada?: string; tarifas?: string }>;
+}) {
   const id = Number((await params).id);
+  const { aceptada, tarifas } = await searchParams;
   const quote = await prisma.quote.findUnique({
     where: { id },
     include: { client: true, items: { orderBy: { position: "asc" } }, invoices: { select: { id: true, folio: true } } },
@@ -26,6 +35,13 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const perOrder = parsePerOrder(quote.perOrder);
   const volumes = parseVolumes(quote.scenarios);
   const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
+  const party = quoteParty(quote);
+  const accepted = quote.status === "ACEPTADA" || quote.status === "FACTURADA";
+  const rateCount = quote.items.filter((i) => i.atCost || i.unitPrice > 0).length;
+  const [added, updated] = (tarifas ?? "0-0").split("-").map(Number);
+  const acceptMessage = party.isProspect
+    ? `¿Marcar la propuesta como aceptada? Se dará de alta “${party.name}” como cliente y se cargarán ${rateCount} tarifa(s) en sus tarifas negociadas.`
+    : `¿Marcar la propuesta como aceptada? Se actualizarán ${rateCount} tarifa(s) en las tarifas negociadas de ${party.name}.`;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -35,9 +51,15 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         subtitle={
           <span className="flex items-center gap-2">
             <StatusBadge status={quote.status} />
-            <Link href={`/clientes/${quote.clientId}`} className="hover:text-primary">
-              {quote.client.name}
-            </Link>
+            {quote.client ? (
+              <Link href={`/clientes/${quote.clientId}`} className="font-medium text-foreground hover:text-primary">
+                {party.name}
+              </Link>
+            ) : (
+              <span>
+                <span className="font-medium text-foreground">{party.name}</span> · prospecto
+              </span>
+            )}
             · Emitida {formatDate(quote.issueDate)} · Vigente hasta {formatDate(quote.validUntil)}
           </span>
         }
@@ -54,12 +76,36 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                 <Pencil className="size-4" /> Editar
               </Link>
             )}
-            <Link href={`/facturas/nueva?quoteId=${quote.id}`} className="btn-kurier">
-              <ReceiptText className="size-4" /> Facturar con estas tarifas
-            </Link>
+            {!accepted && (
+              <Form action={acceptQuote.bind(null, quote.id)}>
+                <ConfirmButton message={acceptMessage} className="btn-kurier">
+                  {party.isProspect ? <UserPlus className="size-4" /> : <BadgeCheck className="size-4" />}
+                  {party.isProspect ? "Aceptada: dar de alta cliente" : "Aceptada: actualizar tarifas"}
+                </ConfirmButton>
+              </Form>
+            )}
+            {accepted && quote.clientId && (
+              <Link href={`/facturas/nueva?clientId=${quote.clientId}`} className="btn-kurier">
+                <ReceiptText className="size-4" /> Nueva factura del cliente
+              </Link>
+            )}
           </>
         }
       />
+
+      {aceptada && quote.client && (
+        <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-900">
+          <BadgeCheck />
+          <AlertTitle>{aceptada === "nuevo" ? `${quote.client.name} ya es cliente` : "Propuesta aceptada"}</AlertTitle>
+          <AlertDescription className="text-emerald-900/80">
+            {aceptada === "nuevo" ? "Se dio de alta el cliente con los datos del prospecto. " : ""}
+            Tarifas negociadas: {added} nueva(s){updated ? `, ${updated} actualizada(s)` : ""}.{" "}
+            <Link href={`/clientes/${quote.client.id}`} className="font-medium underline">
+              Revisar tarifas y conceptos del WMS
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {quote.invoices.length > 0 && (
         <div className="mb-4 rounded-md bg-violet-50 px-4 py-3 text-sm text-violet-800">
@@ -180,7 +226,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             <div className="card p-4">
               <div className="label mb-2">Estatus</div>
               <div className="grid gap-1">
-                {(["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const).map((st) => {
+                {(accepted ? (["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const) : (["BORRADOR", "ENVIADA", "RECHAZADA"] as const)).map((st) => {
                   const current = quote.status === st;
                   return (
                     <Form key={st} action={setQuoteStatus.bind(null, quote.id, st)}>
@@ -199,6 +245,13 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             </div>
           )}
           <div className="card space-y-2 p-4">
+            {quote.status === "ACEPTADA" && (
+              <Form action={acceptQuote.bind(null, quote.id)}>
+                <ConfirmButton message={`¿Volver a pasar las ${rateCount} tarifa(s) de esta propuesta a las tarifas negociadas de ${party.name}?`} className="btn-secondary w-full">
+                  <BadgeCheck className="size-4" /> Actualizar tarifas del cliente
+                </ConfirmButton>
+              </Form>
+            )}
             <Form action={duplicateQuote.bind(null, quote.id)}>
               <SubmitButton className="btn-secondary w-full" pendingText="Duplicando…">
                 <Copy className="size-4" /> Duplicar cotización

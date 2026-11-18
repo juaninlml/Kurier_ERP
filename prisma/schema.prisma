@@ -46,6 +46,16 @@ model CompanySettings {
   tariffIntro       String   @default("") // párrafo bajo el título del PDF del tarifario
   tariffTerms       String   @default("") // condiciones comerciales del tarifario (una por línea)
   tariffClosing     String   @default("") // recuadro final del tarifario
+  // Punto de equilibrio (Contabilidad → Gastos fijos)
+  beOrderRate       Float    @default(45) // tarifa promedio por orden (sin IVA)
+  beShippingCost    Float    @default(70) // costo promedio de la guía de envío
+  beShippingMarkup  Float    @default(20) // % de markup sobre la guía
+  beGuideShare      Float    @default(100) // % de órdenes con guía generada por Kurier
+  beVariableCost    Float    @default(0) // costo variable por orden (empaque, etiqueta…)
+  beSystemFee       Float    @default(500) // cobro mensual de sistema por cliente
+  beClients         Int      @default(0) // clientes que pagan sistema (0 = clientes activos)
+  beWorkingDays     Float    @default(26) // días operativos al mes
+  beIncludePayroll  Boolean  @default(true) // sumar la nómina de los empleados activos
   updatedAt         DateTime @updatedAt
 }
 
@@ -145,29 +155,36 @@ model ServiceSection {
 
 /// status: BORRADOR | ENVIADA | ACEPTADA | RECHAZADA | FACTURADA
 model Quote {
-  id          Int         @id @default(autoincrement())
-  folio       String      @unique
-  clientId    Int
-  client      Client      @relation(fields: [clientId], references: [id])
-  issueDate   DateTime    @default(now())
-  validUntil  DateTime
-  status      String      @default("BORRADOR")
-  attention   String      @default("")
-  profile     String      @default("[]") // JSON: [{ label, value }] — "Perfil de la operación cotizada"
-  notes       String      @default("")
-  terms       String      @default("")
-  perOrder    String      @default("[]") // JSON: [{ label, amount }] — tabla "Costo por pedido"
-  perOrderFee Float       @default(0) // comisión de guía que se suma en la 2a columna ("Con guía de Kurier")
-  baseVolume  Float       @default(0) // pedidos que representa el costo estimado
-  scenarios   String      @default("") // volúmenes a comparar: "250, 500, 1000"
-  subtotal    Float       @default(0)
-  discount    Float       @default(0)
-  tax         Float       @default(0)
-  total       Float       @default(0)
-  items       QuoteItem[]
-  invoices    Invoice[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                Int         @id @default(autoincrement())
+  folio             String      @unique
+  clientId          Int? // vacío mientras sea prospecto; se llena al aceptar la propuesta
+  client            Client?     @relation(fields: [clientId], references: [id])
+  // Prospecto (propuesta comercial a una empresa que todavía no es cliente)
+  prospectName      String      @default("")
+  prospectLegalName String      @default("")
+  prospectRfc       String      @default("")
+  prospectEmail     String      @default("")
+  prospectPhone     String      @default("")
+  acceptedAt        DateTime? // al aceptarse se crea el cliente y se cargan sus tarifas
+  issueDate         DateTime    @default(now())
+  validUntil        DateTime
+  status            String      @default("BORRADOR")
+  attention         String      @default("")
+  profile           String      @default("[]") // JSON: [{ label, value }] — "Perfil de la operación cotizada"
+  notes             String      @default("")
+  terms             String      @default("")
+  perOrder          String      @default("[]") // JSON: [{ label, amount }] — tabla "Costo por pedido"
+  perOrderFee       Float       @default(0) // comisión de guía que se suma en la 2a columna ("Con guía de Kurier")
+  baseVolume        Float       @default(0) // pedidos que representa el costo estimado
+  scenarios         String      @default("") // volúmenes a comparar: "250, 500, 1000"
+  subtotal          Float       @default(0)
+  discount          Float       @default(0)
+  tax               Float       @default(0)
+  total             Float       @default(0)
+  items             QuoteItem[]
+  invoices          Invoice[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model QuoteItem {
@@ -282,4 +299,81 @@ model TariffTable {
   note         String  @default("")
   inQuotes     Boolean @default(false) // también se imprime en las cotizaciones
   sortOrder    Int     @default(0)
+}
+
+/// Gasto fijo recurrente (renta, nómina externa, insumos, servicios…). frequency: SEMANAL | QUINCENAL | MENSUAL | BIMESTRAL | ANUAL
+model FixedExpense {
+  id        Int      @id @default(autoincrement())
+  name      String
+  category  String   @default("Otros")
+  amount    Float
+  frequency String   @default("MENSUAL")
+  active    Boolean  @default(true)
+  notes     String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Empleado. Las prestaciones (vacaciones, prima vacacional, aguinaldo) se calculan según la LFT a partir de startDate y dailySalary.
+model Employee {
+  id           Int           @id @default(autoincrement())
+  name         String
+  position     String        @default("")
+  area         String        @default("") // Almacén, Administración…
+  rfc          String        @default("")
+  curp         String        @default("")
+  nss          String        @default("")
+  phone        String        @default("")
+  email        String        @default("")
+  address      String        @default("")
+  bankName     String        @default("")
+  clabe        String        @default("")
+  startDate    DateTime // fecha de ingreso (antigüedad)
+  endDate      DateTime? // fecha de baja
+  dailySalary  Float // salario diario
+  weeklyBonus  Float         @default(0) // bono fijo semanal (puntualidad, asistencia…)
+  active       Boolean       @default(true)
+  notes        String        @default("")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  payrollLines PayrollLine[]
+}
+
+/// Nómina de un periodo (semanal). status: BORRADOR | PAGADA. Al pagarse genera un EGRESO en contabilidad.
+model PayrollRun {
+  id            Int           @id @default(autoincrement())
+  periodStart   DateTime
+  periodEnd     DateTime
+  payDate       DateTime
+  status        String        @default("BORRADOR")
+  notes         String        @default("")
+  total         Float         @default(0)
+  transactionId Int?          @unique
+  lines         PayrollLine[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model PayrollLine {
+  id              Int        @id @default(autoincrement())
+  runId           Int
+  run             PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId      Int
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+  dailySalary     Float // salario diario al momento de la nómina
+  days            Float      @default(7) // días pagados (incluye séptimo día)
+  absences        Float      @default(0) // faltas (se descuentan)
+  vacationDays    Float      @default(0) // días de vacaciones tomados (pagados dentro de los días + prima vacacional)
+  vacationPremium Float      @default(0)
+  overtime        Float      @default(0) // importe de horas extra
+  bonus           Float      @default(0)
+  aguinaldo       Float      @default(0)
+  otherIncome     Float      @default(0)
+  deductions      Float      @default(0) // préstamos, anticipos, faltantes…
+  notes           String     @default("")
+  gross           Float      @default(0)
+  net             Float      @default(0)
+
+  @@index([employeeId])
 }
