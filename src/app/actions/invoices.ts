@@ -46,13 +46,18 @@ async function createInvoiceImpl(fd: FormData) {
   const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
   const quoteId = numv(fd, "quoteId") || null;
   const importId = numv(fd, "importId") || null;
+  const ordersWeek = /^d{4}-d{2}-d{2}$/.test(str(fd, "ordersWeek")) ? str(fd, "ordersWeek") : "";
   const inv = await prisma.$transaction(async (tx) => {
+    if (ordersWeek) {
+      const dup = await tx.invoice.findFirst({ where: { clientId: h.clientId, ordersWeek, status: { not: "CANCELADA" } } });
+      if (dup) throw new Error(`Las órdenes de esa semana ya se facturaron en ${dup.folio}.`);
+    }
     if (importId) {
       const imp = await tx.wmsImport.findUnique({ where: { id: importId } });
       if (imp?.status === "FACTURADO") throw new Error(`El estado de cobro ${imp.folio} ya se facturó.`);
     }
     const folio = await nextFolio(tx, "invoice");
-    const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, items: { create: items } } });
+    const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, ordersWeek, items: { create: items } } });
     if (quoteId) await tx.quote.update({ where: { id: quoteId }, data: { status: "FACTURADA" } });
     if (importId) await tx.wmsImport.update({ where: { id: importId }, data: { status: "FACTURADO", invoiceId: created.id } });
     return created;
@@ -60,6 +65,7 @@ async function createInvoiceImpl(fd: FormData) {
   revalidateAll();
   revalidatePath("/cotizaciones");
   revalidatePath("/facturas/importar");
+  if (ordersWeek) revalidatePath("/ordenes");
   redirect(`/facturas/${inv.id}`);
 }
 

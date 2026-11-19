@@ -10,6 +10,8 @@ import {
   Clock,
   HandCoins,
   FileUp,
+  PackageOpen,
+  Boxes,
   FileText,
   Languages,
   LayoutDashboard,
@@ -51,6 +53,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { href: "/cotizaciones", label: "Cotizaciones", icon: FileText },
       { href: "/facturas", label: "Facturas", icon: ReceiptText },
       { href: "/facturas/importar", label: "Importar del WMS", icon: FileUp },
+      { href: "/ordenes", label: "Órdenes diarias", icon: PackageOpen },
+      { href: "/ordenes/insumos", label: "Insumos de empaque", icon: Boxes },
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/servicios", label: "Tarifario", icon: Tags },
     ],
@@ -79,6 +83,7 @@ function useIsActive() {
   return (href: string) => {
     if (href === "/") return pathname === "/";
     if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar");
+    if (href === "/ordenes") return pathname.startsWith("/ordenes") && !pathname.startsWith("/ordenes/insumos");
     if (href === "/nomina") return pathname.startsWith("/nomina") && !pathname.startsWith("/nomina/asistencias");
     if (href === "/contabilidad") return pathname === "/contabilidad" || pathname.startsWith("/contabilidad/movimientos");
     return pathname.startsWith(href);

@@ -52,4 +52,4 @@ export const EXPENSE_CATEGORIES = [
   "Otros gastos",
 ] as const;
 
-export const UNITS = ["Servicio", "Pieza", "Pedido", "Tarima", "m³", "Caja", "Mes", "Hora", "Kg", "Envío"] as const;
+export const UNITS = ["Servicio", "Pieza", "Pedido", "Paquete", "Tarima", "m³", "Caja", "Mes", "Hora", "Kg", "Envío"] as const;

@@ -101,3 +101,15 @@ export async function renderPayrollReceipts(runId: number, lineId?: number) {
     buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={run.lines} />),
   };
 }
+
+/** Resumen de órdenes diarias de un cliente en un periodo (yyyy-mm-dd, inclusive). */
+export async function renderOrdersSummary(clientId: number, from: string, to: string) {
+  const { clientOrdersSummary } = await import("@/lib/orders");
+  const [s, data] = await Promise.all([getSettings(), clientOrdersSummary(clientId, from, to)]);
+  if (!data) return null;
+  const { OrdersSummaryPdf } = await import("./orders");
+  return {
+    filename: `Resumen_ordenes_${slug(data.client.name)}_${from}_${to}.pdf`,
+    buffer: await renderToBuffer(<OrdersSummaryPdf s={s} data={data} />),
+  };
+}

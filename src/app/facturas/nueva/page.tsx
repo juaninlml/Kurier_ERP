@@ -7,12 +7,13 @@ import { editorData, itemsForEditor } from "@/lib/editor-data";
 import { addDays, formatMoney, toInputDate } from "@/lib/money";
 import { prisma } from "@/lib/db";
 import { previewImport } from "@/lib/wms/imports";
+import { clientOrdersSummary, DATE_RE, rangeLabel, weekOf } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Nueva factura" };
 
-export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string }> }) {
-  const { clientId, quoteId, importId } = await searchParams;
+export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string; ordenes?: string; semana?: string }> }) {
+  const { clientId, quoteId, importId, ordenes, semana } = await searchParams;
   const { clients, services, clientRates, settings } = await editorData();
   const today = new Date();
   const base: DocumentDefaults = {
@@ -27,7 +28,37 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   let subtitle: string = "Documento informativo, sin timbrado fiscal";
   let back = { href: "/facturas", label: "Facturas" };
 
-  if (importId) {
+  if (ordenes && semana && DATE_RE.test(semana)) {
+    // Factura semanal de servicio logístico desde Órdenes diarias.
+    const week = weekOf(semana);
+    const sum = await clientOrdersSummary(Number(ordenes), week.from, week.to);
+    if (sum) {
+      const period = rangeLabel(week.from, week.to);
+      const breakdown = sum.byWave.filter((w) => w.total > 0).map((w) => `${w.name}: ${w.total}`).join(" · ");
+      defaults = {
+        ...base,
+        clientId: sum.client.id,
+        ordersWeek: week.from,
+        period: `${period} — ciclo semanal`,
+        volume: `${sum.total} paquetes en ${sum.days.length} día(s) operado(s)`,
+        storage: "No se cobra en este periodo.",
+        items: [
+          {
+            description: "Servicio logístico",
+            detail: `Paquetes procesados del ${period}${breakdown ? ` (${breakdown})` : ""}`,
+            unit: "Paquete",
+            quantity: sum.total,
+            unitPrice: sum.rate.rate,
+            taxRate: settings.defaultTaxRate,
+          },
+        ],
+      };
+      subtitle = sum.rate.rate
+        ? `Desde Órdenes diarias: ${sum.total} paquetes × ${formatMoney(sum.rate.rate)} (${sum.rate.label.toLowerCase()}). Revisa y ajusta antes de crearla.`
+        : `Desde Órdenes diarias: ${sum.total} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.`;
+      back = { href: `/ordenes?fecha=${week.from}`, label: "Órdenes diarias" };
+    }
+  } else if (importId) {
     const imp = await prisma.wmsImport.findUnique({ where: { id: Number(importId) } });
     if (!imp) redirect("/facturas/importar");
     if (imp.status === "FACTURADO" || !imp.clientId) redirect(`/facturas/importar/${imp.id}`);

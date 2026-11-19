@@ -65,24 +65,27 @@ model CompanySettings {
 }
 
 model Client {
-  id           Int           @id @default(autoincrement())
-  name         String
-  legalName    String        @default("")
-  rfc          String        @default("")
-  contactName  String        @default("")
-  email        String        @default("")
-  phone        String        @default("")
-  address      String        @default("")
-  notes        String        @default("")
-  wmsName      String        @default("") // nombre del cliente tal como aparece en el WMS (ej. "Basic&Pure")
-  active       Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  quotes       Quote[]
-  invoices     Invoice[]
-  transactions Transaction[]
-  rates        ClientRate[]
-  wmsImports   WmsImport[]
+  id            Int           @id @default(autoincrement())
+  name          String
+  legalName     String        @default("")
+  rfc           String        @default("")
+  contactName   String        @default("")
+  email         String        @default("")
+  phone         String        @default("")
+  address       String        @default("")
+  notes         String        @default("")
+  wmsName       String        @default("") // nombre del cliente tal como aparece en el WMS (ej. "Basic&Pure")
+  orderRate     Float         @default(0) // tarifa por paquete del servicio logístico (órdenes diarias); 0 = usar la tarifa negociada que coincida
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  quotes        Quote[]
+  invoices      Invoice[]
+  transactions  Transaction[]
+  rates         ClientRate[]
+  wmsImports    WmsImport[]
+  dailyOrders   DailyOrder[]
+  dailySupplies DailySupply[]
 }
 
 /// Tarifa negociada con un cliente. Al importar movimientos del WMS se busca por wmsConcept.
@@ -214,30 +217,31 @@ model QuoteItem {
 
 /// status: PENDIENTE | PARCIAL | PAGADA | CANCELADA
 model Invoice {
-  id        Int           @id @default(autoincrement())
-  folio     String        @unique
-  clientId  Int
-  client    Client        @relation(fields: [clientId], references: [id])
-  quoteId   Int?
-  quote     Quote?        @relation(fields: [quoteId], references: [id])
-  issueDate DateTime      @default(now())
-  dueDate   DateTime
-  status    String        @default("PENDIENTE")
-  period    String        @default("") // "15 al 22 de agosto de 2026 — ciclo semanal"
-  volume    String        @default("") // "39 pedidos, todos bajo la tarifa Orden Ligera"
-  storage   String        @default("") // "No se cobra en este periodo."
-  terms     String        @default("") // condiciones de pago
-  notes     String        @default("")
-  subtotal  Float         @default(0)
-  discount  Float         @default(0)
-  tax       Float         @default(0)
-  total     Float         @default(0)
-  paidTotal Float         @default(0)
-  items     InvoiceItem[]
-  payments  Payment[]
-  wmsImport WmsImport?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id         Int           @id @default(autoincrement())
+  folio      String        @unique
+  clientId   Int
+  client     Client        @relation(fields: [clientId], references: [id])
+  quoteId    Int?
+  quote      Quote?        @relation(fields: [quoteId], references: [id])
+  issueDate  DateTime      @default(now())
+  dueDate    DateTime
+  status     String        @default("PENDIENTE")
+  period     String        @default("") // "15 al 22 de agosto de 2026 — ciclo semanal"
+  volume     String        @default("") // "39 pedidos, todos bajo la tarifa Orden Ligera"
+  storage    String        @default("") // "No se cobra en este periodo."
+  terms      String        @default("") // condiciones de pago
+  notes      String        @default("")
+  subtotal   Float         @default(0)
+  discount   Float         @default(0)
+  tax        Float         @default(0)
+  total      Float         @default(0)
+  paidTotal  Float         @default(0)
+  ordersWeek String        @default("") // lunes (yyyy-mm-dd) de la semana de órdenes diarias facturada como servicio logístico
+  items      InvoiceItem[]
+  payments   Payment[]
+  wmsImport  WmsImport?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model InvoiceItem {
@@ -486,4 +490,56 @@ model OvertimeAuth {
   createdAt    DateTime @default(now())
 
   @@unique([employeeId, workDate])
+}
+
+/// Oleada de surtido: columnas de la tabla de órdenes diarias (Singles Primer Oleada, Extras…).
+model OrderWave {
+  id        Int          @id @default(autoincrement())
+  name      String       @unique
+  sortOrder Int          @default(0)
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  orders    DailyOrder[]
+}
+
+/// Órdenes capturadas a mano: paquetes de un cliente en una oleada de un día.
+model DailyOrder {
+  id        Int       @id @default(autoincrement())
+  workDate  String // yyyy-mm-dd (día operativo, zona horaria de la empresa)
+  clientId  Int
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  waveId    Int
+  wave      OrderWave @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  quantity  Int       @default(0)
+  updatedAt DateTime  @updatedAt
+
+  @@unique([workDate, clientId, waveId])
+  @@index([workDate])
+}
+
+/// Insumo de empaque (Bolsa A 17×30, Caja Ch…). "Sin insumo" registra los paquetes que salen sin empaque de Kurier.
+model PackMaterial {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
+  size      String        @default("") // medidas en cm (ej. "17*30"; varias separadas por " / ")
+  noSupply  Boolean       @default(false) // "Sin insumo" (N/A): cuenta para cuadrar contra las órdenes, no como consumo
+  sortOrder Int           @default(0)
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  supplies  DailySupply[]
+}
+
+/// Insumos usados: piezas de un material para un cliente en un día.
+model DailySupply {
+  id         Int          @id @default(autoincrement())
+  workDate   String // yyyy-mm-dd
+  clientId   Int
+  client     Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  materialId Int
+  material   PackMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  quantity   Int          @default(0)
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([workDate, clientId, materialId])
+  @@index([workDate])
 }

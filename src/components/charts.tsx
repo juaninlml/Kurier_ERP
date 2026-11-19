@@ -38,9 +38,23 @@ function compactMoney(locale: string) {
   };
 }
 
-function useMoney() {
+/** Formato de valores: pesos (por defecto) o conteo (paquetes, órdenes…). */
+export type ValueFormat = "money" | "count";
+
+function compactCount(locale: string) {
+  const n = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  return (v: number) => (Math.abs(v) >= 1e6 ? `${n.format(v / 1e6)}M` : Math.abs(v) >= 1e4 ? `${n.format(v / 1e3)}k` : n.format(v));
+}
+
+function useMoney(format: ValueFormat = "money") {
   const locale = localeOf(useLang());
-  return useMemo(() => ({ full: mxn(locale).format, compact: compactMoney(locale) }), [locale]);
+  return useMemo(
+    () =>
+      format === "count"
+        ? { full: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format, compact: compactCount(locale) }
+        : { full: mxn(locale).format, compact: compactMoney(locale) },
+    [locale, format],
+  );
 }
 
 /** Escala "bonita": 0 y 3–5 marcas redondas que cubren el máximo. */
@@ -98,6 +112,7 @@ export function ColumnChart({
   diff,
   emptyText,
   className,
+  format = "money",
 }: {
   points: ColumnPoint[];
   series: Series[];
@@ -106,9 +121,10 @@ export function ColumnChart({
   diff?: { label: string; plus: string; minus: string };
   emptyText?: string;
   className?: string;
+  format?: ValueFormat;
 }) {
   const t = useT();
-  const money = useMoney();
+  const money = useMoney(format);
   const [table, setTable] = useState(false);
   const max = Math.max(0, ...points.flatMap((p) => series.map((s) => p.values[s.key] ?? 0)));
   const ticks = niceTicks(max);
@@ -334,15 +350,17 @@ export function BarList({
   color,
   total,
   emptyText,
+  format = "money",
 }: {
   rows: { key: string; label: string; value: number; href?: string; hint?: string }[];
   color: string;
   /** Si se da, muestra el % de cada fila sobre este total. */
   total?: number;
   emptyText?: string;
+  format?: ValueFormat;
 }) {
   const t = useT();
-  const money = useMoney();
+  const money = useMoney(format);
   const max = Math.max(1, ...rows.map((r) => r.value));
   if (!rows.length) return <p className="py-6 text-center text-sm text-muted-foreground">{emptyText ?? t("Sin datos.")}</p>;
   return (

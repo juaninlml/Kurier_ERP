@@ -3,6 +3,33 @@
  * Los textos sin traducción se muestran en español. Para ver cuáles faltan, busca t("…") en el código.
  */
 export const en: Record<string, string> = {
+  // Órdenes diarias
+  "Insumos de empaque": "Packing supplies",
+  "Órdenes del día": "Orders today",
+  Cuadra: "Matches",
+  Faltan: "Missing",
+  "Las piezas registradas coinciden con las órdenes": "Recorded pieces match the orders",
+  "Hay órdenes sin insumo registrado": "Some orders have no supply recorded",
+  "Hay más piezas que órdenes": "More pieces than orders",
+  "Elegir mes": "Pick a month",
+  "Órdenes diarias": "Daily orders",
+  "Buscar cliente": "Search client",
+  "Puedes pegar un bloque copiado de Excel": "You can paste a block copied from Excel",
+  "Total del día": "Day total",
+  "Semana": "Week",
+  "Cambios sin guardar": "Unsaved changes",
+  "Guardado": "Saved",
+  "Se guarda automáticamente": "Saves automatically",
+  "Elegir fecha": "Pick a date",
+  "Tarifa por paquete": "Rate per package",
+  "Captura del día": "Day entry",
+  "Resumen por cliente": "Summary by client",
+  "Mes por cliente": "Month by client",
+  "Tendencia": "Trend",
+  "Oleadas": "Waves",
+  "Paquetes": "Packages",
+  "Paquetes del día": "Packages today",
+  "No se pudo guardar. Revisa tu conexión e intenta de nuevo.": "Couldn't save. Check your connection and try again.",
   // Gráficas y actividad
   "Ver tabla": "View table",
   "Ver gráfica": "View chart",

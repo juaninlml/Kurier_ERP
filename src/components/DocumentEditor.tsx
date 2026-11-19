@@ -31,6 +31,8 @@ export type DocumentDefaults = {
   quoteId?: number;
   /** Estado de cobro del WMS del que sale esta factura. */
   importId?: number;
+  /** Lunes de la semana de órdenes diarias que se factura (servicio logístico). */
+  ordersWeek?: string;
   issueDate: string;
   secondDate: string;
   notes: string;
@@ -170,6 +172,7 @@ export function DocumentEditor({
       {isQuote && <input type="hidden" name="perOrder" value={JSON.stringify(perOrder.filter((r) => r.label.trim()))} />}
       {defaults.quoteId && <input type="hidden" name="quoteId" value={defaults.quoteId} />}
       {defaults.importId && <input type="hidden" name="importId" value={defaults.importId} />}
+      {defaults.ordersWeek && <input type="hidden" name="ordersWeek" value={defaults.ordersWeek} />}
 
       <div className="card grid gap-4 p-5 md:grid-cols-3">
         {isQuote && (
