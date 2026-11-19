@@ -34,15 +34,19 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       employeeId: l.employeeId,
       name: l.employee.name,
       position: l.employee.position,
-      dailySalary: l.dailySalary,
+      weeklySalary: l.weeklySalary || l.dailySalary * l.workDays,
+      workDays: l.workDays === 5 ? 5 : 6,
+      hoursPerDay: l.hoursPerDay,
       days: l.days,
       absences: l.absences,
       vacationDays: l.vacationDays,
       overtime: l.overtime,
       bonus: l.bonus,
+      bonusNote: l.bonusNote,
       aguinaldo: l.aguinaldo,
       otherIncome: l.otherIncome,
       deductions: l.deductions,
+      deductionNote: l.deductionNote,
       notes: l.notes,
       vacationAvailable: b.vacationAvailable,
       // Aguinaldo a pagar al corte del 20 de diciembre (días redondeados)
@@ -94,7 +98,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           )
         }
       />
-      <PayrollEditor action={savePayrollRun.bind(null, run.id)} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} />
+      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} />
     </div>
   );
 }

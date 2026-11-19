@@ -315,7 +315,7 @@ model FixedExpense {
   updatedAt DateTime @updatedAt
 }
 
-/// Empleado. Las prestaciones (vacaciones, prima vacacional, aguinaldo) se calculan según la LFT a partir de startDate y dailySalary.
+/// Empleado. Las prestaciones (vacaciones, prima vacacional, aguinaldo) se calculan según la LFT a partir de startDate y el salario diario.
 model Employee {
   id           Int           @id @default(autoincrement())
   name         String
@@ -331,7 +331,10 @@ model Employee {
   clabe        String        @default("")
   startDate    DateTime // fecha de ingreso (antigüedad)
   endDate      DateTime? // fecha de baja
-  dailySalary  Float // salario diario
+  weeklySalary Float         @default(0) // salario semanal (base del cálculo)
+  workDays     Int           @default(6) // días laborables por semana: 6 (descansa domingo) o 5 (descansa fin de semana)
+  hoursPerDay  Float         @default(8) // jornada diaria, para el salario por hora
+  dailySalary  Float // salario diario = semanal ÷ días laborables (se calcula al guardar)
   weeklyBonus  Float         @default(0) // bono fijo semanal (puntualidad, asistencia…)
   active       Boolean       @default(true)
   notes        String        @default("")
@@ -361,16 +364,21 @@ model PayrollLine {
   run             PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   employeeId      Int
   employee        Employee   @relation(fields: [employeeId], references: [id])
-  dailySalary     Float // salario diario al momento de la nómina
+  weeklySalary    Float      @default(0) // salario semanal al momento de la nómina
+  workDays        Int        @default(6) // jornada de la semana: 5 o 6 días
+  hoursPerDay     Float      @default(8)
+  dailySalary     Float // salario diario = semanal ÷ días laborables
   days            Float      @default(6) // días pagados (6 por semana; el 7º es descanso)
-  absences        Float      @default(0) // faltas (se descuentan)
+  absences        Float      @default(0) // faltas injustificadas (se descuentan a salario diario)
   vacationDays    Float      @default(0) // días de vacaciones tomados (pagados dentro de los días + prima vacacional)
   vacationPremium Float      @default(0)
   overtime        Float      @default(0) // importe de horas extra
   bonus           Float      @default(0)
+  bonusNote       String     @default("") // motivo del bono
   aguinaldo       Float      @default(0)
   otherIncome     Float      @default(0)
   deductions      Float      @default(0) // préstamos, anticipos, faltantes…
+  deductionNote   String     @default("") // motivo del descuento
   notes           String     @default("")
   gross           Float      @default(0)
   net             Float      @default(0)

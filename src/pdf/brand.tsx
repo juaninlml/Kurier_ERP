@@ -18,7 +18,7 @@ export function tint(hex: string, t: number) {
   return `#${[mix(r), mix(g), mix(b)].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function loadLogo(s: CompanySettings) {
+export function loadLogo(s: CompanySettings) {
   if (s.logoData && s.logoMime) {
     return { data: Buffer.from(s.logoData), format: s.logoMime === "image/png" ? "png" : "jpg" } as const;
   }

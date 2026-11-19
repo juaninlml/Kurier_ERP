@@ -82,3 +82,22 @@ function slug(t: string) {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join("");
 }
+
+/** Recibos de nómina de una semana (o de un solo empleado con `lineId`). */
+export async function renderPayrollReceipts(runId: number, lineId?: number) {
+  const [s, run] = await Promise.all([
+    getSettings(),
+    prisma.payrollRun.findUnique({
+      where: { id: runId },
+      include: { lines: { where: lineId ? { id: lineId } : undefined, include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
+    }),
+  ]);
+  if (!run || run.lines.length === 0) return null;
+  const { PayrollReceiptsPdf } = await import("./payroll");
+  const tag = run.periodStart.toISOString().slice(0, 10);
+  const who = lineId ? `_${slug(run.lines[0].employee.name)}` : "";
+  return {
+    filename: `Recibos_nomina_${tag}${who}.pdf`,
+    buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={run.lines} />),
+  };
+}

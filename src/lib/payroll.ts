@@ -71,7 +71,7 @@ export function seniorityLabel(s: { years: number; months: number; days: number 
  * Prestaciones de un empleado a una fecha.
  * `vacationTaken`: días de vacaciones ya tomados en el periodo vacacional actual (desde el último aniversario).
  */
-export function benefits(e: { startDate: Date; dailySalary: number }, vacationTaken = 0, at = new Date()) {
+export function benefits(e: { startDate: Date; dailySalary: number; weeklySalary?: number; workDays?: number }, vacationTaken = 0, at = new Date()) {
   const s = seniority(e.startDate, at);
   const daily = e.dailySalary;
   // Vacaciones ganadas en el último aniversario (para disfrutar durante este periodo)
@@ -116,25 +116,43 @@ export function benefits(e: { startDate: Date; dailySalary: number }, vacationTa
     aguinaldoPayDays,
     aguinaldoCutoff: cutoff,
     aguinaldoDaysToDate: round2((aguinaldoDays * workedToDate) / aguinaldoPeriod),
-    weeklySalary: round2(daily * PAID_DAYS_PER_WEEK),
-    // 6 días pagados por semana × 52 semanas ÷ 12 meses
-    monthlySalary: round2((daily * PAID_DAYS_PER_WEEK * 52) / 12),
+    weeklySalary: round2(weeklyOf(e)),
+    // semanal × 52 semanas ÷ 12 meses
+    monthlySalary: round2((weeklyOf(e) * 52) / 12),
   };
 }
 
 /** Costo mensual promedio de un empleado: sueldo + aguinaldo y prima vacacional prorrateados (sin carga patronal). */
-export function monthlyCost(e: { startDate: Date; dailySalary: number; weeklyBonus?: number }, at = new Date()) {
+export function monthlyCost(e: { startDate: Date; dailySalary: number; weeklySalary?: number; workDays?: number; weeklyBonus?: number }, at = new Date()) {
   const years = seniority(e.startDate, at).years;
-  const salary = (e.dailySalary * PAID_DAYS_PER_WEEK * 52) / 12;
+  const salary = (weeklyOf(e) * 52) / 12;
   const bonus = ((e.weeklyBonus ?? 0) * 52) / 12;
   const aguinaldo = (aguinaldoDaysFor(years) * e.dailySalary) / 12;
   const premium = (vacationDaysFor(Math.max(1, years + 1)) * e.dailySalary * VACATION_PREMIUM) / 12;
   return round2(salary + bonus + aguinaldo + premium);
 }
 
-/** Importes de un renglón de nómina. Las vacaciones se pagan dentro de los días; aparte solo la prima vacacional. */
+/** Salario diario y por hora a partir del semanal: diario = semanal ÷ días laborables (5 o 6); hora = diario ÷ horas de la jornada. */
+export function salaryRates(weekly: number, workDays: number, hoursPerDay = 8) {
+  const days = workDays === 5 ? 5 : 6;
+  const daily = weekly / days;
+  return { weekly: round2(weekly), workDays: days, daily, hourly: daily / (hoursPerDay > 0 ? hoursPerDay : 8) };
+}
+
+/** Semanal de un empleado (registros anteriores solo tenían salario diario × 6). */
+export const weeklyOf = (e: { weeklySalary?: number; dailySalary: number; workDays?: number }) =>
+  e.weeklySalary && e.weeklySalary > 0 ? e.weeklySalary : e.dailySalary * (e.workDays ?? PAID_DAYS_PER_WEEK);
+
+/**
+ * Importes de un renglón de nómina.
+ * - Sueldo = semanal × días pagados ÷ días laborables (= salario diario × días).
+ * - Faltas injustificadas: se descuentan a salario diario.
+ * - Las vacaciones se pagan dentro de los días; aparte se suma la prima vacacional (25%).
+ */
 export function payrollLine(l: {
-  dailySalary: number;
+  weeklySalary: number;
+  workDays: number;
+  hoursPerDay?: number;
   days: number;
   absences: number;
   vacationDays: number;
@@ -144,10 +162,23 @@ export function payrollLine(l: {
   otherIncome: number;
   deductions: number;
 }) {
-  const base = round2(l.dailySalary * Math.max(0, l.days - l.absences));
-  const vacationPremium = round2(l.vacationDays * l.dailySalary * VACATION_PREMIUM);
+  const r = salaryRates(l.weeklySalary, l.workDays, l.hoursPerDay);
+  const base = round2((l.weeklySalary * l.days) / r.workDays);
+  const absenceDeduction = round2((l.weeklySalary * Math.min(l.absences, l.days)) / r.workDays);
+  const vacationPremium = round2(l.vacationDays * r.daily * VACATION_PREMIUM);
   const gross = round2(base + vacationPremium + l.overtime + l.bonus + l.aguinaldo + l.otherIncome);
-  return { base, vacationPremium, gross, net: round2(gross - l.deductions) };
+  const totalDeductions = round2(absenceDeduction + l.deductions);
+  return {
+    daily: round2(r.daily),
+    hourly: round2(r.hourly),
+    workDays: r.workDays,
+    base,
+    absenceDeduction,
+    vacationPremium,
+    gross,
+    totalDeductions,
+    net: round2(gross - totalDeductions),
+  };
 }
 
 export const FREQUENCIES = {

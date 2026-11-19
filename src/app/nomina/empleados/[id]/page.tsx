@@ -4,10 +4,11 @@ import { CalendarHeart, Gift, Palmtree, Timer } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { updateEmployee } from "@/app/actions/payroll";
 import { EmployeeForm } from "@/components/EmployeeForm";
+import { PdfLink } from "@/components/list";
 import { PageHeader, Panel, Stat, Empty } from "@/components/kit";
 import { Badge } from "@/components/ui/badge";
 import { vacationTakenMap } from "@/lib/payroll-data";
-import { aguinaldoDaysFor, benefits, monthlyCost, seniorityLabel, vacationDaysFor } from "@/lib/payroll";
+import { aguinaldoDaysFor, benefits, monthlyCost, salaryRates, seniorityLabel, vacationDaysFor } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   if (!e) notFound();
   const taken = (await vacationTakenMap([e])).get(e.id) ?? 0;
   const b = benefits(e, taken);
+  const rates = salaryRates(b.weeklySalary, e.workDays, e.hoursPerDay);
   const s = b.seniority;
   const year = new Date().getFullYear();
 
@@ -54,8 +56,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         <Panel title="Prestaciones de ley" description="Ley Federal del Trabajo. Sin ISR ni carga patronal.">
           <dl className="divide-y text-sm">
             {[
-              ["Salario diario", formatMoney(e.dailySalary)],
-              ["Salario semanal (6 días pagados)", `${formatMoney(e.dailySalary)} × 6 = ${formatMoney(b.weeklySalary)}`],
+              ["Salario semanal", formatMoney(b.weeklySalary)],
+              [`Jornada`, `${e.workDays} días (${e.workDays === 5 ? "descansa fin de semana" : "descansa domingo"}) · ${formatNumber(e.hoursPerDay)} h por día`],
+              ["Salario diario", `${formatMoney(b.weeklySalary)} ÷ ${e.workDays} = ${formatMoney(rates.daily)}`],
+              ["Salario por hora", `${formatMoney(rates.daily)} ÷ ${formatNumber(e.hoursPerDay)} = ${formatMoney(rates.hourly)}`],
               ["Salario mensual promedio", `${formatMoney(b.monthlySalary)} (6 días × 52 semanas ÷ 12)`],
               ["Vacaciones del periodo actual", s.years >= 1 ? `${b.vacationEntitled} días (desde ${formatDate(s.lastAnniversary)})` : "Aún no cumple 1 año"],
               ["Vacaciones acumuladas hacia el próximo aniversario", `${formatNumber(b.vacationAccrued)} de ${b.nextEntitlement} días`],
@@ -95,6 +99,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                     <th className="text-right">Días</th>
                     <th className="text-right">Vac.</th>
                     <th className="text-right">Neto</th>
+                    <th className="w-10">
+                      <span className="sr-only">Recibo</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -112,6 +119,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                       </td>
                       <td className="text-right tabular-nums">{l.vacationDays ? formatNumber(l.vacationDays) : "—"}</td>
                       <td className="text-right font-medium tabular-nums">{formatMoney(l.net)}</td>
+                      <td className="py-1 text-right">
+                        <PdfLink href={`/api/pdf/nomina/${l.runId}?linea=${l.id}`} label="Recibo de nómina" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

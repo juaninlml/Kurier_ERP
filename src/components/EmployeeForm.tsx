@@ -3,6 +3,7 @@ import { Field } from "./kit";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { toInputDate } from "@/lib/money";
+import { SalaryFields } from "./SalaryFields";
 
 export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<unknown>; e?: Employee }) {
   return (
@@ -30,12 +31,7 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
           <Field label="Fecha de baja" hint="Déjala vacía si sigue activo">
             <input name="endDate" type="date" defaultValue={e?.endDate ? toInputDate(e.endDate) : undefined} className="input" />
           </Field>
-          <Field label="Salario diario *" hint="Semanal = salario diario × 6 días (el 7º es descanso)">
-            <input name="dailySalary" type="number" step="0.01" min="0" required defaultValue={e?.dailySalary} className="input text-right" />
-          </Field>
-          <Field label="Bono fijo semanal" hint="Puntualidad, asistencia… (opcional)">
-            <input name="weeklyBonus" type="number" step="0.01" min="0" defaultValue={e?.weeklyBonus ?? 0} className="input text-right" />
-          </Field>
+          <SalaryFields weekly={e ? e.weeklySalary || e.dailySalary * e.workDays : undefined} workDays={e?.workDays} hoursPerDay={e?.hoursPerDay} weeklyBonus={e?.weeklyBonus} />
         </div>
       </section>
 

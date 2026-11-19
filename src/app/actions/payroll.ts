@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromInputDate, round2, formatDate } from "@/lib/money";
-import { FREQUENCIES, PAID_DAYS_PER_WEEK, payrollLine } from "@/lib/payroll";
+import { FREQUENCIES, payrollLine, weeklyOf } from "@/lib/payroll";
 import { numv, str } from "./helpers";
 
 // ───────────── Gastos fijos ─────────────
@@ -63,8 +63,12 @@ function employeeData(fd: FormData) {
   if (!name) throw new Error("El nombre del empleado es obligatorio.");
   const start = str(fd, "startDate");
   if (!start) throw new Error("Indica la fecha de ingreso.");
-  const dailySalary = round2(numv(fd, "dailySalary"));
-  if (dailySalary <= 0) throw new Error("El salario diario debe ser mayor a 0.");
+  const weeklySalary = round2(numv(fd, "weeklySalary"));
+  if (weeklySalary <= 0) throw new Error("El salario semanal debe ser mayor a 0.");
+  const workDays = numv(fd, "workDays", 6) === 5 ? 5 : 6;
+  const hoursPerDay = Math.min(24, Math.max(1, numv(fd, "hoursPerDay", 8)));
+  // El diario se guarda calculado (semanal ÷ días laborables) para vacaciones, prima y aguinaldo
+  const dailySalary = weeklySalary / workDays;
   const end = str(fd, "endDate");
   return {
     name,
@@ -80,6 +84,9 @@ function employeeData(fd: FormData) {
     clabe: str(fd, "clabe"),
     startDate: fromInputDate(start),
     endDate: end ? fromInputDate(end) : null,
+    weeklySalary,
+    workDays,
+    hoursPerDay,
     dailySalary,
     weeklyBonus: round2(Math.max(0, numv(fd, "weeklyBonus"))),
     notes: str(fd, "notes"),
@@ -102,7 +109,7 @@ async function updateEmployeeImpl(id: number, fd: FormData) {
 
 // ───────────── Nómina semanal ─────────────
 
-/** Crea la nómina del periodo con todos los empleados activos (6 días pagados y su bono fijo). */
+/** Crea la nómina del periodo con todos los empleados activos (sus días laborables y su bono fijo). */
 async function createPayrollRunImpl(fd: FormData) {
   const periodStart = fromInputDate(str(fd, "periodStart"));
   const periodEnd = fromInputDate(str(fd, "periodEnd"));
@@ -110,13 +117,26 @@ async function createPayrollRunImpl(fd: FormData) {
   if (periodEnd < periodStart) throw new Error("La fecha final del periodo es anterior a la inicial.");
   const employees = await prisma.employee.findMany({ where: { active: true, startDate: { lte: periodEnd } }, orderBy: { name: "asc" } });
   if (!employees.length) throw new Error("No hay empleados activos para este periodo.");
-  // Se pagan 6 días por semana; el 7º es descanso sin goce de sueldo (por ahora).
+  // Se pagan los días laborables de cada empleado (5 o 6); el descanso no se paga (por ahora).
   const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
-  const days = Math.min(PAID_DAYS_PER_WEEK, calendarDays);
   const lines = employees.map((e) => {
-    const input = { dailySalary: e.dailySalary, days, absences: 0, vacationDays: 0, overtime: 0, bonus: e.weeklyBonus, aguinaldo: 0, otherIncome: 0, deductions: 0 };
+    const weeklySalary = weeklyOf(e);
+    const workDays = e.workDays === 5 ? 5 : 6;
+    const input = {
+      weeklySalary,
+      workDays,
+      hoursPerDay: e.hoursPerDay,
+      days: Math.min(workDays, calendarDays),
+      absences: 0,
+      vacationDays: 0,
+      overtime: 0,
+      bonus: e.weeklyBonus,
+      aguinaldo: 0,
+      otherIncome: 0,
+      deductions: 0,
+    };
     const t = payrollLine(input);
-    return { ...input, employeeId: e.id, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net };
+    return { ...input, dailySalary: weeklySalary / workDays, employeeId: e.id, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net };
   });
   const run = await prisma.payrollRun.create({
     data: { periodStart, periodEnd, payDate, total: round2(lines.reduce((a, l) => a + l.net, 0)), lines: { create: lines } },
@@ -127,14 +147,17 @@ async function createPayrollRunImpl(fd: FormData) {
 
 const lineSchema = z.object({
   id: z.number(),
+  workDays: z.union([z.literal(5), z.literal(6)]),
   days: z.number().min(0).max(31),
   absences: z.number().min(0),
   vacationDays: z.number().min(0),
   overtime: z.number().min(0),
   bonus: z.number().min(0),
+  bonusNote: z.string().default(""),
   aguinaldo: z.number().min(0),
   otherIncome: z.number().min(0),
   deductions: z.number().min(0),
+  deductionNote: z.string().default(""),
   notes: z.string().default(""),
 });
 
@@ -148,10 +171,16 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
   const updates = parsed.data.map((l) => {
     const cur = byId.get(l.id);
     if (!cur) throw new Error("Renglón de nómina inválido.");
-    if (l.absences > l.days) throw new Error("Las faltas no pueden ser más que los días pagados.");
-    const t = payrollLine({ ...l, dailySalary: cur.dailySalary });
+    if (l.absences > l.days) throw new Error("Las faltas no pueden ser más que los días a pagar.");
+    if (l.days > l.workDays) throw new Error(`Los días a pagar no pueden ser más que la jornada de ${l.workDays} días.`);
+    if (l.bonus > 0 && !l.bonusNote.trim()) throw new Error("Escribe el motivo de cada bono.");
+    const weeklySalary = cur.weeklySalary || cur.dailySalary * cur.workDays;
+    const t = payrollLine({ ...l, weeklySalary, hoursPerDay: cur.hoursPerDay });
     total += t.net;
-    return prisma.payrollLine.update({ where: { id: l.id }, data: { ...l, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net } });
+    return prisma.payrollLine.update({
+      where: { id: l.id },
+      data: { ...l, weeklySalary, dailySalary: weeklySalary / l.workDays, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net },
+    });
   });
   await prisma.$transaction([
     ...updates,
