@@ -21,7 +21,7 @@ declare module "next-auth" {
  * Valida correo + código del autenticador. Bloquea la cuenta 15 min tras 5 códigos incorrectos
  * y no acepta dos veces el mismo código.
  */
-async function authorizeTotp(emailRaw: unknown, codeRaw: unknown) {
+export async function authorizeTotp(emailRaw: unknown, codeRaw: unknown) {
   const email = String(emailRaw ?? "").trim().toLowerCase();
   const code = String(codeRaw ?? "");
   if (!email || !code) return null;

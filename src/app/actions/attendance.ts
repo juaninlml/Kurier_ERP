@@ -3,6 +3,8 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { authorizeTotp } from "@/auth";
 import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/current-user";
@@ -163,6 +165,40 @@ export async function kioskHeartbeat() {
   return { ok: true };
 }
 
+// ───────────── Autorización de tablets ─────────────
+
+/** Guarda en la tablet la cookie de kiosco (dura 2 años) y la liga al dispositivo. */
+async function bindDevice(deviceId: number) {
+  const secret = randomBytes(32).toString("base64url");
+  await prisma.kioskDevice.update({ where: { id: deviceId }, data: { tokenHash: sha(secret), activationToken: "", lastSeenAt: new Date() } });
+  const secure = process.env.NODE_ENV === "production";
+  (await cookies()).set(KIOSK_COOKIE, secret, { httpOnly: true, sameSite: "lax", secure, maxAge: 60 * 60 * 24 * 730, path: "/" });
+}
+
+/** Activa la tablet con el link o QR generado en Asistencias (se usa una sola vez). */
+async function activateKioskImpl(token: string) {
+  const device = token ? await prisma.kioskDevice.findFirst({ where: { activationToken: token, active: true } }) : null;
+  if (!device) throw new Error("El link ya se usó o fue cancelado. Genera uno nuevo en Nómina → Asistencias → Kioscos.");
+  await bindDevice(device.id);
+  redirect("/kiosco");
+}
+
+/** Autoriza la tablet desde la propia tablet con el correo y el código del autenticador de un administrador. */
+async function pairKioskImpl(fd: FormData) {
+  const email = str(fd, "email").toLowerCase();
+  const code = str(fd, "code");
+  if (!email || !code) throw new Error("Escribe tu correo y el código de tu app autenticadora.");
+  const ok = await authorizeTotp(email, code);
+  const user = ok ? await prisma.user.findUnique({ where: { email }, select: { role: true } }) : null;
+  if (!ok || !user) throw new Error("Correo o código incorrecto (o la cuenta está bloqueada unos minutos).");
+  if (user.role !== "OWNER" && user.role !== "ADMIN") throw new Error("Solo un administrador puede autorizar tablets.");
+  const name = str(fd, "name") || "Tablet";
+  const device = await prisma.kioskDevice.create({ data: { name, tokenHash: sha(randomBytes(32).toString("base64url")), activationToken: "" } });
+  await bindDevice(device.id);
+  refresh();
+  redirect("/kiosco");
+}
+
 // ───────────── Administración ─────────────
 
 const refresh = () => {
@@ -273,6 +309,8 @@ async function runAutoCloseImpl() {
 }
 
 export const createKioskDevice = safe(createKioskDeviceImpl);
+export const activateKiosk = safe(activateKioskImpl);
+export const pairKiosk = safe(pairKioskImpl);
 export const deactivateKioskDevice = safe(async (id: number) => setKioskDeviceActiveImpl(id, false));
 export const startEmployeeKiosk = safe(startEmployeeKioskImpl);
 export const confirmEmployeeKiosk = safe(confirmEmployeeKioskImpl);

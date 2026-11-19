@@ -12,6 +12,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { qrSvg } from "@/lib/totp";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Asistencias" };
@@ -39,6 +40,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     headers(),
   ]);
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const qrs = new Map(
+    await Promise.all(
+      devices
+        .filter((d) => d.active && d.activationToken)
+        .map(async (d) => [d.id, await qrSvg(`${origin}/kiosco/activar/${d.activationToken}`)] as const),
+    ),
+  );
   const time = (d?: { at: Date }) => (d ? d.at.toLocaleTimeString("es-MX", { timeZone: tz, hour: "2-digit", minute: "2-digit" }) : "—");
   const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 
@@ -222,13 +230,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
         {admin && (
           <div className="space-y-6">
-            <Panel title="Kioscos (tablets)" description="Abre el link de autorización en la tablet: queda como kiosco aunque nadie inicie sesión.">
+            <Panel title="Kioscos (tablets)" description="Escanea el QR con la tablet, o abre /kiosco en ella y autorízala con tu código. Queda como kiosco aunque nadie inicie sesión.">
               <Form action={createKioskDevice} resetOnSuccess className="flex flex-wrap items-end gap-2 border-b p-5">
                 <Field label="Nombre de la tablet" className="min-w-48 flex-1">
                   <input name="name" required className="input" placeholder="Tablet entrada almacén" />
                 </Field>
                 <SubmitButton className="btn-primary">
-                  <Plus className="size-4" /> Generar link
+                  <Plus className="size-4" /> Generar QR
                 </SubmitButton>
               </Form>
               {devices.length === 0 ? (
@@ -241,7 +249,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                         <div>
                           <div className="font-medium">{d.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {d.activationToken ? "Pendiente de abrir el link en la tablet" : d.lastSeenAt ? `Activa · última conexión ${d.lastSeenAt.toLocaleString("es-MX", { timeZone: tz, dateStyle: "short", timeStyle: "short" })}` : "Autorizada"}
+                            {d.activationToken ? "Pendiente de escanear el QR en la tablet" : d.lastSeenAt ? `Activa · última conexión ${d.lastSeenAt.toLocaleString("es-MX", { timeZone: tz, dateStyle: "short", timeStyle: "short" })}` : "Autorizada"}
                           </div>
                         </div>
                         {d.active ? (
@@ -254,6 +262,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                           <Badge variant="secondary">Desactivada</Badge>
                         )}
                       </div>
+                      {d.active && d.activationToken && qrs.get(d.id) && (
+                        <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-3">
+                          <div className="size-32 shrink-0 rounded-md bg-white p-1.5 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qrs.get(d.id)! }} />
+                          <p className="text-xs text-muted-foreground">
+                            Escanea este QR con la <span className="font-medium text-foreground">cámara de la tablet</span> y toca «Autorizar». También puedes abrir <span className="font-mono">/kiosco</span> en la tablet y autorizarla con tu código del autenticador.
+                          </p>
+                        </div>
+                      )}
                       {d.active && d.activationToken && (
                         <div className="flex items-center gap-2">
                           <input readOnly value={`${origin}/kiosco/activar/${d.activationToken}`} className="input h-8 min-w-0 flex-1 font-mono text-xs" aria-label="Link de autorización" />
