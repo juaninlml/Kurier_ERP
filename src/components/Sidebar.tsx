@@ -7,6 +7,7 @@ import {
   BarChart3,
   Building2,
   ChevronsUpDown,
+  Clock,
   HandCoins,
   FileUp,
   FileText,
@@ -60,6 +61,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
       { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
       { href: "/nomina", label: "Nómina", icon: HandCoins },
+      { href: "/nomina/asistencias", label: "Asistencias", icon: Clock },
       { href: "/contabilidad/reportes", label: "Reportes", icon: BarChart3 },
     ],
   },
@@ -77,6 +79,7 @@ function useIsActive() {
   return (href: string) => {
     if (href === "/") return pathname === "/";
     if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar");
+    if (href === "/nomina") return pathname.startsWith("/nomina") && !pathname.startsWith("/nomina/asistencias");
     if (href === "/contabilidad") return pathname === "/contabilidad" || pathname.startsWith("/contabilidad/movimientos");
     return pathname.startsWith(href);
   };

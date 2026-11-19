@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Gift, Plus, Users, Wallet } from "lucide-react";
+import { CalendarDays, Gift, Plus, Users, Wallet, Clock } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { createPayrollRun } from "@/app/actions/payroll";
 import { PageHeader, Panel, Stat, Empty, Field } from "@/components/kit";
@@ -42,9 +42,14 @@ export default async function PayrollPage() {
         title={t("Nómina")}
         subtitle={t("Empleados, prestaciones de ley (antigüedad, vacaciones, prima vacacional y aguinaldo) y nómina semanal. Sin ISR ni carga patronal.")}
         actions={
+          <>
+          <Link href="/nomina/asistencias" className="btn-secondary">
+            <Clock className="size-4" /> {t("Asistencias")}
+          </Link>
           <Link href="/nomina/empleados/nuevo" className="btn-primary">
             <Plus className="size-4" /> {t("Nuevo empleado")}
           </Link>
+          </>
         }
       />
 

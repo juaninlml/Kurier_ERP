@@ -4,6 +4,7 @@ import { CalendarHeart, Gift, Palmtree, Timer } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { updateEmployee } from "@/app/actions/payroll";
 import { EmployeeForm } from "@/components/EmployeeForm";
+import { EmployeeKiosk } from "@/components/EmployeeKiosk";
 import { PdfLink } from "@/components/list";
 import { PageHeader, Panel, Stat, Empty } from "@/components/kit";
 import { Badge } from "@/components/ui/badge";
@@ -129,6 +130,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             </div>
           )}
         </Panel>
+      </div>
+
+      <div className="mb-6">
+        <EmployeeKiosk e={e} />
       </div>
 
       <h2 className="mb-3 font-semibold">Datos del empleado</h2>

@@ -56,6 +56,11 @@ model CompanySettings {
   beClients         Int      @default(0) // clientes que pagan sistema (0 = clientes activos)
   beWorkingDays     Float    @default(26) // días operativos al mes
   beIncludePayroll  Boolean  @default(true) // sumar la nómina de los empleados activos
+  // Asistencia (kiosco)
+  timezone          String   @default("America/Mexico_City")
+  lateToleranceMin  Int      @default(10) // minutos de tolerancia para retardo
+  autoCloseMin      Int      @default(5) // minutos después de la salida en que se registra la salida automática
+  overtimeRate      Float    @default(2) // las horas extra se pagan al doble del salario por hora
   updatedAt         DateTime @updatedAt
 }
 
@@ -317,30 +322,39 @@ model FixedExpense {
 
 /// Empleado. Las prestaciones (vacaciones, prima vacacional, aguinaldo) se calculan según la LFT a partir de startDate y el salario diario.
 model Employee {
-  id           Int           @id @default(autoincrement())
-  name         String
-  position     String        @default("")
-  area         String        @default("") // Almacén, Administración…
-  rfc          String        @default("")
-  curp         String        @default("")
-  nss          String        @default("")
-  phone        String        @default("")
-  email        String        @default("")
-  address      String        @default("")
-  bankName     String        @default("")
-  clabe        String        @default("")
-  startDate    DateTime // fecha de ingreso (antigüedad)
-  endDate      DateTime? // fecha de baja
-  weeklySalary Float         @default(0) // salario semanal (base del cálculo)
-  workDays     Int           @default(6) // días laborables por semana: 6 (descansa domingo) o 5 (descansa fin de semana)
-  hoursPerDay  Float         @default(8) // jornada diaria, para el salario por hora
-  dailySalary  Float // salario diario = semanal ÷ días laborables (se calcula al guardar)
-  weeklyBonus  Float         @default(0) // bono fijo semanal (puntualidad, asistencia…)
-  active       Boolean       @default(true)
-  notes        String        @default("")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  payrollLines PayrollLine[]
+  id                 Int            @id @default(autoincrement())
+  name               String
+  position           String         @default("")
+  area               String         @default("") // Almacén, Administración…
+  rfc                String         @default("")
+  curp               String         @default("")
+  nss                String         @default("")
+  phone              String         @default("")
+  email              String         @default("")
+  address            String         @default("")
+  bankName           String         @default("")
+  clabe              String         @default("")
+  startDate          DateTime // fecha de ingreso (antigüedad)
+  endDate            DateTime? // fecha de baja
+  weeklySalary       Float          @default(0) // salario semanal (base del cálculo)
+  workDays           Int            @default(6) // días laborables por semana: 6 (descansa domingo) o 5 (descansa fin de semana)
+  hoursPerDay        Float          @default(8) // jornada diaria, para el salario por hora
+  dailySalary        Float // salario diario = semanal ÷ días laborables (se calcula al guardar)
+  weeklyBonus        Float          @default(0) // bono fijo semanal (puntualidad, asistencia…)
+  scheduleStart      String         @default("09:00") // hora de entrada
+  scheduleEnd        String         @default("18:00") // hora de salida
+  mealStart          String         @default("14:00") // inicio del horario de comida
+  mealEnd            String         @default("15:00") // fin del horario de comida
+  kioskSecret        String         @default("") // autenticador del kiosco (cifrado)
+  kioskPendingSecret String         @default("") // QR mostrado, pendiente de confirmar
+  kioskLastStep      Int            @default(0)
+  active             Boolean        @default(true)
+  notes              String         @default("")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  payrollLines       PayrollLine[]
+  punches            Punch[]
+  overtimeAuths      OvertimeAuth[]
 }
 
 /// Nómina de un periodo (semanal). status: BORRADOR | PAGADA. Al pagarse genera un EGRESO en contabilidad.
@@ -425,4 +439,51 @@ model Invitation {
   createdById   Int?
   createdBy     User?     @relation("InvitationCreator", fields: [createdById], references: [id])
   createdAt     DateTime  @default(now())
+}
+
+/// Tablet autorizada como kiosco de asistencia (la cookie del dispositivo guarda el token; aquí solo su hash).
+model KioskDevice {
+  id              Int       @id @default(autoincrement())
+  name            String
+  tokenHash       String    @unique // hash del token guardado en la cookie de la tablet
+  activationToken String    @default("") // link de un solo uso para autorizar la tablet
+  active          Boolean   @default(true)
+  failedAttempts  Int       @default(0)
+  lockedUntil     DateTime?
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+  punches         Punch[]
+}
+
+/// Checada. type: ENTRADA | SALIDA_COMIDA | REGRESO_COMIDA | SALIDA. source: KIOSCO | AUTO | MANUAL
+model Punch {
+  id          Int          @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type        String
+  at          DateTime
+  workDate    String // AAAA-MM-DD en hora local
+  source      String       @default("KIOSCO")
+  deviceId    Int?
+  device      KioskDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  note        String       @default("")
+  createdById Int?
+  deleted     Boolean      @default(false) // las correcciones no borran: marcan
+  createdAt   DateTime     @default(now())
+
+  @@index([employeeId, workDate])
+}
+
+/// Horas extra autorizadas para un día: el empleado puede quedarse hasta `until` (HH:MM).
+model OvertimeAuth {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate     String
+  until        String
+  note         String   @default("")
+  approvedById Int?
+  createdAt    DateTime @default(now())
+
+  @@unique([employeeId, workDate])
 }

@@ -34,11 +34,11 @@ export function decryptSecret(stored: string) {
 /** Secreto nuevo (base32) para vincular un teléfono. */
 export const newSecret = () => new Secret({ size: 20 }).base32;
 
-const totpFor = (email: string, base32: string) =>
-  new TOTP({ issuer: ISSUER, label: email, algorithm: "SHA1", digits: 6, period: PERIOD, secret: Secret.fromBase32(base32) });
+const totpFor = (email: string, base32: string, issuer = ISSUER) =>
+  new TOTP({ issuer, label: email, algorithm: "SHA1", digits: 6, period: PERIOD, secret: Secret.fromBase32(base32) });
 
 /** URI otpauth:// que se convierte en QR. */
-export const otpauthUri = (email: string, base32: string) => totpFor(email, base32).toString();
+export const otpauthUri = (email: string, base32: string, issuer = ISSUER) => totpFor(email, base32, issuer).toString();
 
 /** QR en SVG listo para mostrarse en la página. */
 export const qrSvg = (uri: string) => QRCode.toString(uri, { type: "svg", margin: 1, errorCorrectionLevel: "M", width: 220 });

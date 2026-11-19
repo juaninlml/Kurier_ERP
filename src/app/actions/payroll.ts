@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromInputDate, round2, formatDate } from "@/lib/money";
 import { FREQUENCIES, payrollLine, weeklyOf } from "@/lib/payroll";
+import { attendanceForPeriod } from "@/lib/attendance";
 import { numv, str } from "./helpers";
 
 // ───────────── Gastos fijos ─────────────
@@ -90,7 +91,22 @@ function employeeData(fd: FormData) {
     dailySalary,
     weeklyBonus: round2(Math.max(0, numv(fd, "weeklyBonus"))),
     notes: str(fd, "notes"),
+    ...scheduleData(fd),
   };
+}
+
+/** Horario del empleado (HH:MM). La comida debe quedar dentro de la jornada. */
+function scheduleData(fd: FormData) {
+  const t = (k: string, def: string) => {
+    const v = str(fd, k) || def;
+    if (!/^([01]d|2[0-3]):[0-5]d$/.test(v)) throw new Error("Revisa el horario (formato HH:MM).");
+    return v;
+  };
+  const s = { scheduleStart: t("scheduleStart", "09:00"), scheduleEnd: t("scheduleEnd", "18:00"), mealStart: t("mealStart", "14:00"), mealEnd: t("mealEnd", "15:00") };
+  if (!(s.scheduleStart < s.mealStart && s.mealStart < s.mealEnd && s.mealEnd <= s.scheduleEnd)) {
+    throw new Error("El horario no cuadra: la comida debe quedar entre la entrada y la salida.");
+  }
+  return s;
 }
 
 async function createEmployeeImpl(fd: FormData) {
@@ -119,17 +135,31 @@ async function createPayrollRunImpl(fd: FormData) {
   if (!employees.length) throw new Error("No hay empleados activos para este periodo.");
   // Se pagan los días laborables de cada empleado (5 o 6); el descanso no se paga (por ahora).
   const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
+  // Asistencia del kiosco: faltas y horas extra autorizadas del periodo (solo empleados que ya checan)
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const [attendance, cfg] = await Promise.all([
+    attendanceForPeriod(employees.map((e) => e.id), iso(periodStart), iso(periodEnd)),
+    prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } }),
+  ]);
   const lines = employees.map((e) => {
     const weeklySalary = weeklyOf(e);
     const workDays = e.workDays === 5 ? 5 : 6;
+    const days = Math.min(workDays, calendarDays);
+    const att = attendance.get(e.id);
+    const tracked = !!att?.tracked;
+    const hourly = weeklySalary / workDays / (e.hoursPerDay || 8);
+    const overtime = tracked ? round2((att!.overtimeMin / 60) * hourly * (cfg?.overtimeRate ?? 2)) : 0;
     const input = {
       weeklySalary,
       workDays,
       hoursPerDay: e.hoursPerDay,
-      days: Math.min(workDays, calendarDays),
-      absences: 0,
+      days,
+      absences: tracked ? Math.min(days, att!.absences) : 0,
       vacationDays: 0,
-      overtime: 0,
+      overtime,
+      notes: tracked
+        ? `Asistencia: ${att!.present} día(s), ${att!.absences} falta(s), ${att!.lates} retardo(s)${att!.overtimeMin ? `, ${(att!.overtimeMin / 60).toFixed(2)} h extra` : ""}`
+        : "",
       bonus: e.weeklyBonus,
       aguinaldo: 0,
       otherIncome: 0,

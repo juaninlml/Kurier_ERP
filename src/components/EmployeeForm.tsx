@@ -36,6 +36,24 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
       </section>
 
       <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Horario (kiosco de asistencia)</h3>
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          <Field label="Entrada">
+            <input name="scheduleStart" type="time" required defaultValue={e?.scheduleStart ?? "09:00"} className="input" />
+          </Field>
+          <Field label="Salida" hint="5 min después se registra la salida automática si no tiene horas extra autorizadas">
+            <input name="scheduleEnd" type="time" required defaultValue={e?.scheduleEnd ?? "18:00"} className="input" />
+          </Field>
+          <Field label="Comida desde">
+            <input name="mealStart" type="time" required defaultValue={e?.mealStart ?? "14:00"} className="input" />
+          </Field>
+          <Field label="Comida hasta">
+            <input name="mealEnd" type="time" required defaultValue={e?.mealEnd ?? "15:00"} className="input" />
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h3 className="text-sm font-semibold">Datos personales y de pago</h3>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="RFC">

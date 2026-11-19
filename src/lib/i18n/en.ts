@@ -320,6 +320,7 @@ export const en: Record<string, string> = {
   "Fecha de pago": "Pay date",
   "Crear nómina": "Create payroll",
   Nóminas: "Payrolls",
+  Asistencias: "Attendance",
   "Aún no hay nóminas.": "No payrolls yet.",
   "Recibo de nómina": "Pay stub",
 
