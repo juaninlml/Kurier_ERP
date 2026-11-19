@@ -6,9 +6,12 @@ const nextConfig: NextConfig = {
     // Permite subir el logo (hasta 1 MB) desde Configuración
     serverActions: { bodySizeLimit: "4mb" },
   },
-  // Incluye el logo de respaldo (public/branding) en las funciones que generan PDFs
+  // Archivos que el rastreo de Vercel no detecta solo y que necesitan las funciones que generan PDFs:
+  // - el logo de respaldo (public/branding)
+  // - las fuentes estándar de pdfkit (Helvetica, etc.), que pdfkit carga con imports internos
+  //   `#standard-fonts/*`; sin ellas el PDF falla con "Cannot find module …/Helvetica.cjs"
   outputFileTracingIncludes: {
-    "/api/pdf/**": ["./public/branding/**"],
+    "/api/pdf/**": ["./public/branding/**", "./node_modules/pdfkit/js/standard-fonts/**", "./node_modules/pdfkit/js/data/**"],
   },
 };
 
