@@ -1,8 +1,10 @@
 import { Download, Eye } from "lucide-react";
 import Link from "next/link";
-import { PageHeader, Stat } from "@/components/kit";
+import { PageHeader, Panel, Stat } from "@/components/kit";
+import { BarList, ColumnChart, SegmentedBar } from "@/components/charts";
 import { incomeStatement, receivables, parseRange, AGING_BUCKETS } from "@/lib/reports";
-import { formatDate, formatMoney, toInputDate } from "@/lib/money";
+import { AGING_LABEL, flowSeries } from "@/lib/insights";
+import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +25,9 @@ function presets() {
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
-  const [stmt, ar] = await Promise.all([incomeStatement(from, to), receivables()]);
+  const [stmt, ar, flow] = await Promise.all([incomeStatement(from, to), receivables(), flowSeries(from, to)]);
   const fromStr = toInputDate(from);
   const toStr = toInputDate(to);
-  const maxCat = Math.max(1, ...stmt.income.map((r) => r.amount), ...stmt.expense.map((r) => r.amount));
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -50,7 +51,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <Link
             key={p.label}
             href={`/contabilidad/reportes?from=${p.from}&to=${p.to}`}
-            className={`btn-secondary ${p.from === fromStr && p.to === toStr ? "ring-2 ring-primary/30" : ""}`}
+            aria-current={p.from === fromStr && p.to === toStr ? "true" : undefined}
+            className="btn-secondary aria-[current]:border-primary/40 aria-[current]:bg-primary/5 aria-[current]:text-primary"
           >
             {p.label}
           </Link>
@@ -75,43 +77,49 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <Stat label="Por cobrar" value={formatMoney(ar.total)} hint={`${ar.rows.length} factura(s)`} />
       </div>
 
+      <Panel
+        className="mb-6"
+        title="Ingresos y egresos"
+        description={flow.unit === "day" ? "Por día dentro del periodo" : "Por mes dentro del periodo"}
+        bodyClassName="p-5"
+      >
+        <ColumnChart
+          height={240}
+          series={[
+            { key: "income", name: "Ingresos", color: "var(--chart-1)" },
+            { key: "expense", name: "Egresos", color: "var(--chart-2)" },
+          ]}
+          points={flow.points.map((p) => ({ key: p.key, label: p.label, full: p.full, values: { income: p.income, expense: p.expense } }))}
+          diff={{ label: "Neto", plus: "income", minus: "expense" }}
+          emptyText="Sin movimientos en este periodo."
+        />
+      </Panel>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {(
           [
-            ["Ingresos por categoría", stmt.income, stmt.incomeTotal, "bg-emerald-500"],
-            ["Egresos por categoría", stmt.expense, stmt.expenseTotal, "bg-rose-500"],
+            ["Ingresos por categoría", stmt.income, stmt.incomeTotal, "var(--chart-1)"],
+            ["Egresos por categoría", stmt.expense, stmt.expenseTotal, "var(--chart-2)"],
           ] as const
-        ).map(([title, rows, total, bar]) => (
-          <div key={title} className="card p-5">
-            <div className="mb-4 flex justify-between">
-              <h2 className="font-semibold">{title}</h2>
-              <span className="font-semibold tabular-nums">{formatMoney(total)}</span>
-            </div>
-            {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin movimientos.</p>
-            ) : (
-              <ul className="space-y-3">
-                {rows.map((r) => (
-                  <li key={r.category}>
-                    <div className="mb-1 flex justify-between text-sm">
-                      <span>
-                        {r.category} <span className="text-muted-foreground">({r.count})</span>
-                      </span>
-                      <span className="tabular-nums">{formatMoney(r.amount)}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted">
-                      <div className={`h-2 rounded-full ${bar}`} style={{ width: `${(r.amount / maxCat) * 100}%` }} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        ).map(([title, rows, total, color]) => (
+          <Panel
+            key={title}
+            title={title}
+            action={<span className="font-semibold tabular-nums">{formatMoney(total)}</span>}
+            bodyClassName="p-5"
+          >
+            <BarList
+              color={color}
+              total={total}
+              emptyText="Sin movimientos."
+              rows={rows.map((r) => ({ key: r.category, label: r.category, value: r.amount, hint: `(${r.count})` }))}
+            />
+          </Panel>
         ))}
       </div>
 
       <div className="card mt-6 p-5">
-        <h2 className="mb-3 font-semibold">Resumen de IVA (estimado)</h2>
+        <h2 className="mb-3 text-[0.95rem] font-semibold">Resumen de IVA (estimado)</h2>
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted-foreground">IVA cobrado</dt>
@@ -130,16 +138,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="card mt-6 overflow-x-auto">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="font-semibold">Antigüedad de saldos (cuentas por cobrar)</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+          <h2 className="text-[0.95rem] font-semibold">Antigüedad de saldos (cuentas por cobrar)</h2>
+          <span className="font-semibold tabular-nums">{formatMoney(ar.total)}</span>
         </div>
-        <div className="grid grid-cols-2 divide-x divide-border border-b border-border sm:grid-cols-5">
-          {AGING_BUCKETS.map((b) => (
-            <div key={b} className="p-4">
-              <div className="text-xs uppercase text-muted-foreground">{b === "corriente" ? "Al corriente" : `${b} días`}</div>
-              <div className={`mt-1 font-semibold tabular-nums ${b !== "corriente" && ar.byBucket[b] > 0 ? "text-rose-700" : ""}`}>{formatMoney(ar.byBucket[b])}</div>
-            </div>
-          ))}
+        <div className="border-b border-border p-5">
+          <SegmentedBar
+            emptyText="Sin saldos pendientes"
+            parts={AGING_BUCKETS.map((b, i) => ({
+              key: b,
+              name: AGING_LABEL[b]!,
+              value: ar.byBucket[b],
+              color: `var(--aging-${i})`,
+              ink: i === 1 ? ("dark" as const) : undefined,
+            }))}
+          />
         </div>
         {ar.rows.length > 0 && (
           <table className="table">

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { createTransaction } from "@/app/actions/accounting";
-import { PageHeader, Stat, Empty } from "@/components/kit";
+import { PageHeader, Stat, Empty, Panel } from "@/components/kit";
 import { TransactionForm } from "@/components/TransactionForm";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { parseRange } from "@/lib/reports";
+import { flowSeries } from "@/lib/insights";
+import { ColumnChart } from "@/components/charts";
 import { getSettings } from "@/lib/settings";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
@@ -19,7 +21,7 @@ export default async function AccountingPage({
   const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
-  const [txs, clients, settings] = await Promise.all([
+  const [txs, clients, settings, flow] = await Promise.all([
     prisma.transaction.findMany({
       where: {
         date: { gte: from, lte: to },
@@ -31,6 +33,7 @@ export default async function AccountingPage({
     }),
     prisma.client.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     getSettings(),
+    flowSeries(from, to),
   ]);
   const income = round2(txs.filter((t) => t.type === "INGRESO").reduce((a, t) => a + t.amount, 0));
   const expense = round2(txs.filter((t) => t.type === "EGRESO").reduce((a, t) => a + t.amount, 0));
@@ -62,6 +65,24 @@ export default async function AccountingPage({
         <Stat label={t("Egresos")} value={formatMoney(expense)} tone="neg" />
         <Stat label={t("Flujo neto")} value={formatMoney(round2(income - expense))} tone={income - expense >= 0 ? "pos" : "neg"} />
       </div>
+
+      <Panel
+        className="mb-6"
+        title={t("Movimientos en el tiempo")}
+        description={flow.unit === "day" ? t("Por día dentro del periodo") : t("Por mes dentro del periodo")}
+        bodyClassName="p-5"
+      >
+        <ColumnChart
+          height={180}
+          series={[
+            { key: "income", name: t("Ingresos"), color: "var(--chart-1)" },
+            { key: "expense", name: t("Egresos"), color: "var(--chart-2)" },
+          ]}
+          points={flow.points.map((p) => ({ key: p.key, label: p.label, full: p.full, values: { income: p.income, expense: p.expense } }))}
+          diff={{ label: t("Neto"), plus: "income", minus: "expense" }}
+          emptyText={t("Sin movimientos en este periodo.")}
+        />
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div>

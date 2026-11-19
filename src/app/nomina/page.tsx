@@ -6,6 +6,7 @@ import { PageHeader, Panel, Stat, Empty, Field } from "@/components/kit";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Badge } from "@/components/ui/badge";
+import { ColumnChart } from "@/components/charts";
 import { employeeBenefits } from "@/lib/payroll-data";
 import { monthlyCost, seniorityLabel, weeklyOf } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/lib/money";
@@ -59,6 +60,29 @@ export default async function PayrollPage() {
         <Stat label={t("Costo mensual")} value={formatMoney(monthly)} hint={t("Con aguinaldo y prima prorrateados")} icon={Wallet} href="/contabilidad/gastos-fijos" />
         <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint={t("A pagar al corte del 20 de diciembre")} icon={Gift} />
       </div>
+
+      {runs.length > 1 && (
+        <Panel
+          className="mb-6"
+          title={t("Costo de nómina por semana")}
+          description={t("Total neto de las últimas {n} nóminas", { n: Math.min(runs.length, 16) })}
+          bodyClassName="p-5"
+        >
+          <ColumnChart
+            height={180}
+            series={[{ key: "total", name: t("Total"), color: "var(--chart-1)" }]}
+            points={runs
+              .slice(0, 16)
+              .reverse()
+              .map((r) => ({
+                key: String(r.id),
+                label: r.periodStart.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""),
+                full: `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}${r.status === "PAGADA" ? "" : ` · ${t("Borrador")}`}`,
+                values: { total: r.total },
+              }))}
+          />
+        </Panel>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Panel title={t("Empleados")}>

@@ -45,6 +45,7 @@ export function Stat({
   tone,
   icon: Icon,
   href,
+  delta,
 }: {
   label: string;
   value: string;
@@ -52,6 +53,8 @@ export function Stat({
   tone?: "pos" | "neg";
   icon?: LucideIcon;
   href?: string;
+  /** Variación contra el periodo anterior (ver <Delta/>). */
+  delta?: React.ReactNode;
 }) {
   const body = (
     <Card className={cn("gap-0 py-5 shadow-xs", href && "transition-shadow hover:shadow-md")}>
@@ -66,14 +69,19 @@ export function Stat({
         </div>
         <div
           className={cn(
-            "mt-2 text-2xl font-semibold tracking-tight tabular-nums",
+            "mt-2 text-2xl font-semibold tracking-tight",
             tone === "pos" && "text-emerald-700",
             tone === "neg" && "text-rose-700",
           )}
         >
           {value}
         </div>
-        {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+        {(hint || delta) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {delta}
+            {hint && <span>{hint}</span>}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
