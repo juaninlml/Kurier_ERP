@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, Inbox, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronLeft, Inbox, type LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -57,12 +57,23 @@ export function Stat({
   delta?: React.ReactNode;
 }) {
   const body = (
-    <Card className={cn("gap-0 py-5 shadow-xs", href && "transition-shadow hover:shadow-md")}>
+    <Card
+      className={cn(
+        "gap-0 py-5 shadow-xs",
+        // El enlace no se mueve (no se escapa del cursor); se eleva la tarjeta dentro de él.
+        href && "lift-surface group-hover/stat:-translate-y-0.5 group-hover/stat:shadow-md group-focus-visible/stat:shadow-md group-active/stat:translate-y-0",
+      )}
+    >
       <CardContent className="px-5">
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm font-medium text-muted-foreground">{label}</div>
           {Icon && (
-            <div className="grid size-8 place-items-center rounded-lg bg-muted text-muted-foreground">
+            <div
+              className={cn(
+                "grid size-8 place-items-center rounded-lg bg-muted text-muted-foreground",
+                href && "transition-colors duration-(--dur-state) ease-(--ease-out) group-hover/stat:bg-primary/10 group-hover/stat:text-primary",
+              )}
+            >
               <Icon className="size-4" />
             </div>
           )}
@@ -76,17 +87,23 @@ export function Stat({
         >
           {value}
         </div>
-        {(hint || delta) && (
+        {(hint || delta || href) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             {delta}
             {hint && <span>{hint}</span>}
+            {href && (
+              <ArrowRight
+                aria-hidden
+                className="ml-auto size-3.5 -translate-x-1 opacity-0 transition-[opacity,translate] duration-(--dur-state) ease-(--ease-out) group-hover/stat:translate-x-0 group-hover/stat:opacity-100 group-focus-visible/stat:translate-x-0 group-focus-visible/stat:opacity-100 motion-reduce:translate-x-0"
+              />
+            )}
           </div>
         )}
       </CardContent>
     </Card>
   );
   return href ? (
-    <Link href={href} className="rounded-xl focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
+    <Link href={href} className="group/stat rounded-xl focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
       {body}
     </Link>
   ) : (

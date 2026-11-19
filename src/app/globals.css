@@ -240,12 +240,83 @@
   .table th {
     font-variant-numeric: tabular-nums;
   }
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      transition-duration: 0.01ms !important;
-      animation-duration: 0.01ms !important;
-    }
+}
+
+/* ── Movimiento ──────────────────────────────────────────────────────────────
+   Sutil y rápido: el movimiento explica estado, nunca hace esperar.
+   Las gráficas se descubren desde su línea base con un recorte (clip-path),
+   así las puntas redondeadas no se deforman como con scale. */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-feedback: 150ms;
+  --dur-state: 220ms;
+  --dur-data: 400ms;
+  --viz-stagger-cap: 160ms;
+}
+
+@keyframes viz-reveal-up {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes viz-reveal-right {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes viz-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility viz-grow-up {
+  animation: viz-reveal-up var(--dur-data) var(--ease-out) both;
+  animation-delay: var(--viz-delay, 0ms);
+}
+@utility viz-grow-right {
+  animation: viz-reveal-right var(--dur-data) var(--ease-out) both;
+  animation-delay: var(--viz-delay, 0ms);
+}
+@utility viz-fade-in {
+  animation: viz-fade var(--dur-data) var(--ease-out) both;
+  animation-delay: var(--viz-delay, 0ms);
+}
+
+/* Tarjeta enlazada: el enlace (área de clic) no se mueve; se eleva su superficie interior. */
+@utility lift-surface {
+  transition:
+    translate var(--dur-state) var(--ease-out),
+    box-shadow var(--dur-state) var(--ease-out),
+    border-color var(--dur-state) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin desplazamientos: las gráficas solo aparecen con un fundido y las tarjetas cambian de sombra sin moverse. */
+  /* La gráfica completa aparece de una vez, sin barrido ni escalonado. */
+  .viz-grow-up,
+  .viz-grow-right,
+  .viz-fade-in {
+    animation-name: viz-fade;
+    animation-delay: 0ms !important;
+    animation-duration: var(--dur-state);
+    animation-timing-function: ease-out;
+  }
+  .lift-surface {
+    translate: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
   }
 }

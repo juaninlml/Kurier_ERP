@@ -116,8 +116,8 @@ export default async function Dashboard() {
             </>
           }
           action={
-            <Link href="/contabilidad/reportes" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-              {t("Reportes")} <ArrowRight className="size-3.5" />
+            <Link href="/contabilidad/reportes" className="group/link inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
+              {t("Reportes")} <ArrowRight className="size-3.5 transition-transform duration-(--dur-state) ease-(--ease-out) group-hover/link:translate-x-0.5" />
             </Link>
           }
           bodyClassName="p-5"
@@ -210,8 +210,8 @@ export default async function Dashboard() {
             key={title}
             title={t(title)}
             action={
-              <Link href={href} className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                {t("Ver todas")} <ArrowRight className="size-3.5" />
+              <Link href={href} className="group/link inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                {t("Ver todas")} <ArrowRight className="size-3.5 transition-transform duration-(--dur-state) ease-(--ease-out) group-hover/link:translate-x-0.5" />
               </Link>
             }
           >

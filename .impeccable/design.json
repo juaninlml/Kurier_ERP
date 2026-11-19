@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T17:07:52.435560+00:00",
+  "title": "Design System: Kurier ERP",
+  "extensions": {
+    "colorMeta": {
+      "kurier-navy": {
+        "role": "primary",
+        "displayName": "Marino Kurier",
+        "tonalRamp": [
+          "oklch(15% 0.036 250)",
+          "oklch(25% 0.036 250)",
+          "oklch(35% 0.09 250)",
+          "oklch(45% 0.09 250)",
+          "oklch(58% 0.09 250)",
+          "oklch(70% 0.09 250)",
+          "oklch(82% 0.09 250)",
+          "oklch(95% 0.036 250)"
+        ]
+      },
+      "kurier-navy-deep": {
+        "role": "primary",
+        "displayName": "Marino profundo"
+      },
+      "sidebar-navy": {
+        "role": "primary",
+        "displayName": "Marino de barra lateral"
+      },
+      "kurier-orange": {
+        "role": "secondary",
+        "displayName": "Naranja Kurier",
+        "tonalRamp": [
+          "oklch(15% 0.064 50)",
+          "oklch(25% 0.064 50)",
+          "oklch(35% 0.16 50)",
+          "oklch(45% 0.16 50)",
+          "oklch(58% 0.16 50)",
+          "oklch(70% 0.16 50)",
+          "oklch(82% 0.16 50)",
+          "oklch(95% 0.064 50)"
+        ]
+      },
+      "kurier-orange-deep": {
+        "role": "secondary",
+        "displayName": "Naranja tostado"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel frío",
+        "tonalRamp": [
+          "oklch(15% 0.005 250)",
+          "oklch(25% 0.005 250)",
+          "oklch(35% 0.012 250)",
+          "oklch(45% 0.012 250)",
+          "oklch(58% 0.012 250)",
+          "oklch(70% 0.012 250)",
+          "oklch(82% 0.012 250)",
+          "oklch(95% 0.005 250)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superficie"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta"
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Tinta tenue"
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Lavado"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Línea fina"
+      },
+      "field-stroke": {
+        "role": "neutral",
+        "displayName": "Trazo de campo"
+      },
+      "danger": {
+        "role": "error",
+        "displayName": "Peligro"
+      },
+      "income-ink": {
+        "role": "data",
+        "displayName": "Ingreso (texto)"
+      },
+      "expense-ink": {
+        "role": "data",
+        "displayName": "Egreso (texto)"
+      },
+      "chart-income": {
+        "role": "data",
+        "displayName": "Serie ingresos"
+      },
+      "chart-expense": {
+        "role": "data",
+        "displayName": "Serie egresos"
+      },
+      "chart-teal": {
+        "role": "data",
+        "displayName": "Serie 3 · verde azulado"
+      },
+      "chart-violet": {
+        "role": "data",
+        "displayName": "Serie 4 · violeta"
+      },
+      "chart-slate": {
+        "role": "data",
+        "displayName": "Borrador / otros"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título de página."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Valor de indicadores; números proporcionales."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Título de panel y tarjeta."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto de interfaz, celdas, botones y campos."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Etiquetas, encabezados de tabla y descripciones."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Montos en columnas, tabulares y alineados a la derecha."
+      }
+    },
+    "shadows": [
+      {
+        "name": "reposo",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Tarjetas, botones secundarios y campos en reposo."
+      },
+      {
+        "name": "respuesta",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Hover de una tarjeta enlazada."
+      },
+      {
+        "name": "flotante",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Menús, hojas laterales y diálogos."
+      }
+    ],
+    "motion": [
+      {
+        "name": "--ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Curva de llegada para estados y datos."
+      },
+      {
+        "name": "--dur-feedback",
+        "value": "150ms",
+        "purpose": "Respuesta inmediata de controles."
+      },
+      {
+        "name": "--dur-state",
+        "value": "220ms",
+        "purpose": "Hover de tarjetas enlazadas, cambio de color del icono y flecha."
+      },
+      {
+        "name": "--dur-data",
+        "value": "400ms",
+        "purpose": "Revelado de graficas desde su linea base; escalonado topado en 160ms."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "220ms opacity fade",
+        "purpose": "Sin desplazamientos ni escalonado: grafica completa con un fundido; tarjetas sin moverse."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Una acción primaria por encabezado (Nueva factura).",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg> Nueva factura</button>",
+      "css": ".ds-btn-primary{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:background-color .15s, box-shadow .15s, transform .1s;background:#1f4e79;color:#fff;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.ds-btn-primary:hover{background:#193f62}.ds-btn-primary:focus-visible{box-shadow:0 0 0 3px rgb(31 78 121 / .4);outline:none}.ds-btn-primary:active{transform:translateY(1px)}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "La mayoría de las acciones: blanco con borde fino.",
+      "html": "<button class=\"ds-btn-secondary\">Ver reportes</button>",
+      "css": ".ds-btn-secondary{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:background-color .15s, box-shadow .15s, transform .1s;background:#fff;color:oklch(0.21 0.034 264.67);border-color:oklch(0.925 0.009 255);box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.ds-btn-secondary:hover{background:oklch(0.967 0.007 247.9)}.ds-btn-secondary:focus-visible{box-shadow:0 0 0 3px rgb(31 78 121 / .4);outline:none}.ds-btn-secondary:active{transform:translateY(1px)}"
+    },
+    {
+      "name": "Botón Kurier",
+      "kind": "button",
+      "refersTo": "button-kurier",
+      "description": "Acción de marca ocasional, en naranja.",
+      "html": "<button class=\"ds-btn-kurier\">Facturar</button>",
+      "css": ".ds-btn-kurier{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:background-color .15s, box-shadow .15s, transform .1s;background:#ed7d31;color:#fff;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.ds-btn-kurier:hover{background:#d96a1f}.ds-btn-kurier:focus-visible{box-shadow:0 0 0 3px rgb(237 125 49 / .4);outline:none}.ds-btn-kurier:active{transform:translateY(1px)}"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo con etiqueta tenue encima.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Concepto</span><input class=\"ds-input\" placeholder=\"Renta de almacén\"></label>",
+      "css": ".ds-field{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:block;width:260px}.ds-label{display:block;margin-bottom:6px;font-size:12px;font-weight:500;color:oklch(0.52 0.03 257)}.ds-input{font-family:Geist, ui-sans-serif, system-ui, sans-serif;box-sizing:border-box;width:100%;height:36px;padding:6px 12px;border-radius:10px;border:1px solid oklch(0.89 0.012 255);background:#fff;font-size:14px;color:oklch(0.21 0.034 264.67);box-shadow:0 1px 2px 0 rgb(0 0 0 / .05);outline:none;caret-color:#1f4e79;transition:border-color .15s, box-shadow .15s}.ds-input::placeholder{color:oklch(0.52 0.03 257)}.ds-input:focus-visible{border-color:#1f4e79;box-shadow:0 0 0 3px rgb(31 78 121 / .3)}"
+    },
+    {
+      "name": "Insignia de estado",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Estado de factura o cotización con punto de color.",
+      "html": "<span class=\"ds-badge ds-badge-pend\"><i></i>Pendiente</span> <span class=\"ds-badge ds-badge-paid\"><i></i>Pagada</span>",
+      "css": ".ds-badge{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:inline-flex;align-items:center;gap:6px;height:20px;padding:2px 8px;border-radius:9999px;font-size:12px;font-weight:500}.ds-badge i{width:6px;height:6px;border-radius:9999px;background:currentColor;opacity:.7}.ds-badge-pend{background:#fffbeb;color:#92400e;box-shadow:inset 0 0 0 1px rgb(217 119 6 / .2)}.ds-badge-paid{background:#ecfdf5;color:#047857;box-shadow:inset 0 0 0 1px rgb(5 150 105 / .2)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tarjeta con encabezado, divisor y cuerpo; nunca anidada.",
+      "html": "<section class=\"ds-panel\"><header><h2>Cuentas por cobrar</h2><p>7 factura(s) con saldo</p></header><div class=\"ds-panel-body\">Contenido del panel</div></section>",
+      "css": ".ds-panel{font-family:Geist, ui-sans-serif, system-ui, sans-serif;width:320px;background:#fff;border:1px solid oklch(0.925 0.009 255);border-radius:14px;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05);overflow:hidden;color:oklch(0.21 0.034 264.67)}.ds-panel header{padding:14px 20px;border-bottom:1px solid oklch(0.925 0.009 255)}.ds-panel h2{margin:0;font-size:15px;font-weight:600}.ds-panel p{margin:2px 0 0;font-size:12px;color:oklch(0.52 0.03 257)}.ds-panel-body{padding:20px;font-size:14px}"
+    },
+    {
+      "name": "Navegación lateral",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Barra marina; el activo con fondo blanco al 10 % e ícono naranja.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-group\">Ventas</div><a class=\"ds-nav-item is-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/></svg>Cotizaciones</a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z\"/></svg>Facturas</a></nav>",
+      "css": ".ds-nav{font-family:Geist, ui-sans-serif, system-ui, sans-serif;width:220px;padding:12px;background:#163a5c;border-radius:10px;color:oklch(0.97 0.005 250)}.ds-nav-group{padding:0 12px 6px;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:rgb(255 255 255 / .45)}.ds-nav-item{display:flex;align-items:center;gap:12px;height:36px;padding:0 12px;border-radius:10px;font-size:14px;text-decoration:none;color:rgb(255 255 255 / .75);transition:background-color .15s,color .15s}.ds-nav-item svg{opacity:.7}.ds-nav-item:hover{background:rgb(255 255 255 / .06);color:#fff}.ds-nav-item.is-active{background:rgb(255 255 255 / .1);color:#fff;font-weight:500}.ds-nav-item.is-active svg{opacity:1;color:#ed7d31}.ds-nav-item:focus-visible{outline:none;box-shadow:0 0 0 2px #ed7d31}"
+    },
+    {
+      "name": "Indicador con variación",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Etiqueta, cifra y variación contra el periodo anterior.",
+      "html": "<a class=\"ds-stat\" href=\"#\"><div class=\"ds-stat-label\">Ingresos del mes</div><div class=\"ds-stat-value\">$182,430.00</div><div class=\"ds-stat-meta\"><span class=\"ds-delta\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/></svg>12%</span>vs. mes anterior</div></a>",
+      "css": ".ds-stat{font-family:Geist, ui-sans-serif, system-ui, sans-serif;display:block;width:260px;padding:20px;background:#fff;border:1px solid oklch(0.925 0.009 255);border-radius:14px;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05);text-decoration:none;transition:box-shadow .2s}.ds-stat:hover{box-shadow:0 4px 6px -1px rgb(0 0 0 / .1),0 2px 4px -2px rgb(0 0 0 / .1)}.ds-stat:focus-visible{box-shadow:0 0 0 3px rgb(31 78 121 / .4);outline:none}.ds-stat-label{font-size:14px;font-weight:500;color:oklch(0.52 0.03 257)}.ds-stat-value{margin-top:8px;font-size:24px;font-weight:600;letter-spacing:-.025em;color:#047857}.ds-stat-meta{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:oklch(0.52 0.03 257)}.ds-delta{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:6px;background:#ecfdf5;color:#047857;font-weight:500;font-size:11px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La mesa de control",
+    "overview": "Kurier ERP es un centro de mando sereno: el negocio completo está a la vista (lo que entra, lo que sale, lo que se debe y quién trabajó) y nada compite con los datos. La sensación es profesional y cálida a la vez. El azul marino de Kurier da seriedad y estructura, el naranja Kurier da calidez en momentos contados, y el papel frío casi blanco del fondo deja respirar tablas densas.\n\nLa densidad es de herramienta de trabajo en escritorio. Hay muchas cifras por pantalla, tablas completas y paneles con encabezado, pero ordenados en una retícula tranquila con aire generoso entre grupos. Los componentes son refinados y discretos: bordes de un pixel, sombras casi imperceptibles, una sola familia tipográfica. La marca vive en los detalles precisos: la barra lateral marina con el ícono activo en naranja, los montos alineados y los colores con significado estable.\n\nLo conocido es una virtud. Botones, campos, menús y diálogos se comportan como en cualquier herramienta seria (base shadcn/ui sobre Radix). La personalidad nunca se paga con extrañeza.",
+    "keyCharacteristics": [
+      "Barra lateral marina fija, contenido sobre papel claro con tarjetas blancas.",
+      "Una sola familia (Geist) en peso 400–600; jerarquía por peso y tamaño, nunca por tipografías de exhibición.",
+      "Color con significado: marino = acción y estructura; naranja = acento de marca y egresos en gráficas; verde/rojo = ingreso/egreso en texto.",
+      "Profundidad casi plana: bordes finos y sombra `xs`; la sombra crece solo como respuesta (hover sobre algo enlazable, menús flotantes).",
+      "Cifras siempre en números tabulares dentro de columnas."
+    ],
+    "rules": [
+      {
+        "name": "The Navy Acts Rule",
+        "body": "El marino es para lo que se presiona o se sigue (botón primario, folio enlazado, foco). Si algo es marino y no hace nada, sobra.",
+        "section": "colors"
+      },
+      {
+        "name": "The Orange Is Rare Rule",
+        "body": "El naranja Kurier aparece como acento puntual: el ícono activo, el logotipo, una acción de marca. Nunca como fondo de sección ni en más de un botón por vista.",
+        "section": "colors"
+      },
+      {
+        "name": "The Meaning Holds Rule",
+        "body": "Un color con significado no cambia de pantalla a pantalla: ingresos azul en gráficas y verde en texto, egresos naranja en gráficas y rojo en texto, en todo el sistema. El texto nunca usa el color de la serie; la identidad la da la marca de color junto al texto.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Solo Geist. Nada de tipografías de exhibición, serif ni monoespaciadas como disfraz; la monoespaciada se reserva para códigos reales si algún día aparecen.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Columns Rule",
+        "body": "Toda columna de montos usa números tabulares y se alinea a la derecha; una cifra suelta grande no.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "En reposo todo es plano. La sombra crece solo como respuesta a estado (hover sobre algo enlazable) o por estar encima de la página (menú, diálogo). Nunca hay sombras de color ni halos.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Still Target Rule",
+        "body": "En un hover, lo que recibe el cursor no se mueve; se eleva su superficie interior. Así el área de clic nunca se escapa del puntero.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** usar el marino solo en lo accionable y el naranja Kurier como acento puntual (The Orange Is Rare Rule).",
+      "**Do** mantener ingresos en azul y egresos en naranja tostado en todas las gráficas, y verde/rojo con signo en el texto.",
+      "**Do** alinear los montos a la derecha con números tabulares dentro de tablas.",
+      "**Do** dar a cada gráfica tooltip en hover y foco, leyenda cuando hay dos series o más y vista de tabla.",
+      "**Do** reutilizar `PageHeader`, `Panel`, `Stat`, `Empty`, `Field`, `StatusBadge` y los atajos `btn-*`, `input` y `card` antes de crear algo nuevo.",
+      "**Do** usar los tokens de movimiento de `globals.css`: `--ease-out` (cubic-bezier(0.16, 1, 0.3, 1)), `--dur-feedback` 150ms, `--dur-state` 220ms y `--dur-data` 400ms. El movimiento explica estado o la llegada de datos; nunca hace esperar.",
+      "**Do** mover la superficie interior en un hover, nunca el elemento que recibe el cursor (The Still Target Rule).",
+      "**Do** respetar `prefers-reduced-motion`: sin desplazamientos, cada gráfica aparece completa con un solo fundido de 220ms (sin escalonado) y las tarjetas cambian de sombra y color sin moverse."
+    ],
+    "donts": [
+      "**Don't** anidar tarjetas dentro de tarjetas ni usar barras de color en un solo lado de una caja.",
+      "**Don't** poner un texto de categoría (eyebrow) sobre los títulos; el título se sostiene solo.",
+      "**Don't** usar tipografías de exhibición, degradados en texto, vidrio o desenfoque decorativo.",
+      "**Don't** usar verde contra rojo para distinguir dos series de una gráfica; no pasa la prueba de daltonismo.",
+      "**Don't** usar sombras de color, halos ni sombras duras desplazadas.",
+      "**Don't** usar emoji o caracteres Unicode como íconos; los íconos son de lucide con el mismo trazo.",
+      "**Don't** agregar coreografías de carga de página, contadores que suben ni entradas en cascada de paneles: el usuario eligió movimiento sutil y rápido.",
+      "**Don't** usar rebotes ni curvas elásticas."
+    ]
+  }
+}

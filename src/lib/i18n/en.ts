@@ -6,6 +6,7 @@ export const en: Record<string, string> = {
   // Gráficas y actividad
   "Ver tabla": "View table",
   "Ver gráfica": "View chart",
+  "Tabla de valores": "Values table",
   "Gráfica de columnas; usa «Ver tabla» para leer los valores.": "Column chart; use “View table” to read the values.",
   "Sin datos en este periodo.": "No data in this period.",
   "Sin datos.": "No data.",

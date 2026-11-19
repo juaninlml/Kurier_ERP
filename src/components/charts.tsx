@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
  * de la serie), tooltip en hover y foco, y vista de tabla para cada gráfica.
  */
 
+/** Tope del escalonado de las entradas de gráficas (igual a --viz-stagger-cap). */
+const STAGGER_CAP = 160;
+
 export type Series = { key: string; name: string; color: string };
 export type ColumnPoint = { key: string; label: string; full: string; values: Record<string, number> };
 
@@ -114,6 +117,7 @@ export function ColumnChart({
   // Con muchos puntos, solo se rotulan algunos en el eje X.
   const every = points.length > 16 ? Math.ceil(points.length / 8) : 1;
   const barMax = series.length > 1 ? 14 : 24;
+  const stagger = points.length > 1 ? STAGGER_CAP / (points.length - 1) : 0;
   const extra = (p: ColumnPoint) =>
     diff ? { label: diff.label, value: Math.round(((p.values[diff.plus] ?? 0) - (p.values[diff.minus] ?? 0)) * 100) / 100 } : null;
 
@@ -125,7 +129,13 @@ export function ColumnChart({
       </div>
 
       {table ? (
-        <div className="max-h-[320px] overflow-auto rounded-lg border">
+        <div
+          className="overflow-auto rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+          style={{ height }}
+          tabIndex={0}
+          role="region"
+          aria-label={t("Tabla de valores")}
+        >
           <table className="table">
             <thead>
               <tr>
@@ -194,8 +204,16 @@ export function ColumnChart({
                           return (
                             <span
                               key={s.key}
-                              className="w-full rounded-t-[4px] transition-[height,filter] duration-300 ease-out group-hover:brightness-110"
-                              style={{ maxWidth: barMax, height: `${(v / top) * 100}%`, minHeight: v > 0 ? 2 : 0, background: s.color }}
+                              className="viz-grow-up w-full rounded-t-[4px] transition-[height,filter] duration-300 ease-out group-hover:brightness-110"
+                              style={
+                                {
+                                  maxWidth: barMax,
+                                  height: `${(v / top) * 100}%`,
+                                  minHeight: v > 0 ? 2 : 0,
+                                  background: s.color,
+                                  "--viz-delay": `${Math.round(Math.min(i * stagger, STAGGER_CAP))}ms`,
+                                } as React.CSSProperties
+                              }
                             />
                           );
                         })}
@@ -255,7 +273,7 @@ export function SegmentedBar({ parts, emptyText, format = "money" }: { parts: Pa
       {total <= 0 ? (
         <div className="grid h-7 place-items-center rounded-[4px] bg-muted text-xs text-muted-foreground">{emptyText ?? t("Sin datos.")}</div>
       ) : (
-        <div className="flex h-7 gap-[2px]" role="group" aria-label={visible.map((p) => `${p.name}: ${fmt(p.value)}`).join(", ")}>
+        <div className="viz-grow-right flex h-7 gap-[2px]" role="group" aria-label={visible.map((p) => `${p.name}: ${fmt(p.value)}`).join(", ")}>
           {visible.map((p) => {
             const share = p.value / total;
             const block = (
@@ -329,7 +347,7 @@ export function BarList({
   if (!rows.length) return <p className="py-6 text-center text-sm text-muted-foreground">{emptyText ?? t("Sin datos.")}</p>;
   return (
     <ul className="space-y-3.5">
-      {rows.map((r) => {
+      {rows.map((r, i) => {
         const label = r.href ? (
           <Link href={r.href} className="truncate hover:text-primary hover:underline">
             {r.label}
@@ -352,7 +370,10 @@ export function BarList({
               </span>
             </div>
             <div className="h-2 rounded-r-[4px] bg-muted">
-              <div className="h-2 rounded-r-[4px] transition-[width] duration-500 ease-out" style={{ width: `${(r.value / max) * 100}%`, background: color }} />
+              <div
+                className="viz-grow-right h-2 rounded-r-[4px] transition-[width] duration-500 ease-out"
+                style={{ width: `${(r.value / max) * 100}%`, background: color, "--viz-delay": `${Math.min(i * 30, STAGGER_CAP)}ms` } as React.CSSProperties}
+              />
             </div>
           </li>
         );
@@ -416,8 +437,8 @@ export function ActivityHeatmap({ days }: { days: { date: string; count: number;
                         <button
                           type="button"
                           aria-label={`${fmt(d.date)}: ${d.count}`}
-                          className="aspect-square cursor-default rounded-[3px] outline-none hover:ring-2 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring"
-                          style={{ background: HEAT[level(d.count)] }}
+                          className="viz-fade-in aspect-square cursor-default rounded-[3px] outline-none hover:ring-2 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring"
+                          style={{ background: HEAT[level(d.count)], "--viz-delay": `${Math.round((wi / weeks.length) * STAGGER_CAP)}ms` } as React.CSSProperties}
                         />
                       </TooltipTrigger>
                       <TooltipContent side="top" sideOffset={4}>
