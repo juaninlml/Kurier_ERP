@@ -292,6 +292,16 @@
   animation-delay: var(--viz-delay, 0ms);
 }
 
+/* Asistencias: descanso con trama a 45° (no depende solo del color) y turno en curso con el
+   extremo abierto, que se desvanece hacia "ahora". */
+@utility hatch {
+  background-color: var(--muted);
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, oklch(0.88 0.012 255) 4px 5px);
+}
+@utility attendance-live {
+  background-image: linear-gradient(to right, transparent 70%, oklch(1 0 0 / 0.45));
+}
+
 /* Tarjeta enlazada: el enlace (área de clic) no se mueve; se eleva su superficie interior. */
 @utility lift-surface {
   transition:

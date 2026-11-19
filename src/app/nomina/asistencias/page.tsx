@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ChevronLeft, ChevronRight, Clock, MonitorSmartphone, Plus, Timer, Trash2 } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Clock, Hourglass, MonitorSmartphone, Plus, Timer, Trash2, UserCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManageUsers } from "@/lib/current-user";
 import { authorizeOvertime, createKioskDevice, deactivateKioskDevice, deleteOvertime, saveAttendanceSettings } from "@/app/actions/attendance";
-import { addDaysStr, autoCloseShifts, daySummary, localParts, mondayOf } from "@/lib/attendance";
-import { PageHeader, Panel, Empty, Field } from "@/components/kit";
+import { addDaysStr, autoCloseShifts, daySummary, localParts, mondayOf, toMin } from "@/lib/attendance";
+import { PageHeader, Panel, Empty, Field, Stat } from "@/components/kit";
+import { Legend, TodayBoard, WeekGrid, type DayCell, type EmployeeWeek } from "@/components/AttendanceBoard";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { qrSvg } from "@/lib/totp";
 
 export const dynamic = "force-dynamic";
@@ -47,28 +47,81 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         .map(async (d) => [d.id, await qrSvg(`${origin}/kiosco/activar/${d.activationToken}`)] as const),
     ),
   );
-  const time = (d?: { at: Date }) => (d ? d.at.toLocaleTimeString("es-MX", { timeZone: tz, hour: "2-digit", minute: "2-digit" }) : "—");
   const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
+  const localMin = (d?: { at: Date }) => (d ? Math.round(localParts(d.at, tz).minutes) : null);
 
-  const rows = employees.map((e) => {
+  const rows: EmployeeWeek[] = employees.map((e) => {
+    const schedStart = toMin(e.scheduleStart);
+    const schedEnd = toMin(e.scheduleEnd);
+    const dayHours = Math.max(0, schedEnd - schedStart - Math.max(0, toMin(e.mealEnd) - toMin(e.mealStart))) / 60;
     let hours = 0,
+      scheduledHours = 0,
       lates = 0,
       absences = 0,
       otMin = 0;
-    const cells = days.map((d) => {
+    const cells: DayCell[] = days.map((d) => {
+      const auth = auths.find((a) => a.employeeId === e.id && a.workDate === d);
       const sum = daySummary(
         punches.filter((p) => p.employeeId === e.id && p.workDate === d),
         e,
-        { dateStr: d, todayStr: today, nowMin, tz, toleranceMin: s.lateToleranceMin, otUntil: auths.find((a) => a.employeeId === e.id && a.workDate === d)?.until, startDate: e.startDate },
+        { dateStr: d, todayStr: today, nowMin, tz, toleranceMin: s.lateToleranceMin, otUntil: auth?.until, startDate: e.startDate },
       );
       hours += sum.workedHours;
+      if (sum.status !== "DESCANSO") scheduledHours += dayHours;
       if (sum.late) lates++;
       if (sum.status === "FALTA") absences++;
       otMin += sum.overtimeMin;
-      return { d, sum };
+      return {
+        date: d,
+        status: sum.status,
+        schedStart,
+        schedEnd,
+        inMin: localMin(sum.entrada),
+        outMin: localMin(sum.salida),
+        mealFrom: localMin(sum.comida),
+        mealTo: localMin(sum.regreso),
+        otUntil: auth ? toMin(auth.until) : null,
+        workedHours: sum.workedHours,
+        lateMin: sum.lateMin,
+        late: sum.late,
+        earlyMin: sum.earlyMin,
+        overtimeMin: sum.overtimeMin,
+        autoExit: sum.autoExit,
+        atMeal: !!sum.comida && !sum.regreso && !sum.salida,
+      };
     });
-    return { e, cells, hours, lates, absences, otMin };
+    return {
+      id: e.id,
+      name: e.name,
+      detail: [e.position, e.area].filter(Boolean).join(" · "),
+      schedule: `${e.scheduleStart}–${e.scheduleEnd}`,
+      noKiosk: !e.kioskSecret,
+      cells,
+      hours: Math.round(hours * 100) / 100,
+      scheduledHours,
+      lates,
+      absences,
+      otMin,
+    };
   });
+
+  // Resumen de la semana (solo días que ya debían trabajarse)
+  const allCells = rows.flatMap((r) => r.cells);
+  const due = allCells.filter((c) => c.status === "OK" || c.status === "EN_CURSO" || c.status === "FALTA");
+  const attended = due.filter((c) => c.status !== "FALTA");
+  const onTime = attended.filter((c) => !c.late);
+  const rate = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
+  const workedTotal = rows.reduce((a, r) => a + r.hours, 0);
+  const dueHours = rows.reduce((a, r, i) => {
+    const e = employees[i]!;
+    const dayHours = Math.max(0, toMin(e.scheduleEnd) - toMin(e.scheduleStart) - Math.max(0, toMin(e.mealEnd) - toMin(e.mealStart))) / 60;
+    return a + r.cells.filter((c) => c.status === "OK" || c.status === "EN_CURSO" || c.status === "FALTA").length * dayHours;
+  }, 0);
+  const absencesTotal = rows.reduce((a, r) => a + r.absences, 0);
+  const latesTotal = rows.reduce((a, r) => a + r.lates, 0);
+  const otTotal = rows.reduce((a, r) => a + r.otMin, 0) / 60;
+  const todayIdx = days.indexOf(today);
+  const dayLabels = days.map((d, i) => `${DAY[i]} ${fmtDay(d).split(" ")[0]}`);
 
   return (
     <div>
@@ -83,9 +136,40 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         }
       />
 
+      {employees.length > 0 && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <Stat label="Asistencia" value={rate(attended.length, due.length)} icon={UserCheck} hint={absencesTotal ? `${absencesTotal} falta(s) en la semana` : "Sin faltas en la semana"} />
+          <Stat label="Puntualidad" value={rate(onTime.length, attended.length)} icon={CalendarCheck} hint={latesTotal ? `${latesTotal} retardo(s)` : "Sin retardos"} />
+          <Stat
+            label="Horas trabajadas"
+            value={`${workedTotal.toFixed(1)} h`}
+            icon={Clock}
+            hint={dueHours ? `de ${dueHours.toFixed(0)} h programadas a la fecha (${rate(workedTotal, dueHours)})` : "Aún no hay días por trabajar"}
+          />
+          <Stat label="Horas extra" value={`${otTotal.toFixed(1)} h`} icon={Hourglass} hint={`${auths.length} autorización(es) esta semana`} />
+        </div>
+      )}
+
+      {todayIdx >= 0 && employees.length > 0 && (
+        <Panel
+          className="mb-6"
+          title="Hoy en el almacén"
+          description={`${fmtDay(today)} · se actualiza al recargar la página`}
+          action={
+            <Link href="/nomina/asistencias" className="btn-secondary h-8 text-xs">
+              Actualizar
+            </Link>
+          }
+          bodyClassName="p-5"
+        >
+          <TodayBoard rows={rows.map((r) => ({ id: r.id, name: r.name, cell: r.cells[todayIdx]! }))} nowMin={Math.round(nowMin)} />
+        </Panel>
+      )}
+
       <Panel
         className="mb-6"
         title={`Semana del ${fmtDay(monday)} al ${fmtDay(sunday)}`}
+        description="Cada barra es un día sobre el mismo eje de horas. Pasa el cursor para ver las checadas; da clic para corregirlas."
         action={
           <div className="flex gap-1">
             <Link href={`/nomina/asistencias?semana=${addDaysStr(monday, -7)}`} className="btn-secondary h-8 px-2" aria-label="Semana anterior">
@@ -103,70 +187,12 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         {employees.length === 0 ? (
           <Empty icon={Clock}>No hay empleados activos.</Empty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table text-xs">
-              <thead>
-                <tr>
-                  <th className="min-w-44">Empleado</th>
-                  {days.map((d, i) => (
-                    <th key={d} className={cn("min-w-28 text-center", d === today && "bg-primary/10 text-primary")}>
-                      {DAY[i]} {fmtDay(d).split(" ")[0]}
-                    </th>
-                  ))}
-                  <th className="text-right">Horas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ e, cells, hours, lates, absences, otMin }) => (
-                  <tr key={e.id}>
-                    <td>
-                      <Link href={`/nomina/empleados/${e.id}`} className="font-medium text-primary hover:underline">
-                        {e.name}
-                      </Link>
-                      <div className="text-[11px] text-muted-foreground">
-                        {e.scheduleStart}–{e.scheduleEnd}
-                        {!e.kioskSecret && <span className="ml-1 text-amber-700">· sin autenticador</span>}
-                      </div>
-                    </td>
-                    {cells.map(({ d, sum }) => (
-                      <td key={d} className={cn("p-1 text-center", d === today && "bg-primary/5")}>
-                        <Link href={`/nomina/asistencias/dia?empleado=${e.id}&fecha=${d}`} className="block rounded-md px-1 py-1 hover:bg-muted">
-                          {sum.entrada ? (
-                            <>
-                              <div className="font-medium tabular-nums">
-                                {time(sum.entrada)}–{sum.salida ? time(sum.salida) : "…"}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground tabular-nums">{sum.workedHours.toFixed(1)} h</div>
-                              <div className="mt-0.5 flex flex-wrap justify-center gap-0.5">
-                                {sum.late && <Tag tone="rose">Retardo {sum.lateMin}m</Tag>}
-                                {sum.autoExit && <Tag tone="slate">Auto</Tag>}
-                                {sum.overtimeMin > 0 && <Tag tone="violet">HE {(sum.overtimeMin / 60).toFixed(1)}h</Tag>}
-                                {sum.status === "EN_CURSO" && <Tag tone="emerald">En turno</Tag>}
-                              </div>
-                            </>
-                          ) : sum.status === "FALTA" ? (
-                            <Tag tone="rose">Falta</Tag>
-                          ) : sum.status === "DESCANSO" ? (
-                            <span className="text-[10px] text-muted-foreground">Descanso</span>
-                          ) : (
-                            <span className="text-muted-foreground">·</span>
-                          )}
-                        </Link>
-                      </td>
-                    ))}
-                    <td className="text-right whitespace-nowrap">
-                      <div className="font-semibold tabular-nums">{hours.toFixed(1)} h</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {absences ? `${absences} falta(s) · ` : ""}
-                        {lates ? `${lates} retardo(s)` : ""}
-                        {otMin ? ` · HE ${(otMin / 60).toFixed(1)} h` : ""}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="border-b px-5 py-3">
+              <Legend />
+            </div>
+            <WeekGrid rows={rows} days={days} dayLabels={dayLabels} today={today} nowMin={Math.round(nowMin)} />
+          </>
         )}
       </Panel>
 
@@ -305,7 +331,3 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   );
 }
 
-function Tag({ children, tone }: { children: React.ReactNode; tone: "rose" | "slate" | "violet" | "emerald" }) {
-  const cls = { rose: "bg-rose-50 text-rose-700", slate: "bg-slate-100 text-slate-600", violet: "bg-violet-50 text-violet-700", emerald: "bg-emerald-50 text-emerald-700" }[tone];
-  return <span className={cn("rounded px-1 py-px text-[10px] font-medium whitespace-nowrap", cls)}>{children}</span>;
-}
