@@ -85,7 +85,7 @@ export async function activeWaves() {
 /** Datos para el PDF de resumen y la factura: órdenes de un cliente en un periodo. */
 export async function clientOrdersSummary(clientId: number, from: string, to: string) {
   const [client, waves, orders, materials, supplies] = await Promise.all([
-    prisma.client.findUnique({ where: { id: clientId }, include: { rates: true } }),
+    prisma.client.findUnique({ where: { id: clientId }, include: { rates: true, brand: true } }),
     prisma.orderWave.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
     prisma.dailyOrder.findMany({ where: { clientId, workDate: { gte: from, lte: to }, quantity: { gt: 0 } }, orderBy: { workDate: "asc" } }),
     prisma.packMaterial.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
@@ -107,6 +107,6 @@ export async function clientOrdersSummary(clientId: number, from: string, to: st
   const rate = orderRateOf(client);
   // Insumos de empaque del periodo (por material)
   const used2 = new Map(supplies.map((x) => [x.materialId, x._sum.quantity ?? 0]));
-  const byMaterial = materials.filter((m) => used2.get(m.id)).map((m) => ({ id: m.id, name: m.name, size: m.size, noSupply: m.noSupply, total: used2.get(m.id)! }));
+  const byMaterial = materials.filter((m) => used2.get(m.id)).map((m) => ({ id: m.id, name: m.name, size: m.size, noSupply: m.noSupply, unitPrice: m.noSupply ? 0 : m.unitPrice, total: used2.get(m.id)! }));
   return { client, waves: cols, days, byWave, total, rate, from, to, byMaterial };
 }

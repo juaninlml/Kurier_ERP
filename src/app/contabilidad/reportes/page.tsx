@@ -4,6 +4,7 @@ import { PageHeader, Panel, Stat } from "@/components/kit";
 import { BarList, ColumnChart, SegmentedBar } from "@/components/charts";
 import { incomeStatement, receivables, parseRange, AGING_BUCKETS } from "@/lib/reports";
 import { AGING_LABEL, flowSeries } from "@/lib/insights";
+import { SuppliesPanel } from "@/components/SuppliesPanel";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           emptyText="Sin movimientos en este periodo."
         />
       </Panel>
+
+      <SuppliesPanel from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {(

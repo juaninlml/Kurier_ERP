@@ -47,6 +47,14 @@ export async function saveSupplyCells(date: string, cells: { clientId: number; c
   return { ok: true };
 }
 
+/** Costo y precio por pieza (sin IVA); vacíos = 0. */
+function money(fd: FormData) {
+  const unitCost = numv(fd, "unitCost");
+  const unitPrice = numv(fd, "unitPrice");
+  if (unitCost < 0 || unitPrice < 0) throw new Error("El costo y el precio no pueden ser negativos.");
+  return { unitCost: Math.round(unitCost * 100) / 100, unitPrice: Math.round(unitPrice * 100) / 100 };
+}
+
 async function addMaterialImpl(fd: FormData) {
   const name = str(fd, "name");
   if (!name) throw new Error("Escribe el nombre del material.");
@@ -54,10 +62,10 @@ async function addMaterialImpl(fd: FormData) {
   const existing = await prisma.packMaterial.findUnique({ where: { name } });
   if (existing) {
     if (existing.active) throw new Error("Ya existe un material con ese nombre.");
-    await prisma.packMaterial.update({ where: { id: existing.id }, data: { active: true, size: size || existing.size } });
+    await prisma.packMaterial.update({ where: { id: existing.id }, data: { active: true, size: size || existing.size, ...money(fd) } });
   } else {
     const last = await prisma.packMaterial.aggregate({ _max: { sortOrder: true } });
-    await prisma.packMaterial.create({ data: { name, size, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+    await prisma.packMaterial.create({ data: { name, size, ...money(fd), sortOrder: (last._max.sortOrder ?? 0) + 1 } });
   }
   refresh();
 }
@@ -65,8 +73,9 @@ async function addMaterialImpl(fd: FormData) {
 async function updateMaterialImpl(id: number, fd: FormData) {
   const name = str(fd, "name");
   if (!name) throw new Error("El nombre no puede quedar vacío.");
-  await prisma.packMaterial.update({ where: { id }, data: { name, size: str(fd, "size") } });
+  await prisma.packMaterial.update({ where: { id }, data: { name, size: str(fd, "size"), ...money(fd) } });
   refresh();
+  revalidatePath("/contabilidad/reportes");
 }
 
 /** Oculta el material de la captura. Lo ya registrado se conserva en totales y reportes. */

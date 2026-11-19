@@ -16,7 +16,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   });
   if (!inv) notFound();
   if (inv._count.payments > 0 || inv.status === "CANCELADA") redirect(`/facturas/${id}`);
-  const { clients, services, clientRates, settings } = await editorData();
+  const { clients, services, clientRates, settings, brands } = await editorData();
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -27,10 +27,12 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         clients={clients}
         services={services}
         clientRates={clientRates}
+          brands={brands}
         defaultTaxRate={settings.defaultTaxRate}
         submitLabel="Guardar cambios"
         defaults={{
           clientId: inv.clientId,
+          brandId: inv.brandId ?? 0,
           issueDate: toInputDate(inv.issueDate),
           secondDate: toInputDate(inv.dueDate),
           notes: inv.notes,

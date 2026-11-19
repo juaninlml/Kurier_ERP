@@ -1,11 +1,12 @@
 import { prisma } from "./db";
 import { getSettings } from "./settings";
 import type { LineInput } from "./totals";
+import { brandOptions } from "./brands";
 
 /** Datos comunes para el editor de cotizaciones/facturas. */
 export async function editorData() {
-  const [clients, services, sections, settings, rates] = await Promise.all([
-    prisma.client.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  const [clients, services, sections, settings, rates, brands] = await Promise.all([
+    prisma.client.findMany({ where: { active: true }, select: { id: true, name: true, brandId: true }, orderBy: { name: "asc" } }),
     prisma.service.findMany({
       where: { active: true },
       select: { id: true, code: true, name: true, description: true, unit: true, unitPrice: true, taxRate: true, section: true, priceText: true, atCost: true, sortOrder: true },
@@ -14,6 +15,7 @@ export async function editorData() {
     prisma.serviceSection.findMany({ orderBy: { sortOrder: "asc" } }),
     getSettings(),
     prisma.clientRate.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
+    brandOptions(),
   ]);
   // Ordena los servicios según el orden de las secciones del tarifario.
   const rank = new Map(sections.map((s, i) => [s.name, i]));
@@ -35,7 +37,7 @@ export async function editorData() {
       sortOrder: r.sortOrder,
     });
   }
-  return { clients, services, clientRates, settings };
+  return { clients, services, clientRates, settings, brands };
 }
 
 type ItemRow = {

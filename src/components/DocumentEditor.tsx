@@ -11,7 +11,8 @@ import { parseVolumes, scenarioTable, type PerOrderRow } from "@/lib/quote-extra
 
 const SCALING_UNITS = ["orden", "pedido", "guía", "guia", "pieza", "envío", "envio"];
 
-type ClientOpt = { id: number; name: string };
+type ClientOpt = { id: number; name: string; brandId?: number | null };
+type BrandOpt = { id: number; name: string };
 export type ServiceOpt = {
   id: number;
   code: string;
@@ -31,6 +32,8 @@ export type DocumentDefaults = {
   quoteId?: number;
   /** Estado de cobro del WMS del que sale esta factura. */
   importId?: number;
+  /** Marca que emite (0 = la principal). Sin valor: la del cliente. */
+  brandId?: number;
   /** Lunes de la semana de órdenes diarias que se factura (servicio logístico). */
   ordersWeek?: string;
   issueDate: string;
@@ -97,6 +100,7 @@ export function DocumentEditor({
   kind,
   defaultTaxRate,
   submitLabel,
+  brands = [],
 }: {
   action: (formData: FormData) => Promise<unknown>;
   clients: ClientOpt[];
@@ -107,9 +111,13 @@ export function DocumentEditor({
   kind: "quote" | "invoice";
   defaultTaxRate: number;
   submitLabel: string;
+  /** Marcas comerciales (la primera, id 0, es la principal). Con una sola no se muestra el selector. */
+  brands?: BrandOpt[];
 }) {
   const isQuote = kind === "quote";
   const [clientId, setClientId] = useState<number | undefined>(defaults.clientId);
+  const brandOfClient = (id?: number) => clients.find((c) => c.id === id)?.brandId ?? 0;
+  const [brandId, setBrandId] = useState<number>(defaults.brandId ?? brandOfClient(defaults.clientId));
   // En cotizaciones: propuesta a un prospecto (por defecto) o a un cliente actual (renegociación)
   const [partyType, setPartyType] = useState<"prospect" | "client">(isQuote && !defaults.clientId ? "prospect" : "client");
   const forProspect = isQuote && partyType === "prospect";
@@ -173,6 +181,7 @@ export function DocumentEditor({
       {defaults.quoteId && <input type="hidden" name="quoteId" value={defaults.quoteId} />}
       {defaults.importId && <input type="hidden" name="importId" value={defaults.importId} />}
       {defaults.ordersWeek && <input type="hidden" name="ordersWeek" value={defaults.ordersWeek} />}
+      {brands.length <= 1 && <input type="hidden" name="brandId" value={brandId || ""} />}
 
       <div className="card grid gap-4 p-5 md:grid-cols-3">
         {isQuote && (
@@ -231,7 +240,12 @@ export function DocumentEditor({
         ) : (
         <label className="block">
           <span className="label">Cliente</span>
-          <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input" onChange={(e) => setClientId(Number(e.target.value) || undefined)}>
+          <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input" onChange={(e) => {
+              const id = Number(e.target.value) || undefined;
+              setClientId(id);
+              // Cada cliente tiene su marca: al cambiar de cliente, cambia la marca que emite.
+              setBrandId(brandOfClient(id));
+            }}>
             <option value="" disabled>
               Selecciona un cliente…
             </option>
@@ -242,6 +256,18 @@ export function DocumentEditor({
             ))}
           </select>
         </label>
+        )}
+        {brands.length > 1 && (
+          <label className="block">
+            <span className="label">Marca que emite</span>
+            <select name="brandId" className="input" value={brandId} onChange={(e) => setBrandId(Number(e.target.value))}>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         <label className="block">
           <span className="label">Fecha de emisión</span>

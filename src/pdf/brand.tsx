@@ -22,6 +22,8 @@ export function loadLogo(s: CompanySettings) {
   if (s.logoData && s.logoMime) {
     return { data: Buffer.from(s.logoData), format: s.logoMime === "image/png" ? "png" : "jpg" } as const;
   }
+  // logoPath vacío = marca adicional sin logo propio: no se usa el archivo de respaldo (es de la principal).
+  if (!s.logoPath) return null;
   for (const rel of [s.logoPath, "/branding/logo.png", "/branding/logo.jpg"]) {
     const p = path.join(process.cwd(), "public", rel);
     if (existsSync(p)) return { data: readFileSync(p), format: p.toLowerCase().endsWith(".png") ? "png" : "jpg" } as const;
@@ -77,7 +79,7 @@ export function BrandedPage({
             </View>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            {[cityLine, s.email, s.website].filter(Boolean).map((l) => (
+            {[cityLine, s.email, s.phone && `Tel. ${s.phone}`, s.website].filter(Boolean).map((l) => (
               <Text key={l} style={{ fontSize: 8.5, color: GRAY }}>
                 {l}
               </Text>

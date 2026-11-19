@@ -4,7 +4,7 @@ import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { str } from "./helpers";
+import { numv, str } from "./helpers";
 
 function clientData(fd: FormData) {
   const name = str(fd, "name");
@@ -19,13 +19,14 @@ function clientData(fd: FormData) {
     address: str(fd, "address"),
     notes: str(fd, "notes"),
     wmsName: str(fd, "wmsName"),
+    brandId: numv(fd, "brandId") || null,
   };
 }
 
 async function createClientImpl(fd: FormData) {
   const c = await prisma.client.create({ data: clientData(fd) });
   revalidatePath("/clientes");
-  redirect(`/clientes/${c.id}`);
+  redirect(`/clientes/${c.id}?nuevo=1#tarifas`);
 }
 
 async function updateClientImpl(id: number, fd: FormData) {

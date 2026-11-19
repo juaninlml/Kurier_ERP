@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { safe } from "@/lib/safe-action";
+import { queueArchive } from "@/lib/archive";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -243,6 +244,7 @@ async function payPayrollRunImpl(id: number) {
     });
     await tx.payrollRun.update({ where: { id }, data: { status: "PAGADA", transactionId: t.id } });
   });
+  queueArchive(`nomina:${id}`);
   revalidatePath(`/nomina/semanas/${id}`);
   revalidatePath("/nomina");
   revalidatePath("/contabilidad");

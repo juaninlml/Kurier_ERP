@@ -1,12 +1,14 @@
 "use server";
 
 import { safe } from "@/lib/safe-action";
+import { queueArchive } from "@/lib/archive";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { computeLines } from "@/lib/totals";
 import { addDays, fromInputDate } from "@/lib/money";
 import { getSettings, nextFolio } from "@/lib/settings";
+import { brandPrefix } from "@/lib/brands";
 import { QUOTE_STATUSES } from "@/lib/constants";
 import { numv, parseItems, parsePerOrderForm, parseProfile, str } from "./helpers";
 import { parseVolumes } from "@/lib/quote-extras";
@@ -34,6 +36,7 @@ function header(fd: FormData) {
     perOrderFee: Math.max(0, numv(fd, "perOrderFee")),
     baseVolume: Math.max(0, numv(fd, "baseVolume")),
     scenarios: parseVolumes(str(fd, "scenarios")).join(", "),
+    brandId: numv(fd, "brandId") || null,
   };
 }
 
@@ -75,10 +78,11 @@ async function createQuoteImpl(fd: FormData) {
   const h = header(fd);
   const { items, ...totals } = computeLines(parseItems(fd, "quote"));
   const q = await prisma.$transaction(async (tx) => {
-    const folio = await nextFolio(tx, "quote");
+    const folio = await nextFolio(tx, "quote", await brandPrefix(h.brandId, "quote"));
     return tx.quote.create({ data: { ...h, ...totals, folio, items: { create: items } } });
   });
   revalidatePath("/cotizaciones");
+  queueArchive(`cotizacion:${q.id}`);
   redirect(`/cotizaciones/${q.id}`);
 }
 
@@ -92,6 +96,7 @@ async function updateQuoteImpl(id: number, fd: FormData) {
     prisma.quote.update({ where: { id }, data: { ...h, ...totals, items: { create: items } } }),
   ]);
   revalidatePath("/cotizaciones");
+  queueArchive(`cotizacion:${id}`);
   redirect(`/cotizaciones/${id}`);
 }
 
@@ -99,6 +104,7 @@ async function setQuoteStatusImpl(id: number, status: string) {
   if (!(QUOTE_STATUSES as readonly string[]).includes(status) || status === "FACTURADA") throw new Error("Estatus inválido");
   if (status === "ACEPTADA") return acceptQuoteImpl(id);
   await prisma.quote.update({ where: { id }, data: { status } });
+  queueArchive(`cotizacion:${id}`);
   revalidatePath(`/cotizaciones/${id}`);
   revalidatePath("/cotizaciones");
 }
@@ -135,6 +141,8 @@ async function acceptQuoteImpl(id: number) {
             email: quote.prospectEmail,
             phone: quote.prospectPhone,
             notes: `Alta automática al aceptar la propuesta ${quote.folio}.`,
+            // El cliente queda con la marca que le cotizó.
+            brandId: quote.brandId,
           },
         });
         clientId = c.id;
@@ -177,6 +185,7 @@ async function acceptQuoteImpl(id: number) {
   revalidatePath("/cotizaciones");
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${result.clientId}`);
+  queueArchive(`cotizacion:${id}`);
   redirect(`/cotizaciones/${id}?aceptada=${result.created ? "nuevo" : "1"}&tarifas=${result.added}-${result.updated}`);
 }
 
@@ -185,10 +194,11 @@ async function duplicateQuoteImpl(id: number) {
   const s = await getSettings();
   const now = new Date();
   const q = await prisma.$transaction(async (tx) => {
-    const folio = await nextFolio(tx, "quote");
+    const folio = await nextFolio(tx, "quote", await brandPrefix(src.brandId, "quote"));
     return tx.quote.create({
       data: {
         folio,
+        brandId: src.brandId,
         clientId: src.clientId,
         prospectName: src.prospectName,
         prospectLegalName: src.prospectLegalName,
@@ -214,6 +224,7 @@ async function duplicateQuoteImpl(id: number) {
     });
   });
   revalidatePath("/cotizaciones");
+  queueArchive(`cotizacion:${q.id}`);
   redirect(`/cotizaciones/${q.id}`);
 }
 

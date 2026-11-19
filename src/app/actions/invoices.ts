@@ -9,6 +9,8 @@ import { computeLines } from "@/lib/totals";
 import { fromInputDate, round2 } from "@/lib/money";
 import { nextFolio } from "@/lib/settings";
 import { numv, parseItems, str } from "./helpers";
+import { queueArchive } from "@/lib/archive";
+import { brandPrefix } from "@/lib/brands";
 
 function header(fd: FormData) {
   const clientId = numv(fd, "clientId");
@@ -22,6 +24,7 @@ function header(fd: FormData) {
     volume: str(fd, "volume"),
     storage: str(fd, "storage"),
     terms: str(fd, "terms"),
+    brandId: numv(fd, "brandId") || null,
   };
 }
 
@@ -56,7 +59,7 @@ async function createInvoiceImpl(fd: FormData) {
       const imp = await tx.wmsImport.findUnique({ where: { id: importId } });
       if (imp?.status === "FACTURADO") throw new Error(`El estado de cobro ${imp.folio} ya se facturó.`);
     }
-    const folio = await nextFolio(tx, "invoice");
+    const folio = await nextFolio(tx, "invoice", await brandPrefix(h.brandId, "invoice"));
     const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, ordersWeek, items: { create: items } } });
     if (quoteId) await tx.quote.update({ where: { id: quoteId }, data: { status: "FACTURADA" } });
     if (importId) await tx.wmsImport.update({ where: { id: importId }, data: { status: "FACTURADO", invoiceId: created.id } });
@@ -66,6 +69,7 @@ async function createInvoiceImpl(fd: FormData) {
   revalidatePath("/cotizaciones");
   revalidatePath("/facturas/importar");
   if (ordersWeek) revalidatePath("/ordenes");
+  queueArchive(`factura:${inv.id}`, ...(ordersWeek ? [`ordenes:${h.clientId}:${ordersWeek}`] : []));
   redirect(`/facturas/${inv.id}`);
 }
 
@@ -80,6 +84,7 @@ async function updateInvoiceImpl(id: number, fd: FormData) {
     prisma.invoice.update({ where: { id }, data: { ...h, ...totals, items: { create: items } } }),
   ]);
   revalidateAll(id);
+  queueArchive(`factura:${id}`);
   redirect(`/facturas/${id}`);
 }
 
@@ -117,6 +122,7 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
     await syncInvoice(tx, invoiceId);
   });
   revalidateAll(invoiceId);
+  queueArchive(`factura:${invoiceId}`);
 }
 
 async function deletePaymentImpl(paymentId: number) {
@@ -127,6 +133,7 @@ async function deletePaymentImpl(paymentId: number) {
     await syncInvoice(tx, p.invoiceId);
   });
   revalidateAll(p.invoiceId);
+  queueArchive(`factura:${p.invoiceId}`);
 }
 
 async function cancelInvoiceImpl(id: number) {
@@ -139,6 +146,7 @@ async function cancelInvoiceImpl(id: number) {
   ]);
   revalidateAll(id);
   revalidatePath("/facturas/importar");
+  queueArchive(`factura:${id}`);
 }
 
 async function reactivateInvoiceImpl(id: number) {
@@ -147,6 +155,7 @@ async function reactivateInvoiceImpl(id: number) {
     await syncInvoice(tx, id);
   });
   revalidateAll(id);
+  queueArchive(`factura:${id}`);
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.

@@ -76,6 +76,8 @@ model Client {
   notes         String        @default("")
   wmsName       String        @default("") // nombre del cliente tal como aparece en el WMS (ej. "Basic&Pure")
   orderRate     Float         @default(0) // tarifa por paquete del servicio logístico (órdenes diarias); 0 = usar la tarifa negociada que coincida
+  brandId       Int? // marca que le factura (vacío = la principal)
+  brand         Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
   active        Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -84,8 +86,8 @@ model Client {
   transactions  Transaction[]
   rates         ClientRate[]
   wmsImports    WmsImport[]
-  dailyOrders   DailyOrder[]
   dailySupplies DailySupply[]
+  dailyOrders   DailyOrder[]
 }
 
 /// Tarifa negociada con un cliente. Al importar movimientos del WMS se busca por wmsConcept.
@@ -167,6 +169,8 @@ model Quote {
   folio             String      @unique
   clientId          Int? // vacío mientras sea prospecto; se llena al aceptar la propuesta
   client            Client?     @relation(fields: [clientId], references: [id])
+  brandId           Int?
+  brand             Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
   // Prospecto (propuesta comercial a una empresa que todavía no es cliente)
   prospectName      String      @default("")
   prospectLegalName String      @default("")
@@ -242,6 +246,8 @@ model Invoice {
   wmsImport  WmsImport?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  brand      Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brandId    Int?
 }
 
 model InvoiceItem {
@@ -522,6 +528,8 @@ model PackMaterial {
   id        Int           @id @default(autoincrement())
   name      String        @unique
   size      String        @default("") // medidas en cm (ej. "17*30"; varias separadas por " / ")
+  unitCost  Float         @default(0) // nuestro costo por pieza (sin IVA)
+  unitPrice Float         @default(0) // precio de venta al cliente por pieza (sin IVA); 0 = va incluido en el servicio
   noSupply  Boolean       @default(false) // "Sin insumo" (N/A): cuenta para cuadrar contra las órdenes, no como consumo
   sortOrder Int           @default(0)
   active    Boolean       @default(true)
@@ -542,4 +550,53 @@ model DailySupply {
 
   @@unique([workDate, clientId, materialId])
   @@index([workDate])
+}
+
+/// Copia en Google Drive de un documento generado. refKey: "factura:12", "cotizacion:7", "nomina:3", "ordenes:5:2026-11-16".
+model DriveFile {
+  id        Int       @id @default(autoincrement())
+  refKey    String    @unique
+  kind      String
+  fileId    String    @default("")
+  folderId  String    @default("")
+  link      String    @default("")
+  name      String    @default("")
+  error     String    @default("") // último error al subir (vacío = al día)
+  syncedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([kind])
+}
+
+/// Marca comercial adicional que emite documentos (la principal es CompanySettings).
+/// Los campos se llaman igual que en CompanySettings para que los PDFs los usen sin cambios.
+model Brand {
+  id            Int          @id @default(autoincrement())
+  tradeName     String
+  tagline       String       @default("")
+  legalName     String       @default("")
+  rfc           String       @default("")
+  address       String       @default("")
+  city          String       @default("")
+  state         String       @default("")
+  zip           String       @default("")
+  phone         String       @default("")
+  email         String       @default("")
+  website       String       @default("")
+  bankName      String       @default("")
+  bankAccount   String       @default("")
+  clabe         String       @default("")
+  primaryColor  String       @default("#1F4E79")
+  accentColor   String       @default("#ED7D31")
+  logoData      Bytes?
+  logoMime      String       @default("")
+  quotePrefix   String       @default("") // vacío = el de la marca principal
+  invoicePrefix String       @default("")
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  clients       Client[]
+  quotes        Quote[]
+  invoices      Invoice[]
 }

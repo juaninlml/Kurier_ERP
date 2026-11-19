@@ -1,6 +1,6 @@
-import { ChevronDown, Copy, Plus, Tags, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Plus, Tags, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { createRate, deleteRate, updateRate, copyRatesFromQuote } from "@/app/actions/rates";
+import { createRate, deleteRate, updateRate, copyRatesFromQuote, copyRatesFromClient, copyRatesFromTariff } from "@/app/actions/rates";
 import { Panel, Empty } from "./kit";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
@@ -30,12 +30,62 @@ async function knownWmsConcepts() {
 
 /** Panel "Tarifas negociadas" de la ficha del cliente. */
 export async function ClientRates({ clientId }: { clientId: number }) {
-  const [rates, services, quotes, wmsConcepts] = await Promise.all([
+  const [rates, services, quotes, wmsConcepts, sections, donors] = await Promise.all([
     prisma.clientRate.findMany({ where: { clientId }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
     prisma.service.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }] }),
     prisma.quote.findMany({ where: { clientId }, orderBy: { id: "desc" }, select: { id: true, folio: true, status: true }, take: 20 }),
     knownWmsConcepts(),
+    prisma.serviceSection.findMany({ orderBy: { sortOrder: "asc" }, select: { name: true } }),
+    prisma.client.findMany({
+      where: { id: { not: clientId }, rates: { some: { active: true } } },
+      select: { id: true, name: true, _count: { select: { rates: true } } },
+      orderBy: { name: "asc" },
+    }),
   ]);
+  const empty = rates.length === 0;
+
+  // Carga rápida (sirve sobre todo a los clientes dados de alta a mano, que no vienen de una cotización).
+  const quickLoad = (
+    <div className={empty ? "grid gap-3 px-5 py-5 md:grid-cols-2" : "mb-4 grid gap-3 border-b pb-4 md:grid-cols-2"}>
+      <Form action={copyRatesFromTariff.bind(null, clientId)} className="rounded-lg border bg-card p-3">
+        <p className="text-sm font-medium">Partir del tarifario estándar</p>
+        <p className="mb-2.5 text-xs text-muted-foreground">Copia los servicios y luego ajusta los precios negociados.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <select name="section" className="input h-8 w-auto min-w-40 text-xs" defaultValue="" aria-label="Sección del tarifario">
+            <option value="">Todo el tarifario</option>
+            {sections.map((s) => (
+              <option key={s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <SubmitButton className="btn-secondary h-8 text-xs" pendingText="Copiando…">
+            <Tags className="size-3.5" /> Cargar
+          </SubmitButton>
+        </div>
+      </Form>
+      <Form action={copyRatesFromClient.bind(null, clientId)} className="rounded-lg border bg-card p-3">
+        <p className="text-sm font-medium">Copiar de otro cliente</p>
+        <p className="mb-2.5 text-xs text-muted-foreground">Útil cuando negociaste las mismas condiciones.</p>
+        {donors.length ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <select name="fromClientId" className="input h-8 w-auto min-w-40 text-xs" aria-label="Cliente origen">
+              {donors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d._count.rates})
+                </option>
+              ))}
+            </select>
+            <SubmitButton className="btn-secondary h-8 text-xs" pendingText="Copiando…">
+              <Users className="size-3.5" /> Copiar
+            </SubmitButton>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Ningún otro cliente tiene tarifas todavía.</p>
+        )}
+      </Form>
+    </div>
+  );
 
   return (
     <Panel
@@ -58,8 +108,11 @@ export async function ClientRates({ clientId }: { clientId: number }) {
         ) : undefined
       }
     >
-      {rates.length === 0 ? (
-        <Empty icon={Tags}>Este cliente todavía no tiene tarifas negociadas; se usa el tarifario estándar.</Empty>
+      {empty ? (
+        <>
+          <Empty icon={Tags}>Este cliente todavía no tiene tarifas negociadas; mientras tanto se usa el tarifario estándar. Cárgalas de una vez o agrégalas una por una.</Empty>
+          <div className="border-t bg-muted/30">{quickLoad}</div>
+        </>
       ) : (
         <ul className="divide-y">
           {rates.map((r) => (
@@ -107,11 +160,12 @@ export async function ClientRates({ clientId }: { clientId: number }) {
           ))}
         </ul>
       )}
-      <details className="group border-t">
+      <details className="group border-t" open={empty}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm font-medium text-primary hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
           <Plus className="size-4" /> Agregar tarifa
         </summary>
         <div className="border-t bg-muted/30 px-5 py-4">
+          {!empty && quickLoad}
           <Form action={createRate.bind(null, clientId)} className="space-y-3">
             <RateFields services={services} wmsConcepts={wmsConcepts} />
             <div className="flex justify-end">

@@ -7,11 +7,13 @@ import { ClientForm } from "@/components/ClientForm";
 import { ClientRates } from "@/components/ClientRates";
 import { PageHeader, StatusBadge, Stat, Empty } from "@/components/kit";
 import { formatDate, formatMoney } from "@/lib/money";
+import { brandOptions } from "@/lib/brands";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ nuevo?: string }> }) {
   const id = Number((await params).id);
+  const { nuevo } = await searchParams;
   const client = await prisma.client.findUnique({
     where: { id },
     include: {
@@ -20,6 +22,8 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
     },
   });
   if (!client) notFound();
+  const brands = await brandOptions();
+  const brandName = brands.length > 1 ? brands.find((b) => b.id === (client.brandId ?? 0))?.name : null;
 
   const open = client.invoices.filter((i) => i.status === "PENDIENTE" || i.status === "PARCIAL");
   const balance = open.reduce((a, i) => a + i.total - i.paidTotal, 0);
@@ -29,7 +33,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title={client.name}
-        subtitle={client.legalName || undefined}
+        subtitle={[client.legalName, brandName && `Factura: ${brandName}`].filter(Boolean).join(" · ") || undefined}
         back={{ href: "/clientes", label: "Clientes" }}
         actions={
           <>
@@ -50,6 +54,15 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <Stat label="Saldo por cobrar" value={formatMoney(balance)} hint={`${open.length} factura(s) abiertas`} />
         <Stat label="Facturado (histórico)" value={formatMoney(billed)} />
         <Stat label="Cotizaciones" value={String(client.quotes.length)} />
+      </div>
+
+      {nuevo && (
+        <div className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Cliente creado. Ahora asígnale sus tarifas negociadas: cárgalas del tarifario o de otro cliente y ajusta los precios.
+        </div>
+      )}
+      <div id="tarifas" className="mb-6 scroll-mt-6">
+        <ClientRates clientId={client.id} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -105,12 +118,9 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <div className="mt-6">
-        <ClientRates clientId={client.id} />
-      </div>
 
       <h2 className="mb-3 mt-8 font-semibold">Datos del cliente</h2>
-      <ClientForm action={updateClient.bind(null, client.id)} client={client} />
+      <ClientForm action={updateClient.bind(null, client.id)} client={client} brands={brands} />
     </div>
   );
 }

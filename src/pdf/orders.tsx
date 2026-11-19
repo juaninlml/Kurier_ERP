@@ -83,18 +83,29 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
             <Table
               s={s}
               cols={[
-                { title: "Material", width: "30%" },
-                { title: "Medidas (cm)", width: "46%" },
-                { title: "Piezas", width: "12%", align: "right" },
-                { title: "%", width: "12%", align: "right" },
+                { title: "Material", width: "24%" },
+                { title: "Medidas (cm)", width: "34%" },
+                { title: "Piezas", width: "10%", align: "right" },
+                { title: "Precio", width: "16%", align: "right" },
+                { title: "Importe", width: "16%", align: "right" },
               ]}
-              styles={["label", "normal", "strong", "normal"]}
+              styles={["label", "normal", "strong", "normal", "strong"]}
               rows={[
-                ...data.byMaterial.map((m) => {
-                  const all = data.byMaterial.reduce((a, x) => a + x.total, 0);
-                  return [m.name, m.noSupply ? "Sin empaque de Kurier" : m.size.replace(/\*/g, "×") || "—", formatNumber(m.total), `${Math.round((m.total / all) * 100)}%`];
-                }),
-                ["Total", "", formatNumber(data.byMaterial.reduce((a, x) => a + x.total, 0)), "100%"],
+                // Solo el precio de venta: el costo interno nunca sale en documentos del cliente.
+                ...data.byMaterial.map((m) => [
+                  m.name,
+                  m.noSupply ? "Sin empaque de Kurier" : m.size.replace(/\*/g, "×") || "—",
+                  formatNumber(m.total),
+                  m.unitPrice ? formatMoney(m.unitPrice) : m.noSupply ? "—" : "Incluido",
+                  m.unitPrice ? formatMoney(m.total * m.unitPrice) : "—",
+                ]),
+                [
+                  "Total",
+                  "",
+                  formatNumber(data.byMaterial.reduce((a, x) => a + x.total, 0)),
+                  "",
+                  formatMoney(data.byMaterial.reduce((a, x) => a + x.total * x.unitPrice, 0)),
+                ],
               ]}
             />
           </>

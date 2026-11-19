@@ -3,7 +3,16 @@ import { Field } from "./kit";
 import { SubmitButton } from "./SubmitButton";
 import { Form } from "./Form";
 
-export function ClientForm({ action, client }: { action: (fd: FormData) => Promise<unknown>; client?: Client }) {
+export function ClientForm({
+  action,
+  client,
+  brands = [],
+}: {
+  action: (fd: FormData) => Promise<unknown>;
+  client?: Client;
+  /** Marcas que pueden facturarle (id 0 = la principal). Con una sola no se muestra. */
+  brands?: { id: number; name: string }[];
+}) {
   return (
     <Form action={action} successMessage={client ? "Cambios guardados." : undefined} className="card space-y-4 p-5">
       <div className="grid gap-4 md:grid-cols-3">
@@ -28,6 +37,18 @@ export function ClientForm({ action, client }: { action: (fd: FormData) => Promi
         <Field label="Dirección" className="md:col-span-3">
           <input name="address" defaultValue={client?.address} className="input" />
         </Field>
+        {brands.length > 1 && (
+          <Field label="Marca que le factura" className="md:col-span-3" hint="Sus cotizaciones, facturas, estados de cuenta y resúmenes salen con los datos y el logo de esta marca.">
+            <select name="brandId" defaultValue={client?.brandId ?? 0} className="input md:max-w-sm">
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {brands.length <= 1 && client?.brandId ? <input type="hidden" name="brandId" value={client.brandId} /> : null}
         <Field label="Nombre en el WMS" hint="Como aparece en los estados de cobro del WMS (ej. Basic&Pure). Sirve para reconocer al cliente al importar.">
           <input name="wmsName" defaultValue={client?.wmsName} className="input" placeholder="Basic&Pure" />
         </Field>

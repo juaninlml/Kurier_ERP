@@ -14,7 +14,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
   const quote = await prisma.quote.findUnique({ where: { id }, include: { items: { orderBy: { position: "asc" } } } });
   if (!quote) notFound();
   if (quote.status === "FACTURADA") redirect(`/cotizaciones/${id}`);
-  const { clients, services, clientRates, settings } = await editorData();
+  const { clients, services, clientRates, settings, brands } = await editorData();
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -25,10 +25,12 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         clients={clients}
         services={services}
         clientRates={clientRates}
+          brands={brands}
         defaultTaxRate={settings.defaultTaxRate}
         submitLabel="Guardar cambios"
         defaults={{
           clientId: quote.clientId ?? undefined,
+          brandId: quote.brandId ?? 0,
           prospect: { name: quote.prospectName, legalName: quote.prospectLegalName, rfc: quote.prospectRfc, email: quote.prospectEmail, phone: quote.prospectPhone },
           issueDate: toInputDate(quote.issueDate),
           secondDate: toInputDate(quote.validUntil),

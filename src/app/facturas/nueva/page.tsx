@@ -8,13 +8,14 @@ import { addDays, formatMoney, toInputDate } from "@/lib/money";
 import { prisma } from "@/lib/db";
 import { previewImport } from "@/lib/wms/imports";
 import { clientOrdersSummary, DATE_RE, rangeLabel, weekOf } from "@/lib/orders";
+import { suppliesByMaterial } from "@/lib/supplies";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Nueva factura" };
 
 export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string; ordenes?: string; semana?: string }> }) {
   const { clientId, quoteId, importId, ordenes, semana } = await searchParams;
-  const { clients, services, clientRates, settings } = await editorData();
+  const { clients, services, clientRates, settings, brands } = await editorData();
   const today = new Date();
   const base: DocumentDefaults = {
     clientId: clientId ? Number(clientId) : undefined,
@@ -31,8 +32,19 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   if (ordenes && semana && DATE_RE.test(semana)) {
     // Factura semanal de servicio logístico desde Órdenes diarias.
     const week = weekOf(semana);
-    const sum = await clientOrdersSummary(Number(ordenes), week.from, week.to);
+    const [sum, sup] = await Promise.all([clientOrdersSummary(Number(ordenes), week.from, week.to), suppliesByMaterial(week.from, week.to, Number(ordenes))]);
     if (sum) {
+      const supplyLines = sup.list
+        .filter((m) => !m.noSupply && m.unitPrice > 0)
+        .map((m) => ({
+          description: `Material de empaque: ${m.name}`,
+          detail: m.size ? `Medidas ${m.size.replace(/\*/g, "×")} cm` : "",
+          section: "Material de empaque",
+          unit: "Pieza",
+          quantity: m.qty,
+          unitPrice: m.unitPrice,
+          taxRate: settings.defaultTaxRate,
+        }));
       const period = rangeLabel(week.from, week.to);
       const breakdown = sum.byWave.filter((w) => w.total > 0).map((w) => `${w.name}: ${w.total}`).join(" · ");
       defaults = {
@@ -51,10 +63,11 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
             unitPrice: sum.rate.rate,
             taxRate: settings.defaultTaxRate,
           },
+          ...supplyLines,
         ],
       };
       subtitle = sum.rate.rate
-        ? `Desde Órdenes diarias: ${sum.total} paquetes × ${formatMoney(sum.rate.rate)} (${sum.rate.label.toLowerCase()}). Revisa y ajusta antes de crearla.`
+        ? `Desde Órdenes diarias: ${sum.total} paquetes × ${formatMoney(sum.rate.rate)} (${sum.rate.label.toLowerCase()})${supplyLines.length ? `, más ${supplyLines.length} material(es) de empaque (${formatMoney(sup.sale)})` : ""}. Revisa y ajusta antes de crearla.`
         : `Desde Órdenes diarias: ${sum.total} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.`;
       back = { href: `/ordenes?fecha=${week.from}`, label: "Órdenes diarias" };
     }
@@ -83,7 +96,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   } else if (quoteId) {
     const quote = await prisma.quote.findUnique({ where: { id: Number(quoteId) }, include: { items: { orderBy: { position: "asc" } } } });
     if (quote) {
-      defaults = { ...base, clientId: quote.clientId ?? undefined, quoteId: quote.id, items: itemsForEditor(quote.items) };
+      defaults = { ...base, clientId: quote.clientId ?? undefined, brandId: quote.brandId ?? undefined, quoteId: quote.id, items: itemsForEditor(quote.items) };
       subtitle = `Con las tarifas de la cotización ${quote.folio}. Captura las cantidades del periodo; los conceptos con cantidad 0 no se facturan.`;
       back = { href: `/cotizaciones/${quote.id}`, label: quote.folio };
     }
@@ -106,6 +119,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           clients={clients}
           services={services}
           clientRates={clientRates}
+          brands={brands}
           defaultTaxRate={settings.defaultTaxRate}
           submitLabel="Crear factura"
           defaults={defaults}

@@ -8,6 +8,18 @@
         "value": "helvetica-bold",
         "createdAt": "2026-11-19T18:45:41.025Z",
         "reason": "Existing PDF convention: all pdfkit documents in src/pdf use the built-in Helvetica family"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "helvetica",
+        "createdAt": "2026-11-19T19:33:01.615Z",
+        "reason": "Existing PDF convention: pdfkit built-in Helvetica family in src/pdf"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "helvetica-oblique",
+        "createdAt": "2026-11-19T19:33:01.698Z",
+        "reason": "Existing PDF convention: pdfkit built-in Helvetica family in src/pdf"
       }
     ]
   }

@@ -4,14 +4,16 @@ import { prisma } from "@/lib/db";
 import { getSettingsWithLogo as getSettings } from "@/lib/settings";
 import { incomeStatement, receivables, parseRange } from "@/lib/reports";
 import { quoteParty } from "@/lib/quote-party";
+import { applyBrand } from "@/lib/brands";
 import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf, TariffPdf } from "./documents";
 
 export async function renderQuote(id: number) {
-  const [s, quote] = await Promise.all([
+  const [base, quote] = await Promise.all([
     getSettings(),
-    prisma.quote.findUnique({ where: { id }, include: { client: true, items: { orderBy: { position: "asc" } } } }),
+    prisma.quote.findUnique({ where: { id }, include: { client: true, brand: true, items: { orderBy: { position: "asc" } } } }),
   ]);
   if (!quote) return null;
+  const s = applyBrand(base, quote.brand);
   const [sections, infoTables] = await Promise.all([
     prisma.serviceSection.findMany(),
     prisma.tariffTable.findMany({ where: { inQuotes: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
@@ -24,27 +26,29 @@ export async function renderQuote(id: number) {
 }
 
 export async function renderInvoice(id: number) {
-  const [s, invoice] = await Promise.all([
+  const [base, invoice] = await Promise.all([
     getSettings(),
     prisma.invoice.findUnique({
       where: { id },
-      include: { client: true, quote: true, items: { orderBy: { position: "asc" } }, payments: { orderBy: { date: "asc" } } },
+      include: { client: true, quote: true, brand: true, items: { orderBy: { position: "asc" } }, payments: { orderBy: { date: "asc" } } },
     }),
   ]);
   if (!invoice) return null;
+  const s = applyBrand(base, invoice.brand);
   return { filename: `Factura_${invoice.folio}_${slug(invoice.client.name)}.pdf`, buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} />) };
 }
 
 export async function renderStatement(clientId: number) {
-  const [s, client] = await Promise.all([
+  const [base, client] = await Promise.all([
     getSettings(),
     prisma.client.findUnique({
       where: { id: clientId },
-      include: { invoices: { where: { status: { not: "CANCELADA" } }, orderBy: { issueDate: "asc" }, include: { payments: true } } },
+      include: { brand: true, invoices: { where: { status: { not: "CANCELADA" } }, orderBy: { issueDate: "asc" }, include: { payments: true } } },
     }),
   ]);
   if (!client) return null;
-  const { invoices, ...c } = client;
+  const s = applyBrand(base, client.brand);
+  const { invoices, brand: _brand, ...c } = client;
   return {
     filename: `Estado_de_cuenta_${slug(c.name)}.pdf`,
     buffer: await renderToBuffer(<StatementPdf s={s} data={{ client: c as typeof client, invoices }} />),
@@ -105,8 +109,9 @@ export async function renderPayrollReceipts(runId: number, lineId?: number) {
 /** Resumen de órdenes diarias de un cliente en un periodo (yyyy-mm-dd, inclusive). */
 export async function renderOrdersSummary(clientId: number, from: string, to: string) {
   const { clientOrdersSummary } = await import("@/lib/orders");
-  const [s, data] = await Promise.all([getSettings(), clientOrdersSummary(clientId, from, to)]);
+  const [base, data] = await Promise.all([getSettings(), clientOrdersSummary(clientId, from, to)]);
   if (!data) return null;
+  const s = applyBrand(base, data.client.brand);
   const { OrdersSummaryPdf } = await import("./orders");
   return {
     filename: `Resumen_ordenes_${slug(data.client.name)}_${from}_${to}.pdf`,

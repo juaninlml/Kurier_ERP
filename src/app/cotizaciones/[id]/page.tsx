@@ -7,6 +7,7 @@ import { quoteParty } from "@/lib/quote-party";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseProfileJson } from "@/lib/editor-data";
 import { PageHeader, StatusBadge } from "@/components/kit";
+import { DriveButton } from "@/components/DriveButton";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -71,6 +72,7 @@ export default async function QuotePage({
             <a href={`/api/pdf/cotizacion/${quote.id}?download`} className="btn-secondary">
               <Download className="size-4" /> Descargar
             </a>
+            <DriveButton refKey={`cotizacion:${quote.id}`} path={`/cotizaciones/${quote.id}`} />
             {editable && (
               <Link href={`/cotizaciones/${quote.id}/editar`} className="btn-secondary">
                 <Pencil className="size-4" /> Editar

@@ -4,8 +4,12 @@ import { PageHeader, Field } from "@/components/kit";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Form } from "@/components/Form";
 import { getT } from "@/lib/i18n/server";
+import { DrivePanel } from "@/components/DrivePanel";
+import { BrandsPanel } from "@/components/BrandsPanel";
 
 export const dynamic = "force-dynamic";
+// "Subir pendientes" genera y sube varios PDFs en una sola llamada.
+export const maxDuration = 60;
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
   const t = await getT();
@@ -154,6 +158,10 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
           <SubmitButton>{t("Guardar configuración")}</SubmitButton>
         </div>
       </Form>
+
+      <BrandsPanel mainName={s.tradeName} />
+
+      <DrivePanel />
     </div>
   );
 }

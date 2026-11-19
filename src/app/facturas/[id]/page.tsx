@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { Form } from "@/components/Form";
+import { DriveButton } from "@/components/DriveButton";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <a href={`/api/pdf/factura/${inv.id}?download`} className="btn-primary">
               <Download className="size-4" /> Descargar PDF
             </a>
+            <DriveButton refKey={`factura:${inv.id}`} path={`/facturas/${inv.id}`} />
             {editable && (
               <Link href={`/facturas/${inv.id}/editar`} className="btn-secondary">
                 <Pencil className="size-4" /> Editar
