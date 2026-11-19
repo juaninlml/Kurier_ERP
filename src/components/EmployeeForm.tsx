@@ -7,7 +7,7 @@ import { SalaryFields } from "./SalaryFields";
 
 export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<unknown>; e?: Employee }) {
   return (
-    <Form action={action} className="card space-y-6 p-5">
+    <Form action={action} successMessage={e ? "Cambios guardados." : undefined} className="card space-y-6 p-5">
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">Datos laborales</h3>
         <div className="grid gap-3 md:grid-cols-3">

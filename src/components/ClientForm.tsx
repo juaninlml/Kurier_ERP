@@ -5,7 +5,7 @@ import { Form } from "./Form";
 
 export function ClientForm({ action, client }: { action: (fd: FormData) => Promise<unknown>; client?: Client }) {
   return (
-    <Form action={action} className="card space-y-4 p-5">
+    <Form action={action} successMessage={client ? "Cambios guardados." : undefined} className="card space-y-4 p-5">
       <div className="grid gap-4 md:grid-cols-3">
         <Field label="Nombre / Marca *" className="md:col-span-2">
           <input name="name" required defaultValue={client?.name} className="input" />

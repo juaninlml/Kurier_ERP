@@ -99,7 +99,7 @@ function employeeData(fd: FormData) {
 function scheduleData(fd: FormData) {
   const t = (k: string, def: string) => {
     const v = str(fd, k) || def;
-    if (!/^([01]d|2[0-3]):[0-5]d$/.test(v)) throw new Error("Revisa el horario (formato HH:MM).");
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) throw new Error("Revisa el horario (formato HH:MM).");
     return v;
   };
   const s = { scheduleStart: t("scheduleStart", "09:00"), scheduleEnd: t("scheduleEnd", "18:00"), mealStart: t("mealStart", "14:00"), mealEnd: t("mealEnd", "15:00") };
@@ -120,7 +120,7 @@ async function updateEmployeeImpl(id: number, fd: FormData) {
   revalidatePath("/nomina");
   revalidatePath(`/nomina/empleados/${id}`);
   revalidatePath("/contabilidad/gastos-fijos");
-  redirect(`/nomina/empleados/${id}`);
+  // Sin redirect: el formulario está en esta misma página (redirigir a la misma URL aborta la respuesta)
 }
 
 // ───────────── Nómina semanal ─────────────

@@ -179,6 +179,7 @@ export const en: Record<string, string> = {
   "Ocurrió un error inesperado. Intenta de nuevo.": "An unexpected error occurred. Please try again.",
   Regresar: "Go back",
   Reintentar: "Try again",
+  "Cambios guardados.": "Changes saved.",
   "No encontramos esta página": "We couldn't find this page",
   "El documento pudo haberse eliminado o la dirección es incorrecta.": "The document may have been deleted or the address is wrong.",
   "Ir al inicio": "Go home",

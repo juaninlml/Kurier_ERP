@@ -32,7 +32,7 @@ async function updateClientImpl(id: number, fd: FormData) {
   await prisma.client.update({ where: { id }, data: { ...clientData(fd), active: fd.get("active") === "on" } });
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
-  redirect(`/clientes/${id}`);
+  // Sin redirect: el formulario está en esta misma página
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
