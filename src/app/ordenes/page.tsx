@@ -10,9 +10,10 @@ import {
   monthEndOf,
   monthName,
   monthStartOf,
-  operatedDays,
-  operatedWeeks,
   orderRateOf,
+  weekSegments,
+  weeklyAverages,
+  workdaysBetween,
   rangeLabel,
   sumRange,
   totalsByDay,
@@ -68,16 +69,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     weekOther: sumRange(orders, week.from, week.to, c.id) - sumRange(orders, date, date, c.id),
   }));
 
-  // Indicadores (hasta el día elegido)
-  const upToWeek = date < week.to ? date : week.to;
-  const upToMonth = date;
+  // Indicadores (hasta el día elegido). Semanas de lunes a sábado; el mes se parte en semanas
+  // (la primera y la última pueden quedar cortadas) y su promedio sale del de cada semana.
   const dayTotal = sumRange(orders, date, date);
   const prevSameDay = sumRange(orders, lastWeekSameDay, lastWeekSameDay);
   const weekTotal = sumRange(orders, week.from, week.to);
-  const weekDays = operatedDays(orders, week.from, upToWeek);
+  const weekDays = workdaysBetween(week.from, week.to, date);
   const monthTotal = sumRange(orders, month.from, month.to);
-  const monthDays = operatedDays(orders, month.from, upToMonth);
-  const monthWeeks = operatedWeeks(orders, month.from, upToMonth);
+  const monthSegments = weekSegments(month.from, month.to, date);
+  const monthStats = weeklyAverages(orders, monthSegments);
 
   // Últimos 35 días (tendencia)
   const byDay = totalsByDay(orders);
@@ -95,6 +95,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       const w = sumRange(orders, week.from, week.to, c.id);
       const m = sumRange(orders, month.from, month.to, c.id);
       const rate = orderRateOf(c);
+      const ms = weeklyAverages(orders, monthSegments, c.id);
       return {
         id: c.id,
         name: c.name,
@@ -102,8 +103,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         week: w,
         weekAvg: avg(w, weekDays),
         month: m,
-        monthAvg: avg(m, monthDays),
-        weeklyAvg: avg(m, monthWeeks),
+        monthAvg: ms.dailyAvg,
+        weeklyAvg: ms.weeklyAvg,
         orderRate: c.orderRate,
         rate,
         invoice: invoiceOf.get(c.id),
@@ -152,9 +153,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           delta={prevSameDay ? <Delta pct={pctChange(dayTotal, prevSameDay)} label={`vs. ${dayShort(lastWeekSameDay)}`} /> : undefined}
           hint={prevSameDay ? undefined : "Total de todos los clientes"}
         />
-        <Stat label="Semana" value={formatNumber(weekTotal)} icon={CalendarRange} hint={`${one(avg(weekTotal, weekDays))} por día · ${weekDays} día(s) operado(s)`} />
-        <Stat label="Mes" value={formatNumber(monthTotal)} icon={CalendarDays} hint={`${one(avg(monthTotal, monthDays))} por día · ${monthDays} día(s) operado(s)`} />
-        <Stat label="Promedio semanal" value={one(avg(monthTotal, monthWeeks))} icon={TrendingUp} hint={`Paquetes por semana en ${monthName(date)}`} />
+        <Stat label="Semana" value={formatNumber(weekTotal)} icon={CalendarRange} hint={`${one(avg(weekTotal, weekDays))} por día · ${weekDays} día(s) de lunes a sábado`} />
+        <Stat label="Mes" value={formatNumber(monthTotal)} icon={CalendarDays} hint={`${one(monthStats.dailyAvg)} por día · promedio de ${monthStats.counted} semana(s)`} />
+        <Stat label="Promedio semanal" value={one(monthStats.weeklyAvg)} icon={TrendingUp} hint={`Paquetes por semana en ${monthName(date)}`} />
       </div>
 
       <Panel
@@ -194,8 +195,79 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
       <Panel
         className="mb-6"
+        title="Semanas del mes"
+        description={
+          <>
+            Semanas de lunes a sábado; la primera y la última pueden quedar cortadas por el cambio de mes. El promedio del mes es el promedio de los promedios de cada semana.
+          </>
+        }
+        bodyClassName="p-0"
+      >
+        <div className="overflow-x-auto">
+          <table className="table min-w-[560px]">
+            <thead>
+              <tr className="text-xs text-muted-foreground [&>th]:px-3 [&>th]:py-2.5 [&>th]:font-medium">
+                <th className="pl-5 text-left">Semana</th>
+                <th className="text-right">Días lun–sáb</th>
+                <th className="text-right">Paquetes</th>
+                <th className="w-[38%] pr-5 text-right">Promedio diario</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const maxAvg = Math.max(1, ...monthStats.weeks.map((w) => w.dailyAvg));
+                return monthStats.weeks.map((w, i) => {
+                  const current = date >= w.from && date <= w.to;
+                  const pending = w.workdays === 0;
+                  return (
+                    <tr key={w.from} className={`border-t [&>td]:px-3 [&>td]:py-2 ${current ? "bg-primary/[0.04]" : ""}`}>
+                      <td className="pl-5">
+                        <span className="font-medium">{rangeLabel(w.from, w.to)}</span>
+                        {current && <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">En curso</span>}
+                        {workdaysBetween(w.from, w.to) < 6 && !pending && <span className="ml-2 text-xs text-muted-foreground">cortada</span>}
+                      </td>
+                      <td className="text-right tabular-nums">{pending ? <span className="text-muted-foreground">—</span> : w.workdays}</td>
+                      <td className="text-right font-medium tabular-nums">{pending ? <span className="text-muted-foreground">—</span> : formatNumber(w.total)}</td>
+                      <td className="pr-5">
+                        {pending ? (
+                          <span className="block text-right text-xs text-muted-foreground">{w.from > date ? "Aún no empieza" : "Sin días lun–sáb"}</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-3">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+                              <div
+                                className="viz-grow-right h-full rounded-full"
+                                style={{ width: `${(w.dailyAvg / maxAvg) * 100}%`, background: "var(--chart-1)", "--viz-delay": `${Math.min(i * 30, 160)}ms` } as React.CSSProperties}
+                              />
+                            </div>
+                            <span className="w-14 text-right font-semibold tabular-nums">{one(w.dailyAvg)}</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
+              <tr className="border-t bg-muted font-semibold [&>td]:px-3 [&>td]:py-2.5">
+                <td className="pl-5">
+                  Promedio del mes <span className="font-normal text-muted-foreground">· {monthStats.counted} semana(s)</span>
+                </td>
+                <td />
+                <td className="text-right tabular-nums" title="Promedio de los totales semanales">
+                  {one(monthStats.weeklyAvg)} <span className="text-xs font-normal text-muted-foreground">/ semana</span>
+                </td>
+                <td className="pr-5 text-right tabular-nums">
+                  {one(monthStats.dailyAvg)} <span className="text-xs font-normal text-muted-foreground">/ día</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel
+        className="mb-6"
         title="Resumen por cliente"
-        description={`Semana del ${rangeLabel(week.from, week.to)}. Los promedios diarios se calculan sobre los días operados.`}
+        description={`Semana del ${rangeLabel(week.from, week.to)}. Promedios con semanas de lunes a sábado; el del mes es el promedio de sus semanas.`}
         bodyClassName="p-0"
       >
         <div className="overflow-x-auto">

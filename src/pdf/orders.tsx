@@ -12,7 +12,10 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
   const c = palette(s);
   const period = rangeLabel(data.from, data.to);
   const days = data.days.length;
-  const avg = days ? data.total / days : 0;
+  // Semanas de lunes a sábado; con varias semanas, el promedio es el de los promedios semanales.
+  const avg = data.weekly.dailyAvg;
+  const counted = data.weekly.weeks.filter((w) => w.workdays > 0);
+  const one = (n: number) => formatNumber(Math.round(n * 10) / 10);
   const amount = data.total * data.rate.rate;
   const peak = data.days.reduce<(typeof data.days)[number] | null>((a, d) => (!a || d.total > a.total ? d : a), null);
 
@@ -26,8 +29,10 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
 
   const kpis = [
     { l: "Paquetes del periodo", v: formatNumber(data.total), color: c.blue },
-    { l: "Promedio por día operado", v: formatNumber(Math.round(avg * 10) / 10), color: c.blue },
-    { l: "Días con órdenes", v: String(days), color: c.blue },
+    { l: "Promedio diario (lun–sáb)", v: one(avg), color: c.blue },
+    counted.length > 1
+      ? { l: "Promedio semanal", v: one(data.weekly.weeklyAvg), color: c.blue }
+      : { l: "Días con órdenes", v: String(days), color: c.blue },
     ...(data.rate.rate ? [{ l: `Importe estimado (${formatMoney(data.rate.rate)} c/u)`, v: formatMoney(amount), color: c.orange }] : []),
   ];
 
@@ -62,6 +67,27 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
           })}
         </View>
 
+        {counted.length > 1 && (
+          <>
+            <SectionTab s={s}>Por semana</SectionTab>
+            <Table
+              s={s}
+              cols={[
+                { title: "Semana", width: "46%" },
+                { title: "Días lun–sáb", width: "18%", align: "right" },
+                { title: "Paquetes", width: "18%", align: "right" },
+                { title: "Promedio diario", width: "18%", align: "right" },
+              ]}
+              styles={["label", "normal", "strong", "strong"]}
+              rows={[
+                ...counted.map((w) => [rangeLabel(w.from, w.to), String(w.workdays), formatNumber(w.total), one(w.dailyAvg)]),
+                [`Promedio de ${counted.length} semanas`, "", `${one(data.weekly.weeklyAvg)} / semana`, `${one(avg)} / día`],
+              ]}
+            />
+            <Note>Semanas de lunes a sábado; la primera y la última pueden quedar cortadas por el cambio de mes. El promedio del periodo es el promedio de los promedios semanales.</Note>
+          </>
+        )}
+
         <SectionTab s={s}>Detalle por día</SectionTab>
         <Table
           s={s}
@@ -75,7 +101,7 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
         {days === 0 ? (
           <Note>Sin órdenes capturadas en este periodo.</Note>
         ) : (
-          <Note>{`Día con más paquetes: ${dayShort(peak!.date)} (${formatNumber(peak!.total)}). El promedio se calcula sobre los días con órdenes.${data.rate.rate ? " Importe estimado sin IVA, con la tarifa por paquete del servicio logístico." : ""}`}</Note>
+          <Note>{`Día con más paquetes: ${dayShort(peak!.date)} (${formatNumber(peak!.total)}). El promedio diario cuenta los días de lunes a sábado.${data.rate.rate ? " Importe estimado sin IVA, con la tarifa por paquete del servicio logístico." : ""}`}</Note>
         )}
         {data.byMaterial.length > 0 && (
           <>

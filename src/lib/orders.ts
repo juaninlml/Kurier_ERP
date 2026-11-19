@@ -108,5 +108,56 @@ export async function clientOrdersSummary(clientId: number, from: string, to: st
   // Insumos de empaque del periodo (por material)
   const used2 = new Map(supplies.map((x) => [x.materialId, x._sum.quantity ?? 0]));
   const byMaterial = materials.filter((m) => used2.get(m.id)).map((m) => ({ id: m.id, name: m.name, size: m.size, noSupply: m.noSupply, unitPrice: m.noSupply ? 0 : m.unitPrice, total: used2.get(m.id)! }));
-  return { client, waves: cols, days, byWave, total, rate, from, to, byMaterial };
+  // Promedios con semanas de lunes a sábado (hasta hoy si el periodo sigue en curso).
+  const today = await companyToday();
+  const weekly = weeklyAverages(orders, weekSegments(from, to, today < to ? today : to));
+  return { client, waves: cols, days, byWave, total, rate, from, to, byMaterial, weekly };
+}
+
+/*
+ * Promedios por semanas de lunes a sábado (el domingo no se labora). Un mes se parte en
+ * tramos semanales; la primera y la última semana pueden quedar cortadas por el cambio de mes.
+ *   promedio diario de la semana = paquetes del tramo ÷ días lunes–sábado del tramo (transcurridos)
+ *   promedio diario del mes      = promedio de los promedios diarios de cada semana
+ *   promedio semanal del mes     = promedio de los totales de cada semana
+ * Si hubo órdenes en domingo, suman al total de su semana pero no cuentan como día.
+ */
+
+export type WeekSegment = { from: string; to: string; workdays: number };
+
+/** Días lunes–sábado entre dos fechas (inclusive), sin pasar de `upTo`. */
+export function workdaysBetween(from: string, to: string, upTo = to) {
+  const end = upTo < to ? upTo : to;
+  let n = 0;
+  for (let d = from; d <= end; d = addDaysStr(d, 1)) if (new Date(`${d}T12:00:00Z`).getUTCDay() !== 0) n++;
+  return n;
+}
+
+/** Tramos semanales (lunes a domingo) del rango, cortados en los extremos. */
+export function weekSegments(from: string, to: string, upTo = to): WeekSegment[] {
+  const out: WeekSegment[] = [];
+  for (let start = from; start <= to; ) {
+    const sunday = addDaysStr(mondayOf(start), 6);
+    const end = sunday < to ? sunday : to;
+    out.push({ from: start, to: end, workdays: workdaysBetween(start, end, upTo) });
+    start = addDaysStr(end, 1);
+  }
+  return out;
+}
+
+/** Totales y promedio diario de cada tramo, y los promedios del periodo calculados a partir de ellos. */
+export function weeklyAverages(orders: OrderRow[], segments: WeekSegment[], clientId?: number) {
+  const weeks = segments.map((s) => {
+    const total = sumRange(orders, s.from, s.to, clientId);
+    return { ...s, total, dailyAvg: s.workdays ? total / s.workdays : 0 };
+  });
+  const counted = weeks.filter((w) => w.workdays > 0);
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  return {
+    weeks,
+    /** Semanas que ya tienen días lunes–sábado transcurridos. */
+    counted: counted.length,
+    dailyAvg: mean(counted.map((w) => w.dailyAvg)),
+    weeklyAvg: mean(counted.map((w) => w.total)),
+  };
 }
