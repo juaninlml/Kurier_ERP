@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 
 /**
- * Todo el ERP requiere iniciar sesión con Google (ver src/auth.ts para las reglas de acceso).
+ * Todo el ERP requiere iniciar sesión con correo + código del autenticador (ver src/auth.ts).
  * Quedan fuera: archivos estáticos y /api/wms (usa su propio token, WMS_API_TOKEN).
  */
 export const { auth: middleware } = NextAuth(authConfig);

@@ -50,7 +50,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         </form>
       </Panel>
 
-      <Panel title={t("Datos del perfil")} description={t("El correo y la foto vienen de tu cuenta de Google.")}>
+      <Panel title={t("Datos del perfil")} description={t("Tu correo es tu usuario para iniciar sesión.")}>
         <Form action={updateProfile} className="space-y-4 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("Nombre")}>

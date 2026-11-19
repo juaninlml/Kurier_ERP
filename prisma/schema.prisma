@@ -386,7 +386,7 @@ model PayrollLine {
   @@index([employeeId])
 }
 
-/// Usuario del ERP (inicia sesión con Google). role: OWNER (cuenta maestra) | ADMIN | USER
+/// Usuario del ERP (inicia sesión con correo + código de su app autenticadora). role: OWNER (cuenta maestra) | ADMIN | USER
 model User {
   id              Int          @id @default(autoincrement())
   email           String       @unique
@@ -398,24 +398,31 @@ model User {
   position        String       @default("") // puesto (perfil)
   phone           String       @default("")
   lastLoginAt     DateTime?
+  totpSecret      String       @default("") // secreto del autenticador (cifrado)
+  totpLastStep    Int          @default(0) // último código usado (evita reutilizarlo)
+  failedLogins    Int          @default(0)
+  lockedUntil     DateTime?
   invitedById     Int?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   invitationsSent Invitation[] @relation("InvitationCreator")
 }
 
-/// Link de invitación. Si tiene email, solo esa cuenta de Google puede usarlo.
+/// Link para vincular el autenticador. kind: INVITE (alta) | RESET (cambio de teléfono) | OWNER (cuenta maestra).
 model Invitation {
-  id          Int       @id @default(autoincrement())
-  token       String    @unique
-  email       String    @default("")
-  role        String    @default("USER")
-  note        String    @default("")
-  expiresAt   DateTime
-  usedAt      DateTime?
-  usedByEmail String    @default("")
-  revokedAt   DateTime?
-  createdById Int
-  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id])
-  createdAt   DateTime  @default(now())
+  id            Int       @id @default(autoincrement())
+  token         String    @unique
+  email         String    @default("")
+  role          String    @default("USER")
+  kind          String    @default("INVITE")
+  name          String    @default("") // nombre capturado al aceptar
+  pendingSecret String    @default("") // secreto del QR mientras se confirma (cifrado)
+  note          String    @default("")
+  expiresAt     DateTime
+  usedAt        DateTime?
+  usedByEmail   String    @default("")
+  revokedAt     DateTime?
+  createdById   Int?
+  createdBy     User?     @relation("InvitationCreator", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
 }

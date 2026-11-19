@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Ban, Link2, ShieldCheck, UserPlus } from "lucide-react";
+import { Ban, Link2, Lock, RotateCcw, ShieldCheck, Smartphone, UserPlus } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { canManageUsers, getCurrentUser } from "@/lib/current-user";
-import { createInvitation, revokeInvitation, updateUser } from "@/app/actions/account";
+import { createInvitation, createResetLink, revokeInvitation, updateUser } from "@/app/actions/account";
 import { PageHeader, Panel, Empty, Field } from "@/components/kit";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -37,7 +37,7 @@ export default async function UsersPage() {
 
   return (
     <div>
-      <PageHeader title={t("Usuarios y accesos")} subtitle={t("Invita personas con un link. Entran con su cuenta de Google.")} />
+      <PageHeader title={t("Usuarios y accesos")} subtitle={t("Invita personas con un link: escanean un QR con su app autenticadora y entran con su correo y el código.")} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
@@ -56,7 +56,16 @@ export default async function UsersPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <Badge variant={u.role === "OWNER" ? "default" : "secondary"}>{t(ROLE[u.role] ?? u.role)}</Badge>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          {u.lockedUntil && u.lockedUntil > now ? (
+                            <span className="inline-flex items-center gap-1 text-rose-700">
+                              <Lock className="size-3" /> {t("Bloqueado")}
+                            </span>
+                          ) : u.totpSecret ? (
+                            <Smartphone className="size-3" aria-label={t("Autenticador vinculado")} />
+                          ) : (
+                            <span className="text-amber-700">{t("Sin autenticador")}</span>
+                          )}
                           {u.active ? (u.lastLoginAt ? `${t("Último acceso")}: ${fmt(u.lastLoginAt)}` : t("Sin accesos")) : t("Sin acceso")}
                         </span>
                       </div>
@@ -73,9 +82,22 @@ export default async function UsersPage() {
                         <label className="flex h-9 items-center gap-2 text-sm">
                           <input type="checkbox" name="active" defaultChecked={u.active} /> {t("Acceso activo")}
                         </label>
+                        {u.lockedUntil && u.lockedUntil > now && (
+                          <label className="flex h-9 items-center gap-2 text-sm">
+                            <input type="checkbox" name="unlock" /> {t("Desbloquear")}
+                          </label>
+                        )}
                         <SubmitButton className="btn-secondary" pendingText={t("Guardando…")}>
                           {t("Guardar")}
                         </SubmitButton>
+                      </Form>
+                    )}
+                    {u.role !== "OWNER" && (u.role !== "ADMIN" || me.role === "OWNER") && u.id !== me.id && (
+                      <Form action={createResetLink.bind(null, u.id)} className="border-t px-5 py-3">
+                        <SubmitButton className="btn-secondary h-8 text-xs" pendingText={t("Generando…")}>
+                          <RotateCcw className="size-3.5" /> {t("Link para restablecer autenticador")}
+                        </SubmitButton>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("Si cambió o perdió su teléfono. El link aparece abajo en Invitaciones.")}</p>
                       </Form>
                     )}
                   </details>
@@ -98,12 +120,12 @@ export default async function UsersPage() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="min-w-0">
                           <div className="text-sm font-medium">
-                            {i.email || t("Cualquier cuenta de Google")} · {t(ROLE[i.role] ?? i.role)}
+                            {i.email || t("Cualquier correo")} · {i.kind === "RESET" ? t("Restablecer autenticador") : i.kind === "OWNER" ? t("Cuenta maestra") : t(ROLE[i.role] ?? i.role)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {i.usedAt
                               ? t("Usada por {email} el {date}", { email: i.usedByEmail, date: fmt(i.usedAt) })
-                              : `${t("Vence")} ${fmt(i.expiresAt)} · ${t("creada por {name}", { name: i.createdBy.name || i.createdBy.email })}`}
+                              : `${t("Vence")} ${fmt(i.expiresAt)} · ${t("creada por {name}", { name: i.createdBy ? i.createdBy.name || i.createdBy.email : t("Clave de instalación") })}`}
                             {i.note && ` · ${i.note}`}
                           </div>
                         </div>
@@ -132,7 +154,7 @@ export default async function UsersPage() {
 
         <Panel title={t("Nueva invitación")} description={t("Se genera un link para compartir por WhatsApp o correo.")} className="h-fit xl:sticky xl:top-6">
           <Form action={createInvitation} resetOnSuccess className="space-y-3 p-5">
-            <Field label={t("Correo (opcional)")} hint={t("Si lo indicas, solo esa cuenta de Google podrá usar el link.")}>
+            <Field label={t("Correo (opcional)")} hint={t("Si lo indicas, la cuenta se crea con ese correo. Si no, la persona lo escribe al abrir el link.")}>
               <input name="email" type="email" className="input" placeholder="nombre@empresa.com" />
             </Field>
             <div className="grid grid-cols-2 gap-3">

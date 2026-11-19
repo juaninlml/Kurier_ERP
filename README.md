@@ -17,7 +17,7 @@ ERP interno de **Kurier Fulfillment**.
 
 1. Importa el repositorio en Vercel.
 2. En **Optional Integrations → Prisma Postgres** da clic en **Add**. Esto crea la base y la variable `DATABASE_URL`.
-3. En **Environment Variables** agrega `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` y `ERP_OWNER_EMAIL` (ver *Acceso con Google* abajo).
+3. En **Environment Variables** agrega `AUTH_SECRET`, `ERP_OWNER_EMAIL` y `ERP_SETUP_KEY` (ver *Acceso con autenticador* abajo).
 4. Da clic en **Deploy**. El script `vercel-build` aplica las migraciones, carga el catálogo de servicios (sin sobrescribir lo que ya exista) y compila.
 
 ## Desarrollo local
@@ -82,17 +82,17 @@ src/lib/                  cálculo de totales, importe con letra, reportes y fol
 - **Folios:** se reservan dentro de una transacción (`COT-00001`, `FAC-00001`). El prefijo y el siguiente número se pueden cambiar en *Configuración*.
 - **Montos:** se redondean a 2 decimales por línea. El IVA se calcula sobre el importe después del descuento.
 - **IVA de los pagos:** cuando se registra un pago, el IVA que contiene se calcula en proporción al total de la factura.
-- **Acceso:** inicio de sesión con Google (Auth.js). Ver *Acceso con Google*.
+- **Acceso:** correo + código de una app autenticadora (TOTP). Ver *Acceso con autenticador*.
 
-## Acceso con Google
+## Acceso con autenticador
 
-1. En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) crea un **ID de cliente OAuth** de tipo *Aplicación web*.
-   - Orígenes autorizados: `https://TU-DOMINIO` (y `http://localhost:3000` para local).
-   - URI de redirección: `https://TU-DOMINIO/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google`).
-2. En Vercel agrega `AUTH_GOOGLE_ID` y `AUTH_GOOGLE_SECRET` (del paso 1), `AUTH_SECRET` (texto aleatorio largo, p. ej. `npx auth secret`) y `ERP_OWNER_EMAIL` (tu correo de Google: la cuenta maestra).
-3. La cuenta maestra entra directo. Desde **Usuarios y accesos** genera links de invitación (opcionalmente para un correo específico, con rol y vencimiento). Quien abre el link entra con su Google y queda dado de alta.
-4. Roles: *Cuenta maestra* (todo), *Administrador* (puede invitar usuarios), *Usuario* (usa el ERP). Desactivar a alguien le quita el acceso en minutos.
-5. Para probar en local sin Google: `AUTH_DEV_LOGIN=1` en `.env.development.local` (nunca funciona en producción).
+Cada usuario entra con su **correo + el código de 6 dígitos** de una app autenticadora (Google Authenticator, Microsoft Authenticator, Authy…). No hay contraseñas ni inicio de sesión con Google.
+
+1. En Vercel define `AUTH_SECRET` (texto aleatorio largo; **no lo cambies después**, cifra los autenticadores), `ERP_OWNER_EMAIL` (tu correo) y `ERP_SETUP_KEY` (una clave que solo tú conozcas).
+2. Abre `/configurar-acceso`, escribe la clave de instalación, escanea el QR con tu app y confirma el código. Esa es la cuenta maestra.
+3. En **Usuarios y accesos** genera links de invitación (con o sin correo, rol y vigencia). Quien lo abre escanea su QR y queda vinculado.
+4. Si alguien cambia de teléfono: **Link para restablecer autenticador** en su usuario. Para la cuenta maestra, vuelve a `/configurar-acceso`.
+5. Seguridad: cada código sirve una vez, 5 intentos fallidos bloquean 15 minutos, la sesión dura 12 horas y desactivar a un usuario le quita el acceso en minutos.
 
 ## Idioma
 
