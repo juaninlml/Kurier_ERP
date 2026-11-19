@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { ChevronLeft, Inbox, type LucideIcon } from "lucide-react";
-import { STATUS_LABELS, STATUS_TONES } from "@/lib/constants";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -38,14 +36,7 @@ export function PageHeader({
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant="outline" className={cn("gap-1.5 border-transparent font-medium", STATUS_TONES[status] ?? "bg-muted text-muted-foreground")}>
-      <span className="size-1.5 rounded-full bg-current opacity-70" aria-hidden />
-      {STATUS_LABELS[status] ?? status}
-    </Badge>
-  );
-}
+export { StatusBadge } from "./StatusBadge";
 
 export function Stat({
   label,

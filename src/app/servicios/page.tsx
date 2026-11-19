@@ -8,10 +8,12 @@ import { formatMoney } from "@/lib/money";
 import { rateLabel } from "@/lib/totals";
 import { getSettings } from "@/lib/settings";
 import { Form } from "@/components/Form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
+  const t = await getT();
   const [services, sections, s] = await Promise.all([
     prisma.service.findMany({ orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
     prisma.serviceSection.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -26,7 +28,7 @@ export default async function ServicesPage() {
   return (
     <div>
       <PageHeader
-        title="Tarifario de servicios"
+        title={t("Tarifario de servicios")}
         subtitle={`${services.filter((x) => x.active).length} servicios activos · Precios sin IVA, MXN. Es la base para armar cotizaciones y facturas.`}
         actions={
           <>
@@ -44,7 +46,7 @@ export default async function ServicesPage() {
         <div className="space-y-6">
           {groups.length === 0 && (
             <div className="card">
-              <Empty>Aún no hay servicios en el tarifario.</Empty>
+              <Empty>{t("Aún no hay servicios en el tarifario.")}</Empty>
             </div>
           )}
           {groups.map(({ sec, items }) => (
@@ -60,9 +62,9 @@ export default async function ServicesPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Servicio</th>
-                      <th>Tarifa</th>
-                      <th>Descripción</th>
+                      <th>{t("Servicio")}</th>
+                      <th>{t("Tarifa")}</th>
+                      <th>{t("Descripción")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -93,7 +95,7 @@ export default async function ServicesPage() {
                     name="note"
                     rows={sec.note ? 2 : 1}
                     defaultValue={sec.note}
-                    placeholder="Nota de la sección (se imprime debajo de la tabla en la cotización)"
+                    placeholder={t("Nota de la sección (se imprime debajo de la tabla en la cotización)")}
                     className="input text-xs italic"
                   />
                   <SubmitButton className="btn-secondary whitespace-nowrap text-xs" pendingText="…">
@@ -106,9 +108,9 @@ export default async function ServicesPage() {
         </div>
 
         <Form action={createService} className="card h-fit space-y-3 p-5 xl:sticky xl:top-6">
-          <h2 className="font-semibold">Nuevo servicio</h2>
+          <h2 className="font-semibold">{t("Nuevo servicio")}</h2>
           <ServiceFields sections={sections.map((x) => x.name)} defaultTaxRate={s.defaultTaxRate} />
-          <SubmitButton className="btn-primary w-full">Agregar al tarifario</SubmitButton>
+          <SubmitButton className="btn-primary w-full">{t("Agregar al tarifario")}</SubmitButton>
         </Form>
       </div>
     </div>

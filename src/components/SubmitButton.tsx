@@ -4,6 +4,7 @@ import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 import { useFormPending } from "./Form";
 import { cn } from "@/lib/utils";
+import { useT } from "./I18nProvider";
 
 export function SubmitButton({
   children,
@@ -16,10 +17,11 @@ export function SubmitButton({
 }) {
   const { pending: nativePending } = useFormStatus();
   const pending = useFormPending() || nativePending;
+  const t = useT();
   return (
     <button type="submit" className={cn(className)} disabled={pending} aria-busy={pending}>
       {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-      {pending ? pendingText : children}
+      {pending ? t(pendingText) : typeof children === "string" ? t(children) : children}
     </button>
   );
 }

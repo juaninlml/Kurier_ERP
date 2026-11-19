@@ -3,22 +3,24 @@ import { saveSettings } from "@/app/actions/settings";
 import { PageHeader, Field } from "@/components/kit";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Form } from "@/components/Form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+  const t = await getT();
   const s = await getSettings();
   const { ok } = await searchParams;
   const hasLogo = await checkLogo();
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title="Configuración" subtitle="Datos de la empresa y marca que aparecen en todos los PDFs" />
-      {ok && <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Configuración guardada.</div>}
+      <PageHeader title={t("Configuración")} subtitle={t("Datos de la empresa y marca que aparecen en todos los PDFs")} />
+      {ok && <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{t("Configuración guardada.")}</div>}
 
       <Form action={saveSettings} className="space-y-6">
         <section className="card p-5">
-          <h2 className="mb-4 font-semibold">Marca</h2>
+          <h2 className="mb-4 font-semibold">{t("Marca")}</h2>
           <div className="grid gap-5 md:grid-cols-[220px_1fr]">
             <div className="grid h-36 place-items-center rounded-lg border border-dashed border-border bg-muted p-3">
               {hasLogo ? (
@@ -35,24 +37,24 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
               )}
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Logo (PNG o JPG, máx. 1 MB)" className="md:col-span-3">
+              <Field label={t("Logo (PNG o JPG, máx. 1 MB)")} className="md:col-span-3">
                 <input type="file" name="logo" accept="image/png,image/jpeg" className="input" />
               </Field>
               {hasLogo && (
                 <label className="flex items-center gap-2 text-sm md:col-span-3">
-                  <input type="checkbox" name="removeLogo" /> Quitar logo actual
+                  <input type="checkbox" name="removeLogo" /> {t("Quitar logo actual")}
                 </label>
               )}
-              <Field label="Color principal">
+              <Field label={t("Color principal")}>
                 <input type="color" name="primaryColor" defaultValue={s.primaryColor} className="input" />
               </Field>
-              <Field label="Color de acento">
+              <Field label={t("Color de acento")}>
                 <input type="color" name="accentColor" defaultValue={s.accentColor} className="input" />
               </Field>
-              <Field label="Nombre comercial">
+              <Field label={t("Nombre comercial")}>
                 <input name="tradeName" defaultValue={s.tradeName} className="input" />
               </Field>
-              <Field label="Leyenda bajo el nombre" className="md:col-span-3">
+              <Field label={t("Leyenda bajo el nombre")} className="md:col-span-3">
                 <input name="tagline" defaultValue={s.tagline} className="input" placeholder="MICROHUB CDMX · 3PL" />
               </Field>
             </div>
@@ -60,96 +62,96 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
         </section>
 
         <section className="card p-5">
-          <h2 className="mb-4 font-semibold">Datos fiscales y de contacto</h2>
+          <h2 className="mb-4 font-semibold">{t("Datos fiscales y de contacto")}</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Razón social" className="md:col-span-2">
+            <Field label={t("Razón social")} className="md:col-span-2">
               <input name="legalName" defaultValue={s.legalName} className="input" />
             </Field>
-            <Field label="RFC">
+            <Field label={t("RFC")}>
               <input name="rfc" defaultValue={s.rfc} className="input uppercase" />
             </Field>
-            <Field label="Dirección" className="md:col-span-3">
-              <input name="address" defaultValue={s.address} className="input" placeholder="Calle, número, colonia" />
+            <Field label={t("Dirección")} className="md:col-span-3">
+              <input name="address" defaultValue={s.address} className="input" placeholder={t("Calle, número, colonia")} />
             </Field>
-            <Field label="Ciudad">
+            <Field label={t("Ciudad")}>
               <input name="city" defaultValue={s.city} className="input" />
             </Field>
-            <Field label="Estado">
+            <Field label={t("Estado")}>
               <input name="state" defaultValue={s.state} className="input" />
             </Field>
-            <Field label="C.P.">
+            <Field label={t("C.P.")}>
               <input name="zip" defaultValue={s.zip} className="input" />
             </Field>
-            <Field label="Teléfono">
+            <Field label={t("Teléfono")}>
               <input name="phone" defaultValue={s.phone} className="input" />
             </Field>
-            <Field label="Correo">
+            <Field label={t("Correo")}>
               <input name="email" type="email" defaultValue={s.email} className="input" />
             </Field>
-            <Field label="Sitio web">
+            <Field label={t("Sitio web")}>
               <input name="website" defaultValue={s.website} className="input" />
             </Field>
           </div>
         </section>
 
         <section className="card p-5">
-          <h2 className="mb-4 font-semibold">Datos bancarios (se muestran en facturas)</h2>
+          <h2 className="mb-4 font-semibold">{t("Datos bancarios (se muestran en facturas)")}</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Banco">
+            <Field label={t("Banco")}>
               <input name="bankName" defaultValue={s.bankName} className="input" />
             </Field>
-            <Field label="Cuenta">
+            <Field label={t("Cuenta")}>
               <input name="bankAccount" defaultValue={s.bankAccount} className="input" />
             </Field>
-            <Field label="CLABE">
+            <Field label={t("CLABE")}>
               <input name="clabe" defaultValue={s.clabe} className="input" />
             </Field>
           </div>
         </section>
 
         <section className="card p-5">
-          <h2 className="mb-4 font-semibold">Folios y valores por defecto</h2>
+          <h2 className="mb-4 font-semibold">{t("Folios y valores por defecto")}</h2>
           <div className="grid gap-4 md:grid-cols-4">
-            <Field label="Prefijo cotización">
+            <Field label={t("Prefijo cotización")}>
               <input name="quotePrefix" defaultValue={s.quotePrefix} className="input" />
             </Field>
-            <Field label="Siguiente # cotización">
+            <Field label={t("Siguiente # cotización")}>
               <input name="nextQuoteNumber" type="number" min="1" defaultValue={s.nextQuoteNumber} className="input" />
             </Field>
-            <Field label="Prefijo factura">
+            <Field label={t("Prefijo factura")}>
               <input name="invoicePrefix" defaultValue={s.invoicePrefix} className="input" />
             </Field>
-            <Field label="Siguiente # factura">
+            <Field label={t("Siguiente # factura")}>
               <input name="nextInvoiceNumber" type="number" min="1" defaultValue={s.nextInvoiceNumber} className="input" />
             </Field>
-            <Field label="IVA por defecto %">
+            <Field label={t("IVA por defecto %")}>
               <input name="defaultTaxRate" type="number" step="any" defaultValue={s.defaultTaxRate} className="input" />
             </Field>
-            <Field label="Vigencia cotización (días)">
+            <Field label={t("Vigencia cotización (días)")}>
               <input name="quoteValidityDays" type="number" min="0" defaultValue={s.quoteValidityDays} className="input" />
             </Field>
-            <Field label="Plazo de pago (días)">
+            <Field label={t("Plazo de pago (días)")}>
               <input name="paymentTermsDays" type="number" min="0" defaultValue={s.paymentTermsDays} className="input" />
             </Field>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <Field label="Condiciones comerciales por defecto (cotizaciones; una por línea, “Título: texto”)">
+            <Field label={t("Condiciones comerciales por defecto (cotizaciones; una por línea, “Título: texto”)")}>
               <textarea name="quoteTerms" rows={5} defaultValue={s.quoteTerms} className="input" />
             </Field>
-            <Field label="Nota por defecto bajo el detalle (facturas)">
+            <Field label={t("Nota por defecto bajo el detalle (facturas)")}>
               <textarea name="invoiceNotes" rows={5} defaultValue={s.invoiceNotes} className="input" />
             </Field>
-            <Field label="Condiciones de pago por defecto (facturas)">
+            <Field label={t("Condiciones de pago por defecto (facturas)")}>
               <input name="paymentTerms" defaultValue={s.paymentTerms} className="input" />
             </Field>
-            <Field label="Aviso al pie de la factura (usa **texto** para negritas)">
+            <Field label={t("Aviso al pie de la factura (usa **texto** para negritas)")}>
               <textarea name="invoiceDisclaimer" rows={5} defaultValue={s.invoiceDisclaimer} className="input" />
             </Field>
           </div>
         </section>
 
         <div className="flex justify-end">
-          <SubmitButton>Guardar configuración</SubmitButton>
+          <SubmitButton>{t("Guardar configuración")}</SubmitButton>
         </div>
       </Form>
     </div>

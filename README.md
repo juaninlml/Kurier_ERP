@@ -17,7 +17,7 @@ ERP interno de **Kurier Fulfillment**.
 
 1. Importa el repositorio en Vercel.
 2. En **Optional Integrations → Prisma Postgres** da clic en **Add**. Esto crea la base y la variable `DATABASE_URL`.
-3. En **Environment Variables** agrega `ERP_USER` y `ERP_PASSWORD`. Es el acceso que pedirá el navegador; sin ellas el sitio responde 503.
+3. En **Environment Variables** agrega `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` y `ERP_OWNER_EMAIL` (ver *Acceso con Google* abajo).
 4. Da clic en **Deploy**. El script `vercel-build` aplica las migraciones, carga el catálogo de servicios (sin sobrescribir lo que ya exista) y compila.
 
 ## Desarrollo local
@@ -82,7 +82,21 @@ src/lib/                  cálculo de totales, importe con letra, reportes y fol
 - **Folios:** se reservan dentro de una transacción (`COT-00001`, `FAC-00001`). El prefijo y el siguiente número se pueden cambiar en *Configuración*.
 - **Montos:** se redondean a 2 decimales por línea. El IVA se calcula sobre el importe después del descuento.
 - **IVA de los pagos:** cuando se registra un pago, el IVA que contiene se calcula en proporción al total de la factura.
-- **Acceso:** `src/middleware.ts` protege todo el sitio con usuario y contraseña (HTTP Basic). En local, si no defines `ERP_USER` y `ERP_PASSWORD`, no pide credenciales.
+- **Acceso:** inicio de sesión con Google (Auth.js). Ver *Acceso con Google*.
+
+## Acceso con Google
+
+1. En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) crea un **ID de cliente OAuth** de tipo *Aplicación web*.
+   - Orígenes autorizados: `https://TU-DOMINIO` (y `http://localhost:3000` para local).
+   - URI de redirección: `https://TU-DOMINIO/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google`).
+2. En Vercel agrega `AUTH_GOOGLE_ID` y `AUTH_GOOGLE_SECRET` (del paso 1), `AUTH_SECRET` (texto aleatorio largo, p. ej. `npx auth secret`) y `ERP_OWNER_EMAIL` (tu correo de Google: la cuenta maestra).
+3. La cuenta maestra entra directo. Desde **Usuarios y accesos** genera links de invitación (opcionalmente para un correo específico, con rol y vencimiento). Quien abre el link entra con su Google y queda dado de alta.
+4. Roles: *Cuenta maestra* (todo), *Administrador* (puede invitar usuarios), *Usuario* (usa el ERP). Desactivar a alguien le quita el acceso en minutos.
+5. Para probar en local sin Google: `AUTH_DEV_LOGIN=1` en `.env.development.local` (nunca funciona en producción).
+
+## Idioma
+
+Español / English desde el menú del usuario (abajo a la izquierda), el perfil o la pantalla de inicio de sesión. Las traducciones están en `src/lib/i18n/en.ts` (la clave es el texto en español). Los PDF para clientes siguen en español.
 
 ## Integración con el WMS
 

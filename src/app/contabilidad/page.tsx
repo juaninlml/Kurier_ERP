@@ -7,6 +7,7 @@ import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { parseRange } from "@/lib/reports";
 import { getSettings } from "@/lib/settings";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function AccountingPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; type?: string; category?: string }>;
 }) {
+  const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
   const [txs, clients, settings] = await Promise.all([
@@ -38,7 +40,7 @@ export default async function AccountingPage({
   return (
     <div>
       <PageHeader
-        title="Contabilidad"
+        title={t("Contabilidad")}
         subtitle={`Movimientos del ${formatDate(from)} al ${formatDate(to)}`}
         actions={
           <>
@@ -56,61 +58,61 @@ export default async function AccountingPage({
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Ingresos" value={formatMoney(income)} tone="pos" />
-        <Stat label="Egresos" value={formatMoney(expense)} tone="neg" />
-        <Stat label="Flujo neto" value={formatMoney(round2(income - expense))} tone={income - expense >= 0 ? "pos" : "neg"} />
+        <Stat label={t("Ingresos")} value={formatMoney(income)} tone="pos" />
+        <Stat label={t("Egresos")} value={formatMoney(expense)} tone="neg" />
+        <Stat label={t("Flujo neto")} value={formatMoney(round2(income - expense))} tone={income - expense >= 0 ? "pos" : "neg"} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div>
           <form className="mb-4 flex flex-wrap items-end gap-2">
             <label>
-              <span className="label">Desde</span>
+              <span className="label">{t("Desde")}</span>
               <input type="date" name="from" defaultValue={fromStr} className="input" />
             </label>
             <label>
-              <span className="label">Hasta</span>
+              <span className="label">{t("Hasta")}</span>
               <input type="date" name="to" defaultValue={toStr} className="input" />
             </label>
             <label>
-              <span className="label">Tipo</span>
+              <span className="label">{t("Tipo")}</span>
               <select name="type" defaultValue={sp.type ?? ""} className="input">
-                <option value="">Todos</option>
-                <option value="INGRESO">Ingresos</option>
-                <option value="EGRESO">Egresos</option>
+                <option value="">{t("Todos")}</option>
+                <option value="INGRESO">{t("Ingresos")}</option>
+                <option value="EGRESO">{t("Egresos")}</option>
               </select>
             </label>
             <label>
-              <span className="label">Categoría</span>
+              <span className="label">{t("Categoría")}</span>
               <select name="category" defaultValue={sp.category ?? ""} className="input">
-                <option value="">Todas</option>
-                <optgroup label="Ingresos">
+                <option value="">{t("Todas")}</option>
+                <optgroup label={t("Ingresos")}>
                   {INCOME_CATEGORIES.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </optgroup>
-                <optgroup label="Egresos">
+                <optgroup label={t("Egresos")}>
                   {EXPENSE_CATEGORIES.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </optgroup>
               </select>
             </label>
-            <button className="btn-secondary">Filtrar</button>
+            <button className="btn-secondary">{t("Filtrar")}</button>
           </form>
 
           <div className="card overflow-x-auto">
             {txs.length === 0 ? (
-              <Empty>Sin movimientos en este periodo.</Empty>
+              <Empty>{t("Sin movimientos en este periodo.")}</Empty>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
-                    <th>Concepto</th>
-                    <th>Categoría</th>
-                    <th>Método</th>
-                    <th className="text-right">Monto</th>
+                    <th>{t("Fecha")}</th>
+                    <th>{t("Concepto")}</th>
+                    <th>{t("Categoría")}</th>
+                    <th>{t("Método")}</th>
+                    <th className="text-right">{t("Monto")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -147,7 +149,7 @@ export default async function AccountingPage({
         </div>
 
         <div className="card h-fit p-5">
-          <h2 className="mb-3 font-semibold">Nuevo movimiento</h2>
+          <h2 className="mb-3 font-semibold">{t("Nuevo movimiento")}</h2>
           <TransactionForm
             action={createTransaction}
             clients={clients}

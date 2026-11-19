@@ -5,6 +5,7 @@ import { PageHeader, Empty } from "@/components/kit";
 import { FilterBar } from "@/components/list";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Clientes" };
@@ -18,6 +19,7 @@ const initials = (name: string) =>
     .join("");
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const t = await getT();
   const { q = "" } = await searchParams;
   const clients = await prisma.client.findMany({
     where: q
@@ -36,11 +38,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   return (
     <div>
       <PageHeader
-        title="Clientes"
-        subtitle={`${clients.length} cliente(s) registrados`}
+        title={t("Clientes")}
+        subtitle={t("{n} cliente(s) registrados", { n: clients.length })}
         actions={
           <Link href="/clientes/nuevo" className="btn-primary">
-            <Plus className="size-4" /> Nuevo cliente
+            <Plus className="size-4" /> {t("Nuevo cliente")}
           </Link>
         }
       />
@@ -52,22 +54,22 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             action={
               !q ? (
                 <Link href="/clientes/nuevo" className="btn-primary">
-                  <Plus className="size-4" /> Dar de alta un cliente
+                  <Plus className="size-4" /> {t("Dar de alta un cliente")}
                 </Link>
               ) : undefined
             }
           >
-            {q ? "Ningún cliente coincide con la búsqueda." : "Aún no hay clientes."}
+            {q ? t("Ningún cliente coincide con la búsqueda.") : t("Aún no hay clientes.")}
           </Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Cliente</th>
-                  <th>RFC</th>
-                  <th>Contacto</th>
-                  <th className="text-right">Saldo por cobrar</th>
+                  <th>{t("Cliente")}</th>
+                  <th>{t("RFC")}</th>
+                  <th>{t("Contacto")}</th>
+                  <th className="text-right">{t("Saldo por cobrar")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,7 +86,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                             <span className="block font-medium group-hover:text-primary group-hover:underline">{c.name}</span>
                             {c.legalName && <span className="block truncate text-xs text-muted-foreground">{c.legalName}</span>}
                           </span>
-                          {!c.active && <Badge variant="secondary">Inactivo</Badge>}
+                          {!c.active && <Badge variant="secondary">{t("Inactivo")}</Badge>}
                         </Link>
                       </td>
                       <td className="font-mono text-xs text-muted-foreground">{c.rfc || "—"}</td>

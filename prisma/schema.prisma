@@ -385,3 +385,37 @@ model PayrollLine {
 
   @@index([employeeId])
 }
+
+/// Usuario del ERP (inicia sesión con Google). role: OWNER (cuenta maestra) | ADMIN | USER
+model User {
+  id              Int          @id @default(autoincrement())
+  email           String       @unique
+  name            String       @default("")
+  image           String       @default("")
+  role            String       @default("USER")
+  active          Boolean      @default(true)
+  locale          String       @default("es") // es | en
+  position        String       @default("") // puesto (perfil)
+  phone           String       @default("")
+  lastLoginAt     DateTime?
+  invitedById     Int?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  invitationsSent Invitation[] @relation("InvitationCreator")
+}
+
+/// Link de invitación. Si tiene email, solo esa cuenta de Google puede usarlo.
+model Invitation {
+  id          Int       @id @default(autoincrement())
+  token       String    @unique
+  email       String    @default("")
+  role        String    @default("USER")
+  note        String    @default("")
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedByEmail String    @default("")
+  revokedAt   DateTime?
+  createdById Int
+  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+}

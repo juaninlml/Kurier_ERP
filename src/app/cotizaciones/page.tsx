@@ -6,11 +6,13 @@ import { FilterBar, PdfLink } from "@/components/list";
 import { formatDate, formatMoney } from "@/lib/money";
 import { QUOTE_STATUSES } from "@/lib/constants";
 import { quoteParty } from "@/lib/quote-party";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cotizaciones" };
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+  const t = await getT();
   const { status, q = "" } = await searchParams;
   const search = q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }, { prospectName: { contains: q, mode: "insensitive" as const } }] } : {};
   const [quotes, grouped] = await Promise.all([
@@ -28,11 +30,11 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   return (
     <div>
       <PageHeader
-        title="Cotizaciones"
-        subtitle="Propuestas comerciales para prospectos. Al aceptarse, el prospecto se da de alta como cliente con sus tarifas."
+        title={t("Cotizaciones")}
+        subtitle={t("Propuestas comerciales para prospectos. Al aceptarse, el prospecto se da de alta como cliente con sus tarifas.")}
         actions={
           <Link href="/cotizaciones/nueva" className="btn-primary">
-            <Plus className="size-4" /> Nueva cotización
+            <Plus className="size-4" /> {t("Nueva cotización")}
           </Link>
         }
       />
@@ -44,26 +46,26 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             action={
               !q && !status ? (
                 <Link href="/cotizaciones/nueva" className="btn-primary">
-                  <Plus className="size-4" /> Crear la primera
+                  <Plus className="size-4" /> {t("Crear la primera")}
                 </Link>
               ) : undefined
             }
           >
-            {q || status ? "Ninguna cotización coincide con el filtro." : "Aún no hay cotizaciones."}
+            {q || status ? t("Ninguna cotización coincide con el filtro.") : t("Aún no hay cotizaciones.")}
           </Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Folio</th>
-                  <th>Cliente</th>
-                  <th>Emisión</th>
-                  <th>Vigencia</th>
-                  <th>Estatus</th>
-                  <th className="text-right">Total estimado</th>
+                  <th>{t("Folio")}</th>
+                  <th>{t("Cliente")}</th>
+                  <th>{t("Emisión")}</th>
+                  <th>{t("Vigencia")}</th>
+                  <th>{t("Estatus")}</th>
+                  <th className="text-right">{t("Total estimado")}</th>
                   <th className="w-12">
-                    <span className="sr-only">PDF</span>
+                    <span className="sr-only">{t("PDF")}</span>
                   </th>
                 </tr>
               </thead>
@@ -79,12 +81,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                       </td>
                       <td>
                         <div className="font-medium">{quoteParty(qt).name}</div>
-                        {!qt.client && <div className="text-xs text-muted-foreground">Prospecto</div>}
+                        {!qt.client && <div className="text-xs text-muted-foreground">{t("Prospecto")}</div>}
                       </td>
                       <td className="text-muted-foreground">{formatDate(qt.issueDate)}</td>
                       <td className={expired ? "text-rose-600" : "text-muted-foreground"}>
                         {formatDate(qt.validUntil)}
-                        {expired && <span className="ml-1.5 text-xs">(vencida)</span>}
+                        {expired && <span className="ml-1.5 text-xs">{t("(vencida)")}</span>}
                       </td>
                       <td>
                         <StatusBadge status={qt.status} />
@@ -101,7 +103,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           </div>
         )}
       </div>
-      {quotes.length === 200 && <p className="mt-3 text-xs text-muted-foreground">Se muestran las 200 más recientes. Usa la búsqueda para encontrar otras.</p>}
+      {quotes.length === 200 && <p className="mt-3 text-xs text-muted-foreground">{t("Se muestran las 200 más recientes. Usa la búsqueda para encontrar otras.")}</p>}
     </div>
   );
 }

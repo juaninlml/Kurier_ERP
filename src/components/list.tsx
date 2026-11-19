@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { FileDown, Search } from "lucide-react";
 import { STATUS_LABELS } from "@/lib/constants";
+import { getT } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 /** Barra de búsqueda + filtros de estatus en forma de pestañas. Usa parámetros GET (q, status). */
-export function FilterBar({
+export async function FilterBar({
   basePath,
   q,
   status,
@@ -20,6 +21,7 @@ export function FilterBar({
   placeholder?: string;
   counts?: Record<string, number>;
 }) {
+  const t = await getT();
   const href = (s?: string) => {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
@@ -30,7 +32,7 @@ export function FilterBar({
   return (
     <div className="flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between">
       {statuses && (
-        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]" aria-label="Filtrar por estatus">
+        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]" aria-label={t("Filtrar por estatus")}>
           {[undefined, ...statuses].map((s) => {
             const active = (status ?? "") === (s ?? "");
             const n = s ? counts?.[s] : undefined;
@@ -44,7 +46,7 @@ export function FilterBar({
                   active ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
-                {s ? STATUS_LABELS[s] ?? s : "Todos"}
+                {s ? t(STATUS_LABELS[s] ?? s) : t("Todos")}
                 {n ? <span className="rounded-md bg-muted px-1.5 text-[11px] text-muted-foreground tabular-nums">{n}</span> : null}
               </Link>
             );
@@ -54,14 +56,16 @@ export function FilterBar({
       <form action={basePath} className="relative w-full md:w-72">
         {status && <input type="hidden" name="status" value={status} />}
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <input name="q" defaultValue={q} placeholder={placeholder} aria-label={placeholder} className="input pl-9" />
+        <input name="q" defaultValue={q} placeholder={t(placeholder)} aria-label={t(placeholder)} className="input pl-9" />
       </form>
     </div>
   );
 }
 
 /** Botón de ícono para abrir el PDF de un documento. */
-export function PdfLink({ href, label = "Ver PDF" }: { href: string; label?: string }) {
+export async function PdfLink({ href, label = "Ver PDF" }: { href: string; label?: string }) {
+  const t = await getT();
+  label = t(label);
   return (
     <Tooltip>
       <TooltipTrigger asChild>

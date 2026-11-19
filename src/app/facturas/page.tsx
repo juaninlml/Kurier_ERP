@@ -5,11 +5,13 @@ import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
 import { formatDate, formatMoney, round2 } from "@/lib/money";
 import { INVOICE_STATUSES } from "@/lib/constants";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Facturas" };
 
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+  const t = await getT();
   const { status, q = "" } = await searchParams;
   const now = new Date();
   const where =
@@ -38,31 +40,31 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader
-        title="Facturas"
-        subtitle="Formato interno de facturación y estado de cuenta (no sustituye al CFDI)."
+        title={t("Facturas")}
+        subtitle={t("Formato interno de facturación y estado de cuenta (no sustituye al CFDI).")}
         actions={
           <>
             <Link href="/facturas/importar" className="btn-secondary">
-              <FileUp className="size-4" /> Importar del WMS
+              <FileUp className="size-4" /> {t("Importar del WMS")}
               {pendingImports > 0 && <span className="rounded-md bg-kurier px-1.5 text-[11px] text-white tabular-nums">{pendingImports}</span>}
             </Link>
             <Link href="/facturas/nueva" className="btn-primary">
-              <Plus className="size-4" /> Nueva factura
+              <Plus className="size-4" /> {t("Nueva factura")}
             </Link>
           </>
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Por cobrar" value={formatMoney(receivable)} hint={`${open.length} factura(s) abiertas`} icon={Wallet} />
+        <Stat label={t("Por cobrar")} value={formatMoney(receivable)} hint={t("{n} factura(s) abiertas", { n: open.length })} icon={Wallet} />
         <Stat
-          label="Vencido"
+          label={t("Vencido")}
           value={formatMoney(overdue)}
           tone={overdue > 0 ? "neg" : undefined}
-          hint={lateOpen.length ? `${lateOpen.length} factura(s)` : "Nada vencido"}
+          hint={lateOpen.length ? t("{n} factura(s)", { n: lateOpen.length }) : t("Nada vencido")}
           icon={AlarmClock}
           href={lateOpen.length ? "/facturas?status=VENCIDA" : undefined}
         />
-        <Stat label="Al corriente" value={formatMoney(round2(receivable - overdue))} icon={CircleCheck} />
+        <Stat label={t("Al corriente")} value={formatMoney(round2(receivable - overdue))} icon={CircleCheck} />
       </div>
       <div className="card overflow-hidden">
         <FilterBar basePath="/facturas" q={q} status={status} statuses={[...INVOICE_STATUSES, "VENCIDA"]} counts={counts} placeholder="Buscar folio o cliente" />
@@ -72,27 +74,27 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
             action={
               !q && !status ? (
                 <Link href="/facturas/nueva" className="btn-primary">
-                  <Plus className="size-4" /> Crear la primera
+                  <Plus className="size-4" /> {t("Crear la primera")}
                 </Link>
               ) : undefined
             }
           >
-            {q || status ? "Ninguna factura coincide con el filtro." : "Aún no hay facturas."}
+            {q || status ? t("Ninguna factura coincide con el filtro.") : t("Aún no hay facturas.")}
           </Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Folio</th>
-                  <th>Cliente</th>
-                  <th>Emisión</th>
-                  <th>Vencimiento</th>
-                  <th>Estatus</th>
-                  <th className="text-right">Total</th>
-                  <th className="text-right">Saldo</th>
+                  <th>{t("Folio")}</th>
+                  <th>{t("Cliente")}</th>
+                  <th>{t("Emisión")}</th>
+                  <th>{t("Vencimiento")}</th>
+                  <th>{t("Estatus")}</th>
+                  <th className="text-right">{t("Total")}</th>
+                  <th className="text-right">{t("Saldo")}</th>
                   <th className="w-12">
-                    <span className="sr-only">PDF</span>
+                    <span className="sr-only">{t("PDF")}</span>
                   </th>
                 </tr>
               </thead>

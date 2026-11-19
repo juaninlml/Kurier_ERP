@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { employeeBenefits } from "@/lib/payroll-data";
 import { monthlyCost, seniorityLabel, weeklyOf } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/lib/money";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Nómina" };
@@ -23,6 +24,7 @@ function lastWeek(now = new Date()) {
 }
 
 export default async function PayrollPage() {
+  const t = await getT();
   const [employees, runs] = await Promise.all([
     prisma.employee.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     prisma.payrollRun.findMany({ orderBy: { periodStart: "desc" }, take: 30, include: { _count: { select: { lines: true } } } }),
@@ -37,30 +39,30 @@ export default async function PayrollPage() {
   return (
     <div>
       <PageHeader
-        title="Nómina"
-        subtitle="Empleados, prestaciones de ley (antigüedad, vacaciones, prima vacacional y aguinaldo) y nómina semanal. Sin ISR ni carga patronal."
+        title={t("Nómina")}
+        subtitle={t("Empleados, prestaciones de ley (antigüedad, vacaciones, prima vacacional y aguinaldo) y nómina semanal. Sin ISR ni carga patronal.")}
         actions={
           <Link href="/nomina/empleados/nuevo" className="btn-primary">
-            <Plus className="size-4" /> Nuevo empleado
+            <Plus className="size-4" /> {t("Nuevo empleado")}
           </Link>
         }
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Empleados activos" value={String(active.length)} icon={Users} />
-        <Stat label="Nómina semanal" value={formatMoney(weekly)} hint="Salarios semanales + bonos fijos" icon={CalendarDays} />
-        <Stat label="Costo mensual" value={formatMoney(monthly)} hint="Con aguinaldo y prima prorrateados" icon={Wallet} href="/contabilidad/gastos-fijos" />
-        <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint="A pagar al corte del 20 de diciembre" icon={Gift} />
+        <Stat label={t("Empleados activos")} value={String(active.length)} icon={Users} />
+        <Stat label={t("Nómina semanal")} value={formatMoney(weekly)} hint={t("Salarios semanales + bonos fijos")} icon={CalendarDays} />
+        <Stat label={t("Costo mensual")} value={formatMoney(monthly)} hint={t("Con aguinaldo y prima prorrateados")} icon={Wallet} href="/contabilidad/gastos-fijos" />
+        <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint={t("A pagar al corte del 20 de diciembre")} icon={Gift} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Panel title="Empleados">
+        <Panel title={t("Empleados")}>
           {employees.length === 0 ? (
             <Empty
               icon={Users}
               action={
                 <Link href="/nomina/empleados/nuevo" className="btn-primary">
-                  <Plus className="size-4" /> Dar de alta el primero
+                  <Plus className="size-4" /> {t("Dar de alta el primero")}
                 </Link>
               }
             >
@@ -71,12 +73,12 @@ export default async function PayrollPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Empleado</th>
-                    <th>Antigüedad</th>
-                    <th className="text-right">Salario diario</th>
-                    <th className="text-right">Semanal</th>
-                    <th className="text-right">Vacaciones</th>
-                    <th className="text-right">Aguinaldo a hoy</th>
+                    <th>{t("Empleado")}</th>
+                    <th>{t("Antigüedad")}</th>
+                    <th className="text-right">{t("Salario diario")}</th>
+                    <th className="text-right">{t("Semanal")}</th>
+                    <th className="text-right">{t("Vacaciones")}</th>
+                    <th className="text-right">{t("Aguinaldo a hoy")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -104,7 +106,7 @@ export default async function PayrollPage() {
                             <span className="text-muted-foreground"> / {b.vacationEntitled} días</span>
                           </>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Al cumplir 1 año: 12</span>
+                          <span className="text-xs text-muted-foreground">{t("Al cumplir 1 año: 12")}</span>
                         )}
                       </td>
                       <td className="text-right tabular-nums">{formatMoney(b.aguinaldoToDate)}</td>
@@ -117,28 +119,28 @@ export default async function PayrollPage() {
         </Panel>
 
         <div className="space-y-6">
-          <Panel title="Nueva nómina semanal" description="Se arma con los empleados activos; después ajustas faltas, vacaciones, extras y descuentos.">
+          <Panel title={t("Nueva nómina semanal")} description={t("Se arma con los empleados activos; después ajustas faltas, vacaciones, extras y descuentos.")}>
             <Form action={createPayrollRun} className="space-y-3 p-5">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Del">
+                <Field label={t("Del")}>
                   <input type="date" name="periodStart" required defaultValue={toInputDate(start)} className="input" />
                 </Field>
-                <Field label="Al">
+                <Field label={t("Al")}>
                   <input type="date" name="periodEnd" required defaultValue={toInputDate(end)} className="input" />
                 </Field>
               </div>
-              <Field label="Fecha de pago">
+              <Field label={t("Fecha de pago")}>
                 <input type="date" name="payDate" defaultValue={toInputDate(new Date(end.getTime() + 5 * 86400000))} className="input" />
               </Field>
               <SubmitButton className="btn-primary w-full" pendingText="Creando…">
-                <Plus className="size-4" /> Crear nómina
+                <Plus className="size-4" /> {t("Crear nómina")}
               </SubmitButton>
             </Form>
           </Panel>
 
-          <Panel title="Nóminas">
+          <Panel title={t("Nóminas")}>
             {runs.length === 0 ? (
-              <Empty icon={CalendarDays}>Aún no hay nóminas.</Empty>
+              <Empty icon={CalendarDays}>{t("Aún no hay nóminas.")}</Empty>
             ) : (
               <ul className="divide-y">
                 {runs.map((r) => (
