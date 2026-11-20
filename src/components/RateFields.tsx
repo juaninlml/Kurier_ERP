@@ -94,13 +94,13 @@ export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate;
       </Field>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Precio (sin IVA)">
-          <input name="unitPrice" type="number" step="0.01" min="0" disabled={v.atCost} className="input text-right" value={v.unitPrice} onChange={(e) => set({ unitPrice: Number(e.target.value) || 0 })} />
+          <input name="unitPrice" type="number" step="0.01" min="0" disabled={v.atCost} className="input text-right" value={v.unitPrice || ""} onChange={(e) => set({ unitPrice: Number(e.target.value) || 0 })} />
         </Field>
         <Field label="Unidad">
           <input name="unit" list="rate-units" className="input" value={v.unit} onChange={(e) => set({ unit: e.target.value })} />
         </Field>
         <Field label="IVA %">
-          <input name="taxRate" type="number" step="any" min="0" className="input text-right" value={v.taxRate} onChange={(e) => set({ taxRate: Number(e.target.value) || 0 })} />
+          <input name="taxRate" type="number" step="any" min="0" className="input text-right" value={v.taxRate || ""} onChange={(e) => set({ taxRate: Number(e.target.value) || 0 })} />
         </Field>
         <Field label="Tarifa en texto">
           <input name="priceText" className="input" value={v.priceText} onChange={(e) => set({ priceText: e.target.value })} placeholder={t("Opcional")} />

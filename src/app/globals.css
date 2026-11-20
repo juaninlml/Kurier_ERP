@@ -466,3 +466,81 @@ html.kiosk-mode body {
 html.kiosk-mode body {
   background: var(--sidebar);
 }
+
+/* ───── Kiosco: animaciones de la checada ───── */
+@keyframes kiosk-pop {
+  0% { opacity: 0; transform: translateY(24px) scale(0.92); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { transform: none; }
+}
+@keyframes kiosk-ring {
+  0% { opacity: 0.55; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+@keyframes kiosk-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kiosk-check {
+  0% { opacity: 0; transform: scale(0.3) rotate(-45deg); }
+  60% { opacity: 1; transform: scale(1.2) rotate(8deg); }
+  100% { transform: none; }
+}
+@keyframes kiosk-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@keyframes kiosk-shake {
+  0%, 100% { transform: none; }
+  15%, 55% { transform: translateX(-10px); }
+  35%, 75% { transform: translateX(10px); }
+}
+/* Entrada: entra por la puerta desde la izquierda */
+@keyframes kiosk-in {
+  0% { opacity: 0; transform: translateX(-28px); }
+  55% { opacity: 1; transform: translateX(5px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: none; }
+}
+/* Salida a comer: los cubiertos chocan */
+@keyframes kiosk-meal-out {
+  0% { opacity: 0; transform: scale(0.4); }
+  30% { opacity: 1; transform: scale(1.1) rotate(0); }
+  45% { transform: rotate(-16deg); }
+  60% { transform: rotate(14deg); }
+  75% { transform: rotate(-8deg); }
+  90% { transform: rotate(4deg); }
+  100% { transform: none; }
+}
+/* Regreso de comida: cae y rebota */
+@keyframes kiosk-meal-back {
+  0% { opacity: 0; transform: translateY(-30px); }
+  45% { opacity: 1; transform: translateY(0); }
+  62% { transform: translateY(-9px); }
+  78% { transform: translateY(0); }
+  89% { transform: translateY(-3px); }
+  100% { transform: none; }
+}
+/* Salida: se va por la puerta hacia la derecha y vuelve */
+@keyframes kiosk-out {
+  0% { opacity: 1; transform: none; }
+  40% { opacity: 0; transform: translateX(26px); }
+  41% { opacity: 0; transform: translateX(-20px); }
+  80% { opacity: 1; transform: translateX(3px); }
+  100% { transform: none; }
+}
+.kiosk-pop { animation: kiosk-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.kiosk-ring { animation: kiosk-ring 900ms ease-out 80ms both; }
+.kiosk-rise { animation: kiosk-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.kiosk-check { animation: kiosk-check 560ms cubic-bezier(0.34, 1.56, 0.64, 1) 260ms both; }
+.kiosk-timer { animation: kiosk-timer linear both; }
+.kiosk-shake { animation: kiosk-shake 420ms ease-in-out both; }
+.kiosk-in { animation: kiosk-in 700ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both; }
+.kiosk-meal-out { animation: kiosk-meal-out 900ms ease-out 150ms both; transform-origin: 50% 85%; }
+.kiosk-meal-back { animation: kiosk-meal-back 800ms ease-out 150ms both; }
+.kiosk-out { animation: kiosk-out 950ms cubic-bezier(0.65, 0, 0.35, 1) 150ms both; }
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-pop, .kiosk-ring, .kiosk-rise, .kiosk-check, .kiosk-shake,
+  .kiosk-in, .kiosk-meal-out, .kiosk-meal-back, .kiosk-out { animation: none; }
+  .kiosk-ring { opacity: 0; }
+}

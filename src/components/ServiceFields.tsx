@@ -25,7 +25,7 @@ export async function ServiceFields({ sv, sections, defaultTaxRate }: { sv?: Ser
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Precio unitario (sin IVA)">
-          <input name="unitPrice" type="number" step="0.01" min="0" defaultValue={sv?.unitPrice ?? 0} className="input" />
+          <input name="unitPrice" type="number" step="0.01" min="0" defaultValue={sv?.unitPrice || ""} className="input" />
         </Field>
         <Field label="Unidad de cobro">
           <input name="unit" list="units-list" defaultValue={sv?.unit ?? "Orden"} className="input" />

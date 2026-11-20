@@ -108,7 +108,7 @@ async function TableFields({ t: table, sections }: { t?: TariffTable; sections: 
           </select>
         </Field>
         <Field label="Orden">
-          <input name="sortOrder" type="number" step="1" defaultValue={table?.sortOrder ?? 0} className="input" />
+          <input name="sortOrder" type="number" step="1" defaultValue={table?.sortOrder || ""} className="input" />
         </Field>
       </div>
       <Field label="Columnas">

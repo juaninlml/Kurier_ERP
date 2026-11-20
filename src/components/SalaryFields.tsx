@@ -32,7 +32,7 @@ export function SalaryFields({ weekly, workDays, hoursPerDay, weeklyBonus }: { w
       </label>
       <label className="block">
         <span className="label"><Tr>Bono fijo semanal</Tr></span>
-        <input name="weeklyBonus" type="number" step="0.01" min="0" defaultValue={weeklyBonus ?? 0} className="input text-right" />
+        <input name="weeklyBonus" type="number" step="0.01" min="0" defaultValue={weeklyBonus || ""} className="input text-right" />
         <span className="mt-1 block text-xs text-muted-foreground"><Tr>Puntualidad, asistencia… (opcional)</Tr></span>
       </label>
       <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-center text-sm md:col-span-3">

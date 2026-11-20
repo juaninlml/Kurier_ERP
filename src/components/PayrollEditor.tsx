@@ -114,7 +114,7 @@ export function PayrollEditor({
           min="0"
           step={opts.money ? "0.01" : key === "overtimeHours" ? "any" : "0.5"}
           className={cn("input h-8 text-right tabular-nums", opts.warn && "border-amber-500")}
-          value={l[key]}
+          value={l[key] || ""}
           onChange={(e) =>
             update(l.id, {
               [key]: Number(e.target.value) || 0,
@@ -288,7 +288,7 @@ export function PayrollEditor({
                               <input
                                 className={cn("input h-8 text-sm", key === "bonusNote" && l.bonus > 0 && !l.bonusNote.trim() && "border-amber-500")}
                                 placeholder={ph}
-                                value={l[key]}
+                                value={l[key] || ""}
                                 onChange={(e) =>
                                   update(l.id, {
                                     [key]: e.target.value,

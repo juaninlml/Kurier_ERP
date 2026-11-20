@@ -407,15 +407,15 @@ export function DocumentEditor({
                   <input className="input" list="units" value={l.unit ?? ""} onChange={(e) => update(i, { unit: e.target.value })} />
                 </Cell>
                 <Cell label={t("Cant.")}>
-                  <input type="number" step="any" min="0" className="input text-right" value={l.quantity} onChange={(e) => update(i, { quantity: num(e.target.value) })} />
+                  <input type="number" step="any" min="0" className="input text-right" value={l.quantity || ""} onChange={(e) => update(i, { quantity: num(e.target.value) })} />
                 </Cell>
                 {l.atCost ? (
                   <Cell label={t("Importe al costo")}>
-                    <input type="number" step="0.01" min="0" className="input text-right" value={l.amount ?? 0} onChange={(e) => update(i, { amount: num(e.target.value) })} />
+                    <input type="number" step="0.01" min="0" className="input text-right" value={l.amount || ""} onChange={(e) => update(i, { amount: num(e.target.value) })} />
                   </Cell>
                 ) : (
                   <Cell label={t("P. unitario")}>
-                    <input type="number" step="0.01" min="0" className="input text-right" value={l.unitPrice} onChange={(e) => update(i, { unitPrice: num(e.target.value) })} />
+                    <input type="number" step="0.01" min="0" className="input text-right" value={l.unitPrice || ""} onChange={(e) => update(i, { unitPrice: num(e.target.value) })} />
                   </Cell>
                 )}
                 <Cell label={t("Desc. %")}>
@@ -426,12 +426,12 @@ export function DocumentEditor({
                     max="100"
                     disabled={l.atCost}
                     className="input text-right"
-                    value={l.discountPct ?? 0}
+                    value={l.discountPct || ""}
                     onChange={(e) => update(i, { discountPct: num(e.target.value) })}
                   />
                 </Cell>
                 <Cell label={t("IVA %")}>
-                  <input type="number" step="any" min="0" className="input text-right" value={l.taxRate ?? 0} onChange={(e) => update(i, { taxRate: num(e.target.value) })} />
+                  <input type="number" step="any" min="0" className="input text-right" value={l.taxRate || ""} onChange={(e) => update(i, { taxRate: num(e.target.value) })} />
                 </Cell>
                 <Cell label={t("Importe")}>
                   <div className="py-2 text-right text-sm font-medium tabular-nums">{formatMoney(lineAmount(l))}</div>
@@ -546,7 +546,7 @@ export function DocumentEditor({
                     step="0.01"
                     min="0"
                     className="input text-right"
-                    value={r.amount}
+                    value={r.amount || ""}
                     onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: num(e.target.value) } : x)))}
                   />
                   <button type="button" title={t("Quitar")} aria-label={t("Quitar")} className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
@@ -563,7 +563,7 @@ export function DocumentEditor({
                 min="0"
                 name="perOrderFee"
                 className="input w-40 text-right"
-                value={perOrderFee}
+                value={perOrderFee || ""}
                 onChange={(e) => setPerOrderFee(num(e.target.value))}
               />
             </label>
@@ -578,7 +578,7 @@ export function DocumentEditor({
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="label"><Tr>Pedidos del costo estimado</Tr></span>
-                <input type="number" min="0" step="1" name="baseVolume" className="input text-right" value={baseVolume} onChange={(e) => setBaseVolume(num(e.target.value))} />
+                <input type="number" min="0" step="1" name="baseVolume" className="input text-right" value={baseVolume || ""} onChange={(e) => setBaseVolume(num(e.target.value))} />
               </label>
               <label className="block">
                 <span className="label"><Tr>Volúmenes a comparar</Tr></span>

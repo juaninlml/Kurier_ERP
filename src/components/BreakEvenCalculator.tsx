@@ -65,7 +65,7 @@ export function BreakEvenCalculator({
           min="0"
           step={opts.step ?? "0.01"}
           className={cn("input text-right", opts.suffix && "pr-9")}
-          value={v[k] as number}
+          value={(v[k] as number) || ""}
           onChange={(e) => set(k, Number(e.target.value) || 0)}
         />
         {opts.suffix && <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">{opts.suffix}</span>}
