@@ -175,38 +175,132 @@
   --sidebar-ring: #ed7d31;
 }
 
+/* ── Tema oscuro ────────────────────────────────────────────────────────────
+   Azul marino de Kurier (no gris neutro) y el naranja de la marca como acento.
+   Contraste de texto ≥ 4.5:1 sobre las superficies. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.165 0.022 255);
+  --foreground: oklch(0.95 0.008 250);
+  --card: oklch(0.205 0.026 255);
+  --card-foreground: oklch(0.95 0.008 250);
+  --popover: oklch(0.225 0.028 255);
+  --popover-foreground: oklch(0.95 0.008 250);
+  --primary: oklch(0.74 0.115 245);
+  --primary-foreground: oklch(0.17 0.03 255);
+  --secondary: oklch(0.265 0.03 255);
+  --secondary-foreground: oklch(0.93 0.01 250);
+  --muted: oklch(0.255 0.028 255);
+  --muted-foreground: oklch(0.73 0.022 255);
+  --accent: oklch(0.28 0.034 255);
+  --accent-foreground: oklch(0.95 0.008 250);
+  --destructive: oklch(0.69 0.19 24);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.74 0.115 245);
+  /* Gráficas: mismas familias de color, más claras para leerse sobre fondo oscuro */
+  --chart-1: #6aa5dc;
+  --chart-2: #f0924f;
+  --chart-3: #2fb8a8;
+  --chart-4: #a98ae8;
+  --chart-5: #7d8ba1;
+  --aging-0: #2fb8a8;
+  --aging-1: #f2bd3a;
+  --aging-2: #f0924f;
+  --aging-3: #f26b6b;
+  --aging-4: #e0487a;
+  /* Mapa de calor: de la superficie al azul claro */
+  --heat-0: oklch(0.26 0.026 255);
+  --heat-1: #24476a;
+  --heat-2: #2f6fa8;
+  --heat-3: #5d97cf;
+  --heat-4: #9cc4ea;
+  --sidebar: oklch(0.185 0.03 255);
+  --sidebar-foreground: oklch(0.95 0.008 250);
+  --sidebar-primary: #ed7d31;
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: oklch(0.97 0.005 250);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: #ed7d31;
+
+  /* Insignias y avisos con colores fijos (bg-emerald-50 text-emerald-700, etc.):
+     en oscuro los tonos claros pasan a tintes translúcidos y los oscuros a tonos claros.
+     Los tonos medios (500/600, botones sólidos con texto blanco) se quedan igual. */
+  --color-emerald-50: oklch(0.62 0.12 162 / 0.14);
+  --color-emerald-100: oklch(0.62 0.12 162 / 0.22);
+  --color-emerald-200: oklch(0.62 0.12 162 / 0.32);
+  --color-emerald-300: oklch(0.66 0.12 162 / 0.48);
+  --color-emerald-700: oklch(0.8 0.13 162);
+  --color-emerald-800: oklch(0.84 0.11 162);
+  --color-emerald-900: oklch(0.89 0.08 162);
+  --color-amber-50: oklch(0.62 0.12 75 / 0.14);
+  --color-amber-100: oklch(0.62 0.12 75 / 0.22);
+  --color-amber-200: oklch(0.62 0.12 75 / 0.32);
+  --color-amber-300: oklch(0.66 0.12 75 / 0.48);
+  --color-amber-700: oklch(0.8 0.13 75);
+  --color-amber-800: oklch(0.84 0.11 75);
+  --color-amber-900: oklch(0.89 0.08 75);
+  --color-rose-50: oklch(0.62 0.12 16 / 0.14);
+  --color-rose-100: oklch(0.62 0.12 16 / 0.22);
+  --color-rose-200: oklch(0.62 0.12 16 / 0.32);
+  --color-rose-300: oklch(0.66 0.12 16 / 0.48);
+  --color-rose-700: oklch(0.8 0.13 16);
+  --color-rose-800: oklch(0.84 0.11 16);
+  --color-rose-900: oklch(0.89 0.08 16);
+  --color-red-50: oklch(0.62 0.12 25 / 0.14);
+  --color-red-100: oklch(0.62 0.12 25 / 0.22);
+  --color-red-200: oklch(0.62 0.12 25 / 0.32);
+  --color-red-300: oklch(0.66 0.12 25 / 0.48);
+  --color-red-700: oklch(0.8 0.13 25);
+  --color-red-800: oklch(0.84 0.11 25);
+  --color-red-900: oklch(0.89 0.08 25);
+  --color-blue-50: oklch(0.62 0.12 255 / 0.14);
+  --color-blue-100: oklch(0.62 0.12 255 / 0.22);
+  --color-blue-200: oklch(0.62 0.12 255 / 0.32);
+  --color-blue-300: oklch(0.66 0.12 255 / 0.48);
+  --color-blue-700: oklch(0.8 0.13 255);
+  --color-blue-800: oklch(0.84 0.11 255);
+  --color-blue-900: oklch(0.89 0.08 255);
+  --color-sky-50: oklch(0.62 0.12 235 / 0.14);
+  --color-sky-100: oklch(0.62 0.12 235 / 0.22);
+  --color-sky-200: oklch(0.62 0.12 235 / 0.32);
+  --color-sky-300: oklch(0.66 0.12 235 / 0.48);
+  --color-sky-700: oklch(0.8 0.13 235);
+  --color-sky-800: oklch(0.84 0.11 235);
+  --color-sky-900: oklch(0.89 0.08 235);
+  --color-violet-50: oklch(0.62 0.12 293 / 0.14);
+  --color-violet-100: oklch(0.62 0.12 293 / 0.22);
+  --color-violet-200: oklch(0.62 0.12 293 / 0.32);
+  --color-violet-300: oklch(0.66 0.12 293 / 0.48);
+  --color-violet-700: oklch(0.8 0.13 293);
+  --color-violet-800: oklch(0.84 0.11 293);
+  --color-violet-900: oklch(0.89 0.08 293);
+  --color-teal-50: oklch(0.62 0.12 182 / 0.14);
+  --color-teal-100: oklch(0.62 0.12 182 / 0.22);
+  --color-teal-200: oklch(0.62 0.12 182 / 0.32);
+  --color-teal-300: oklch(0.66 0.12 182 / 0.48);
+  --color-teal-700: oklch(0.8 0.13 182);
+  --color-teal-800: oklch(0.84 0.11 182);
+  --color-teal-900: oklch(0.89 0.08 182);
+  --color-slate-50: oklch(0.62 0.12 257 / 0.14);
+  --color-slate-100: oklch(0.62 0.12 257 / 0.22);
+  --color-slate-200: oklch(0.62 0.12 257 / 0.32);
+  --color-slate-300: oklch(0.66 0.12 257 / 0.48);
+  --color-slate-700: oklch(0.8 0.13 257);
+  --color-slate-800: oklch(0.84 0.11 257);
+  --color-slate-900: oklch(0.89 0.08 257);
+  --color-orange-50: oklch(0.62 0.12 50 / 0.14);
+  --color-orange-100: oklch(0.62 0.12 50 / 0.22);
+  --color-orange-200: oklch(0.62 0.12 50 / 0.32);
+  --color-orange-300: oklch(0.66 0.12 50 / 0.48);
+  --color-orange-700: oklch(0.8 0.13 50);
+  --color-orange-800: oklch(0.84 0.11 50);
+  --color-orange-900: oklch(0.89 0.08 50);
+}
+
+.dark html,
+html.dark {
+  scrollbar-color: oklch(0.4 0.02 255) transparent;
 }
 
 @layer base {
@@ -328,5 +422,35 @@
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+}
+/* ── Transición entre secciones (View Transitions) ───────────────────────────
+   Solo el contenido cambia: sale con un desvanecido corto y entra subiendo 6px.
+   La barra lateral y el resto de la página no se animan. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(.page-swap) {
+  animation: page-out 120ms ease-in both;
+}
+::view-transition-new(.page-swap) {
+  animation: page-in var(--dur-state) var(--ease-out) both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.page-swap),
+  ::view-transition-new(.page-swap) {
+    animation: none;
   }
 }

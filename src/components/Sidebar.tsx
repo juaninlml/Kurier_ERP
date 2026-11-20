@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   BarChart3,
   Building2,
@@ -17,6 +17,9 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
+  Sun,
   ReceiptText,
   Settings,
   ShieldCheck,
@@ -39,7 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLang, useT } from "./I18nProvider";
+import { useLang, useT, useTheme } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
 import { Tr } from "@/components/Tr";
 
@@ -104,8 +107,27 @@ function Brand() {
   );
 }
 
+/** Punto que aparece mientras carga la sección a la que se dio clic (debe ir dentro del <Link>). */
+function PendingDot() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "ml-auto size-1.5 rounded-full bg-sidebar-primary transition-opacity duration-(--dur-feedback)",
+        pending ? "opacity-100 motion-safe:animate-pulse" : "opacity-0",
+      )}
+    />
+  );
+}
+
 function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => void }) {
-  const isActive = useIsActive();
+  const isActiveNow = useIsActive();
+  const pathname = usePathname();
+  // Marca la opción en cuanto se da clic (sin esperar a que el servidor responda)
+  const [clicked, setClicked] = useState<string | null>(null);
+  useEffect(() => setClicked(null), [pathname]);
+  const isActive = (href: string) => (clicked ? clicked === href : isActiveNow(href));
   const t = useT();
   const admin = user.role === "OWNER" || user.role === "ADMIN";
   return (
@@ -123,7 +145,10 @@ function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => 
                   <li key={href}>
                     <Link
                       href={href}
-                      onClick={onNavigate}
+                      onClick={(e) => {
+                        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) setClicked(href);
+                        onNavigate?.();
+                      }}
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
@@ -134,6 +159,7 @@ function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => 
                     >
                       <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-primary" : "opacity-70 group-hover:opacity-100")} />
                       {t(label)}
+                      <PendingDot />
                     </Link>
                   </li>
                 );
@@ -167,6 +193,7 @@ const ROLE_LABEL: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Ad
 function UserMenu({ user }: { user: SidebarUser }) {
   const t = useT();
   const lang = useLang();
+  const { theme, setTheme } = useTheme();
   const [pending, start] = useTransition();
   return (
     <DropdownMenu>
@@ -199,6 +226,21 @@ function UserMenu({ user }: { user: SidebarUser }) {
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="en" disabled={pending}>
             <Tr>English</Tr>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Moon className="size-3.5" /> {t("Tema")}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v === "dark" || v === "system" ? v : "light")}>
+          <DropdownMenuRadioItem value="light">
+            <Sun /> {t("Claro")}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <Moon /> {t("Oscuro")}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            <Monitor /> {t("Según el sistema")}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
