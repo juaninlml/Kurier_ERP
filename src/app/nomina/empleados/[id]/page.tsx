@@ -38,7 +38,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {!e.active && <Badge variant="secondary"><Tr>Baja</Tr>{e.endDate ? ` ${formatDate(e.endDate)}` : ""}</Badge>}
-            {[e.position, e.area].filter(Boolean).join(" · ")}
+            {[e.position, e.department, e.area].filter(Boolean).join(" · ")}
             <span><Tr>· Ingreso</Tr> {formatDate(e.startDate)}</span>
           </span>
         }

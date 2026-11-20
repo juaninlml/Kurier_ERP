@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Gift, Plus, Users, Wallet, Clock } from "lucide-react";
+import { CalendarDays, Gift, Plus, Users, Wallet, Clock, Network } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { createPayrollRun } from "@/app/actions/payroll";
 import { PageHeader, Panel, Stat, Empty, Field } from "@/components/kit";
@@ -7,7 +7,9 @@ import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Badge } from "@/components/ui/badge";
 import { ColumnChart } from "@/components/charts";
-import { employeeBenefits } from "@/lib/payroll-data";
+import { employeeBenefits, jobCatalog } from "@/lib/payroll-data";
+import { groupByOrg } from "@/lib/org";
+import { Fragment } from "react";
 import { monthlyCost, seniorityLabel, weeklyOf } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
@@ -31,16 +33,28 @@ function lastWeek(now = new Date()) {
 
 export default async function PayrollPage() {
   const t = await getT();
-  const [employees, runs, brands, lastRun] = await Promise.all([
-    prisma.employee.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
-    prisma.payrollRun.findMany({ orderBy: { periodStart: "desc" }, take: 30, include: { _count: { select: { lines: true } } } }),
+  const [employees, runs, brands, lastRun, catalog] = await Promise.all([
+    prisma.employee.findMany({
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    }),
+    prisma.payrollRun.findMany({
+      orderBy: { periodStart: "desc" },
+      take: 30,
+      include: { _count: { select: { lines: true } } },
+    }),
     brandOptions(),
     // La nueva nómina la paga la misma marca que la última (ej. LOE Fulfillment)
-    prisma.payrollRun.findFirst({ orderBy: { createdAt: "desc" }, select: { brandId: true } }),
+    prisma.payrollRun.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { brandId: true },
+    }),
+    jobCatalog(),
   ]);
   const defaultBrand = brands.some((b) => b.id === lastRun?.brandId) ? lastRun!.brandId! : 0;
   const active = employees.filter((e) => e.active);
   const rows = await employeeBenefits(employees);
+  // Plantilla agrupada por área y después por departamento (activos primero dentro de cada grupo)
+  const groups = groupByOrg(rows, (r) => r.employee, catalog);
   const weekly = round2(active.reduce((a, e) => a + weeklyOf(e) + e.weeklyBonus, 0));
   const monthly = round2(active.reduce((a, e) => a + monthlyCost(e), 0));
   const aguinaldo = round2(rows.filter((r) => r.employee.active).reduce((a, r) => a + r.b.aguinaldoYear, 0));
@@ -53,12 +67,15 @@ export default async function PayrollPage() {
         subtitle={t("Empleados, prestaciones de ley (antigüedad, vacaciones, prima vacacional y aguinaldo) y nómina semanal. Sin ISR ni carga patronal.")}
         actions={
           <>
-          <Link href="/nomina/asistencias" className="btn-secondary">
-            <Clock className="size-4" /> {t("Asistencias")}
-          </Link>
-          <Link href="/nomina/empleados/nuevo" className="btn-primary">
-            <Plus className="size-4" /> {t("Nuevo empleado")}
-          </Link>
+            <Link href="/nomina/puestos" className="btn-secondary">
+              <Network className="size-4" /> {t("Puestos")}
+            </Link>
+            <Link href="/nomina/asistencias" className="btn-secondary">
+              <Clock className="size-4" /> {t("Asistencias")}
+            </Link>
+            <Link href="/nomina/empleados/nuevo" className="btn-primary">
+              <Plus className="size-4" /> {t("Nuevo empleado")}
+            </Link>
           </>
         }
       />
@@ -66,15 +83,28 @@ export default async function PayrollPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label={t("Empleados activos")} value={String(active.length)} icon={Users} />
         <Stat label={t("Nómina semanal")} value={formatMoney(weekly)} hint={t("Salarios semanales + bonos fijos")} icon={CalendarDays} />
-        <Stat label={t("Costo mensual")} value={formatMoney(monthly)} hint={t("Con aguinaldo y prima prorrateados")} icon={Wallet} href="/contabilidad/gastos-fijos" />
-        <Stat label={t("Aguinaldo {v0}", { v0: new Date().getFullYear() })} value={formatMoney(aguinaldo)} hint={t("A pagar al corte del 20 de diciembre")} icon={Gift} />
+        <Stat
+          label={t("Costo mensual")}
+          value={formatMoney(monthly)}
+          hint={t("Con aguinaldo y prima prorrateados")}
+          icon={Wallet}
+          href="/contabilidad/gastos-fijos"
+        />
+        <Stat
+          label={t("Aguinaldo {v0}", { v0: new Date().getFullYear() })}
+          value={formatMoney(aguinaldo)}
+          hint={t("A pagar al corte del 20 de diciembre")}
+          icon={Gift}
+        />
       </div>
 
       {runs.length > 1 && (
         <Panel
           className="mb-6"
           title={t("Costo de nómina por semana")}
-          description={t("Total neto de las últimas {n} nóminas", { n: Math.min(runs.length, 16) })}
+          description={t("Total neto de las últimas {n} nóminas", {
+            n: Math.min(runs.length, 16),
+          })}
           bodyClassName="p-5"
         >
           <ColumnChart
@@ -85,7 +115,13 @@ export default async function PayrollPage() {
               .reverse()
               .map((r) => ({
                 key: String(r.id),
-                label: r.periodStart.toLocaleDateString(requestLocale(), { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""),
+                label: r.periodStart
+                  .toLocaleDateString(requestLocale(), {
+                    day: "numeric",
+                    month: "short",
+                    timeZone: "UTC",
+                  })
+                  .replace(".", ""),
                 full: `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}${r.status === "PAGADA" ? "" : ` · ${t("Borrador")}`}`,
                 values: { total: r.total },
               }))}
@@ -120,35 +156,63 @@ export default async function PayrollPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ employee: e, b }) => (
-                    <tr key={e.id} className={e.active ? "" : "opacity-60"}>
-                      <td>
-                        <Link href={`/nomina/empleados/${e.id}`} className="font-medium text-primary hover:underline">
-                          {e.name}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">
-                          {[e.position, e.area].filter(Boolean).join(" · ") || "—"}
-                          {!e.active && t(" · baja")}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap">
-                        {seniorityLabel(b.seniority)}
-                        <div className="text-xs text-muted-foreground"><Tr>Desde</Tr> {formatDate(e.startDate)}</div>
-                      </td>
-                      <td className="text-right tabular-nums">{formatMoney(e.dailySalary)}</td>
-                      <td className="text-right tabular-nums">{formatMoney(b.weeklySalary + e.weeklyBonus)}</td>
-                      <td className="text-right whitespace-nowrap tabular-nums">
-                        {b.vacationEntitled ? (
-                          <>
-                            <span className="font-medium">{formatNumber(b.vacationAvailable)}</span>
-                            <span className="text-muted-foreground"> / {b.vacationEntitled} <Tr>días</Tr></span>
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{t("Al cumplir 1 año: 12")}</span>
-                        )}
-                      </td>
-                      <td className="text-right tabular-nums">{formatMoney(b.aguinaldoToDate)}</td>
-                    </tr>
+                  {groups.map((g) => (
+                    <Fragment key={g.area}>
+                      <tr className="bg-muted/60">
+                        <th colSpan={6} className="text-left text-xs font-semibold tracking-wide uppercase">
+                          {g.area || t("Sin área")}{" "}
+                          <span className="font-normal text-muted-foreground normal-case">
+                            · {g.count} <Tr>empleado(s)</Tr>
+                          </span>
+                        </th>
+                      </tr>
+                      {g.departments.map((d) => (
+                        <Fragment key={d.department}>
+                          {(d.department || g.departments.length > 1) && (
+                            <tr>
+                              <td colSpan={6} className="py-1.5 pl-6 text-xs font-medium text-muted-foreground">
+                                {d.department || t("Sin departamento")}
+                              </td>
+                            </tr>
+                          )}
+                          {d.items.map(({ employee: e, b }) => (
+                            <tr key={e.id} className={e.active ? "" : "opacity-60"}>
+                              <td>
+                                <Link href={`/nomina/empleados/${e.id}`} className="font-medium text-primary hover:underline">
+                                  {e.name}
+                                </Link>
+                                <div className="text-xs text-muted-foreground">
+                                  {e.position || "—"}
+                                  {!e.active && t(" · baja")}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap">
+                                {seniorityLabel(b.seniority)}
+                                <div className="text-xs text-muted-foreground">
+                                  <Tr>Desde</Tr> {formatDate(e.startDate)}
+                                </div>
+                              </td>
+                              <td className="text-right tabular-nums">{formatMoney(e.dailySalary)}</td>
+                              <td className="text-right tabular-nums">{formatMoney(b.weeklySalary + e.weeklyBonus)}</td>
+                              <td className="text-right whitespace-nowrap tabular-nums">
+                                {b.vacationEntitled ? (
+                                  <>
+                                    <span className="font-medium">{formatNumber(b.vacationAvailable)}</span>
+                                    <span className="text-muted-foreground">
+                                      {" "}
+                                      / {b.vacationEntitled} <Tr>días</Tr>
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">{t("Al cumplir 1 año: 12")}</span>
+                                )}
+                              </td>
+                              <td className="text-right tabular-nums">{formatMoney(b.aguinaldoToDate)}</td>
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ))}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -157,7 +221,10 @@ export default async function PayrollPage() {
         </Panel>
 
         <div className="space-y-6">
-          <Panel title={t("Nueva nómina semanal")} description={t("Se arma con los empleados activos; después ajustas faltas, vacaciones, extras y descuentos.")}>
+          <Panel
+            title={t("Nueva nómina semanal")}
+            description={t("Se arma con los empleados activos; después ajustas faltas, vacaciones, extras y descuentos.")}
+          >
             <Form action={createPayrollRun} className="space-y-3 p-5">
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t("Del")}>
@@ -197,16 +264,16 @@ export default async function PayrollPage() {
                         <div className="text-sm font-medium">
                           {formatDate(r.periodStart)} – {formatDate(r.periodEnd)}
                         </div>
-                        <div className="text-xs text-muted-foreground">{r._count.lines} <Tr>empleado(s)</Tr></div>
+                        <div className="text-xs text-muted-foreground">
+                          {r._count.lines} <Tr>empleado(s)</Tr>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold tabular-nums">{formatMoney(r.total)}</div>
                         <Badge
                           variant="outline"
                           className={
-                            r.status === "PAGADA"
-                              ? "border-transparent bg-emerald-50 text-emerald-700"
-                              : "border-transparent bg-amber-50 text-amber-800"
+                            r.status === "PAGADA" ? "border-transparent bg-emerald-50 text-emerald-700" : "border-transparent bg-amber-50 text-amber-800"
                           }
                         >
                           {r.status === "PAGADA" ? t("Pagada") : t("Borrador")}

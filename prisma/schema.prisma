@@ -335,7 +335,10 @@ model Employee {
   id                 Int            @id @default(autoincrement())
   name               String
   position           String         @default("")
-  area               String         @default("") // Almacén, Administración…
+  area               String         @default("") // Almacén, Administración… (se copia del puesto)
+  department         String         @default("") // Picking, Packing… (se copia del puesto)
+  jobPositionId      Int?
+  jobPosition        JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: SetNull)
   rfc                String         @default("")
   curp               String         @default("")
   nss                String         @default("")
@@ -365,6 +368,17 @@ model Employee {
   payrollLines       PayrollLine[]
   punches            Punch[]
   overtimeAuths      OvertimeAuth[]
+}
+
+/// Catálogo de puestos: cada puesto pertenece a un departamento dentro de un área (ej. Almacén › Picking › Auxiliar picking).
+model JobPosition {
+  id         Int        @id @default(autoincrement())
+  area       String
+  department String     @default("")
+  name       String
+  sortOrder  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  employees  Employee[]
 }
 
 /// Nómina de un periodo (semanal). status: BORRADOR | PAGADA. Al pagarse genera un EGRESO en contabilidad.

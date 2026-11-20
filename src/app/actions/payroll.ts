@@ -74,8 +74,6 @@ function employeeData(fd: FormData) {
   const end = str(fd, "endDate");
   return {
     name,
-    position: str(fd, "position"),
-    area: str(fd, "area"),
     rfc: str(fd, "rfc").toUpperCase(),
     curp: str(fd, "curp").toUpperCase(),
     nss: str(fd, "nss"),
@@ -110,18 +108,71 @@ function scheduleData(fd: FormData) {
   return s;
 }
 
+/**
+ * Puesto del catálogo: copia nombre, área y departamento al empleado.
+ * "actual" conserva el puesto escrito a mano antes del catálogo; vacío = sin puesto.
+ */
+async function jobData(fd: FormData) {
+  const v = str(fd, "jobPositionId");
+  if (v === "actual") return {};
+  const id = Number(v);
+  if (!id) return { jobPositionId: null, position: "", area: "", department: "" };
+  const p = await prisma.jobPosition.findUnique({ where: { id } });
+  if (!p) throw new Error("Ese puesto ya no existe; elige otro.");
+  return { jobPositionId: p.id, position: p.name, area: p.area, department: p.department };
+}
+
 async function createEmployeeImpl(fd: FormData) {
-  const e = await prisma.employee.create({ data: employeeData(fd) });
+  const e = await prisma.employee.create({ data: { ...employeeData(fd), ...(await jobData(fd)) } });
   revalidatePath("/nomina");
   redirect(`/nomina/empleados/${e.id}`);
 }
 async function updateEmployeeImpl(id: number, fd: FormData) {
-  const data = employeeData(fd);
+  const data = { ...employeeData(fd), ...(await jobData(fd)) };
   await prisma.employee.update({ where: { id }, data: { ...data, active: !data.endDate && fd.get("active") === "on" } });
   revalidatePath("/nomina");
   revalidatePath(`/nomina/empleados/${id}`);
   revalidatePath("/contabilidad/gastos-fijos");
   // Sin redirect: el formulario está en esta misma página (redirigir a la misma URL aborta la respuesta)
+}
+
+// ───────────── Puestos (área › departamento › puesto) ─────────────
+
+function jobPositionData(fd: FormData) {
+  const area = str(fd, "area");
+  const name = str(fd, "name");
+  if (!area) throw new Error("Indica el área del puesto (ej. Almacén).");
+  if (!name) throw new Error("Escribe el nombre del puesto.");
+  return { area, department: str(fd, "department"), name };
+}
+const refreshJobs = () => {
+  revalidatePath("/nomina");
+  revalidatePath("/nomina/puestos");
+};
+
+async function createJobPositionImpl(fd: FormData) {
+  const data = jobPositionData(fd);
+  const dup = await prisma.jobPosition.findFirst({ where: { area: data.area, department: data.department, name: data.name } });
+  if (dup) throw new Error("Ese puesto ya existe en ese departamento.");
+  const last = await prisma.jobPosition.aggregate({ _max: { sortOrder: true } });
+  await prisma.jobPosition.create({ data: { ...data, sortOrder: (last._max.sortOrder ?? 0) + 10 } });
+  refreshJobs();
+}
+async function updateJobPositionImpl(id: number, fd: FormData) {
+  const data = jobPositionData(fd);
+  await prisma.$transaction([
+    prisma.jobPosition.update({ where: { id }, data }),
+    // Los empleados con ese puesto se actualizan al nuevo nombre, área y departamento
+    prisma.employee.updateMany({ where: { jobPositionId: id }, data: { position: data.name, area: data.area, department: data.department } }),
+  ]);
+  refreshJobs();
+}
+async function deleteJobPositionImpl(id: number) {
+  const used = await prisma.employee.count({ where: { jobPositionId: id, active: true } });
+  if (used) throw new Error("No se puede eliminar: hay empleados activos con este puesto. Cámbialos primero.");
+  // Los dados de baja conservan el texto del puesto
+  await prisma.jobPosition.delete({ where: { id } });
+  refreshJobs();
 }
 
 // ───────────── Nómina semanal ─────────────
@@ -290,6 +341,9 @@ export const deleteFixedExpense = safe(deleteFixedExpenseImpl);
 export const saveBreakEven = safe(saveBreakEvenImpl);
 export const createEmployee = safe(createEmployeeImpl);
 export const updateEmployee = safe(updateEmployeeImpl);
+export const createJobPosition = safe(createJobPositionImpl);
+export const updateJobPosition = safe(updateJobPositionImpl);
+export const deleteJobPosition = safe(deleteJobPositionImpl);
 export const createPayrollRun = safe(createPayrollRunImpl);
 export const savePayrollRun = safe(savePayrollRunImpl);
 export const payPayrollRun = safe(payPayrollRunImpl);

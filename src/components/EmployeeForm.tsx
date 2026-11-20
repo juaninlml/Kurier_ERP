@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Employee } from "@prisma/client";
 import { Field } from "./kit";
 import { Form } from "./Form";
@@ -6,27 +7,47 @@ import { toInputDate } from "@/lib/money";
 import { SalaryFields } from "./SalaryFields";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
+import { jobCatalog } from "@/lib/payroll-data";
+import { groupByOrg } from "@/lib/org";
 
 export async function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<unknown>; e?: Employee }) {
-  const t = await getT();
+  const [t, catalog] = await Promise.all([getT(), jobCatalog()]);
+  // Puesto escrito a mano antes del catálogo: se conserva hasta que elijas uno del catálogo
+  const legacy = e && !e.jobPositionId ? [e.position, e.department, e.area].filter(Boolean).join(" · ") : "";
+  const current = e?.jobPositionId ? String(e.jobPositionId) : legacy ? "actual" : "";
   return (
     <Form action={action} successMessage={e ? "Cambios guardados." : undefined} className="card space-y-6 p-5">
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold"><Tr>Datos laborales</Tr></h3>
+        <h3 className="text-sm font-semibold">
+          <Tr>Datos laborales</Tr>
+        </h3>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Nombre completo *" className="md:col-span-2">
             <input name="name" required defaultValue={e?.name} className="input" />
           </Field>
-          <Field label="Puesto">
-            <input name="position" defaultValue={e?.position} className="input" placeholder={t("Auxiliar de almacén")} />
-          </Field>
-          <Field label="Área">
-            <input name="area" list="areas" defaultValue={e?.area} className="input" placeholder={t("Almacén")} />
-            <datalist id="areas">
-              {[t("Almacén"), t("Última milla"), t("Administración"), t("Atención a clientes"), t("Dirección")].map((a) => (
-                <option key={a} value={a} />
-              ))}
-            </datalist>
+          <Field label="Puesto" hint="El área y el departamento se toman del puesto">
+            <select name="jobPositionId" defaultValue={current} className="input">
+              <option value="">{t("Sin puesto")}</option>
+              {legacy && (
+                <option value="actual">
+                  {legacy} {t("(sin catálogo)")}
+                </option>
+              )}
+              {groupByOrg(catalog, (p) => p, catalog).flatMap((g) =>
+                g.departments.map((d) => (
+                  <optgroup key={`${g.area}-${d.department}`} label={[g.area, d.department].filter(Boolean).join(" › ")}>
+                    {d.items.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )),
+              )}
+            </select>
+            <Link href="/nomina/puestos" className="mt-1 inline-block text-xs text-primary hover:underline">
+              <Tr>Administrar puestos</Tr>
+            </Link>
           </Field>
           <Field label="Fecha de ingreso *" hint="Base para antigüedad, vacaciones y aguinaldo">
             <input name="startDate" type="date" required defaultValue={e ? toInputDate(e.startDate) : undefined} className="input" />
@@ -34,12 +55,19 @@ export async function EmployeeForm({ action, e }: { action: (fd: FormData) => Pr
           <Field label="Fecha de baja" hint="Déjala vacía si sigue activo">
             <input name="endDate" type="date" defaultValue={e?.endDate ? toInputDate(e.endDate) : undefined} className="input" />
           </Field>
-          <SalaryFields weekly={e ? e.weeklySalary || e.dailySalary * e.workDays : undefined} workDays={e?.workDays} hoursPerDay={e?.hoursPerDay} weeklyBonus={e?.weeklyBonus} />
+          <SalaryFields
+            weekly={e ? e.weeklySalary || e.dailySalary * e.workDays : undefined}
+            workDays={e?.workDays}
+            hoursPerDay={e?.hoursPerDay}
+            weeklyBonus={e?.weeklyBonus}
+          />
         </div>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold"><Tr>Horario (kiosco de asistencia)</Tr></h3>
+        <h3 className="text-sm font-semibold">
+          <Tr>Horario (kiosco de asistencia)</Tr>
+        </h3>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <Field label="Entrada">
             <input name="scheduleStart" type="time" required defaultValue={e?.scheduleStart ?? "09:00"} className="input" />
@@ -57,7 +85,9 @@ export async function EmployeeForm({ action, e }: { action: (fd: FormData) => Pr
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold"><Tr>Datos personales y de pago</Tr></h3>
+        <h3 className="text-sm font-semibold">
+          <Tr>Datos personales y de pago</Tr>
+        </h3>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="RFC">
             <input name="rfc" defaultValue={e?.rfc} className="input uppercase" />

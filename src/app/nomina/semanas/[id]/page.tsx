@@ -10,7 +10,7 @@ import { PayrollEditor } from "@/components/PayrollEditor";
 import { Badge } from "@/components/ui/badge";
 import { benefits, overtimeHoursFrom, seniority } from "@/lib/payroll";
 import { brandOptions } from "@/lib/brands";
-import { vacationTakenMap } from "@/lib/payroll-data";
+import { jobCatalog, vacationTakenMap } from "@/lib/payroll-data";
 import { formatDate, formatMoney, toInputDate } from "@/lib/money";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
@@ -25,9 +25,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
     include: { lines: { include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
   });
   if (!run) notFound();
-  const [brands, cfg] = await Promise.all([brandOptions(), prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } })]);
+  const [brands, cfg, catalog] = await Promise.all([
+    brandOptions(),
+    prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } }),
+    jobCatalog(),
+  ]);
   const overtimeRate = cfg?.overtimeRate ?? 2;
-  const payer = brands.find((b) => b.id === (run.brandId ?? 0))?.name.replace(/ (principal)$/, "") ?? "";
+  const payer = brands.find((b) => b.id === (run.brandId ?? 0))?.name.replace(/ \(principal\)$/, "") ?? "";
   const paid = run.status === "PAGADA";
   const employees = run.lines.map((l) => l.employee);
   const taken = await vacationTakenMap(employees, run.payDate);
@@ -41,6 +45,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       employeeId: l.employeeId,
       name: l.employee.name,
       position: l.employee.position,
+      area: l.employee.area,
+      department: l.employee.department,
       weeklySalary: l.weeklySalary || l.dailySalary * l.workDays,
       workDays: l.workDays === 5 ? 5 : 6,
       hoursPerDay: l.hoursPerDay,
@@ -111,7 +117,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           )
         }
       />
-      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} overtimeRate={overtimeRate} brands={brands} brandId={run.brandId ?? 0} />
+      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} overtimeRate={overtimeRate} brands={brands} brandId={run.brandId ?? 0} catalog={catalog} />
     </div>
   );
 }

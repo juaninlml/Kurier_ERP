@@ -79,7 +79,8 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
       <View style={{ flexDirection: "row", marginTop: 6, gap: 14 }}>
         <View style={{ flex: 1.3 }}>
           <Pair k="Empleado" v={e.name} bold />
-          <Pair k="Puesto / área" v={[e.position, e.area].filter(Boolean).join(" · ") || "—"} />
+          <Pair k="Puesto" v={e.position || "—"} />
+          <Pair k="Área / depto." v={[e.area, e.department].filter(Boolean).join(" › ") || "—"} />
           <Pair k="Fecha de ingreso" v={formatDateEs(e.startDate)} />
           {e.curp || e.rfc ? <Pair k={e.curp ? "CURP" : "RFC"} v={e.curp || e.rfc} /> : null}
         </View>

@@ -23,3 +23,11 @@ export async function employeeBenefits<T extends { id: number; startDate: Date; 
   const taken = await vacationTakenMap(employees);
   return employees.map((e) => ({ employee: e, b: benefits(e, taken.get(e.id) ?? 0) }));
 }
+
+/** Catálogo de puestos en orden (área › departamento › puesto). */
+export function jobCatalog() {
+  return prisma.jobPosition.findMany({
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, area: true, department: true, name: true },
+  });
+}

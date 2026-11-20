@@ -89,14 +89,19 @@ function slug(t: string) {
 
 /** Recibos de nómina de una semana (o de un solo empleado con `lineId`). */
 export async function renderPayrollReceipts(runId: number, lineId?: number) {
-  const [base, run] = await Promise.all([
+  const { jobCatalog } = await import("@/lib/payroll-data");
+  const { groupByOrg } = await import("@/lib/org");
+  const [base, run, catalog] = await Promise.all([
     getSettings(),
     prisma.payrollRun.findUnique({
       where: { id: runId },
       include: { brand: true, lines: { where: lineId ? { id: lineId } : undefined, include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
     }),
+    jobCatalog(),
   ]);
   if (!run || run.lines.length === 0) return null;
+  // Recibos en el orden de la nómina: por área y después por departamento
+  const lines = groupByOrg(run.lines, (l) => l.employee, catalog).flatMap((g) => g.departments.flatMap((d) => d.items));
   // Los recibos salen con los datos y el logo de la marca que paga la nómina
   const s = applyBrand(base, run.brand);
   const { PayrollReceiptsPdf } = await import("./payroll");
@@ -104,7 +109,7 @@ export async function renderPayrollReceipts(runId: number, lineId?: number) {
   const who = lineId ? `_${slug(run.lines[0].employee.name)}` : "";
   return {
     filename: `Recibos_nomina_${tag}${who}.pdf`,
-    buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={run.lines} />),
+    buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={lines} />),
   };
 }
 
