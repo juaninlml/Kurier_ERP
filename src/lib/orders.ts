@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { addDaysStr, localParts, mondayOf } from "./attendance";
+import { requestLocale } from "./request-lang";
 
 /*
  * Órdenes diarias: paquetes capturados a mano por cliente y oleada.
@@ -29,19 +30,28 @@ export const daysBetween = (from: string, to: string) => {
   return out;
 };
 
-const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("es-MX", { ...o, timeZone: "UTC" });
-export const dayShort = (d: string) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
-export const dayLong = (d: string) => fmt(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-export const monthName = (d: string) => fmt(d, { month: "long", year: "numeric" });
+/*
+ * Fechas de órdenes. En pantalla salen en el idioma del usuario (requestLocale); los PDFs y los textos
+ * que se guardan en documentos (periodo de la factura) pasan "es-MX" explícitamente.
+ */
+const fmt = (d: string, o: Intl.DateTimeFormatOptions, locale: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale, { ...o, timeZone: "UTC" });
+export const dayShort = (d: string, locale = requestLocale()) => fmt(d, { weekday: "short", day: "numeric", month: "short" }, locale);
+export const dayLong = (d: string, locale = requestLocale()) => fmt(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" }, locale);
+export const monthName = (d: string, locale = requestLocale()) => fmt(d, { month: "long", year: "numeric" }, locale);
 
 /** "16 al 22 de noviembre de 2026" · "28 de octubre al 3 de noviembre de 2026" */
-export function rangeLabel(from: string, to: string) {
+export function rangeLabel(from: string, to: string, locale = requestLocale()) {
   const [fy, fm] = from.split("-");
   const [ty, tm] = to.split("-");
-  const end = fmt(to, { day: "numeric", month: "long", year: "numeric" });
+  const end = fmt(to, { day: "numeric", month: "long", year: "numeric" }, locale);
+  if (!locale.startsWith("es")) {
+    // "Nov 16 – 22, 2026" · "Oct 28 – Nov 3, 2026"
+    const start = fmt(from, fy === ty ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" }, locale);
+    return `${start} – ${fmt(to, fy === ty && fm === tm ? { day: "numeric", year: "numeric" } : { month: "short", day: "numeric", year: "numeric" }, locale)}`;
+  }
   if (fy === ty && fm === tm) return `${Number(from.slice(8))} al ${end}`;
-  if (fy === ty) return `${fmt(from, { day: "numeric", month: "long" })} al ${end}`;
-  return `${fmt(from, { day: "numeric", month: "long", year: "numeric" })} al ${end}`;
+  if (fy === ty) return `${fmt(from, { day: "numeric", month: "long" }, locale)} al ${end}`;
+  return `${fmt(from, { day: "numeric", month: "long", year: "numeric" }, locale)} al ${end}`;
 }
 
 type RateSource = { orderRate: number; rates: { name: string; wmsConcept: string; unitPrice: number; active: boolean; atCost: boolean }[] };

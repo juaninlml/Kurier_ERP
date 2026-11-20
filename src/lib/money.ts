@@ -1,3 +1,5 @@
+import { requestLocale } from "./request-lang";
+
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
@@ -7,15 +9,15 @@ const num = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
 export const formatNumber = (n: number) => num.format(n || 0);
 
 export const formatDate = (d: Date | string) =>
-  new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  new Date(d).toLocaleDateString(requestLocale(), { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
 /** 22/08/2026 */
 export const formatDateNum = (d: Date | string) =>
-  new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+  new Date(d).toLocaleDateString(requestLocale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 /** 10 de noviembre de 2026 */
 export const formatDateLong = (d: Date | string) =>
-  new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  new Date(d).toLocaleDateString(requestLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** yyyy-mm-dd para inputs type=date (en UTC para evitar corrimientos de zona). */
 export const toInputDate = (d: Date | string) => new Date(d).toISOString().slice(0, 10);

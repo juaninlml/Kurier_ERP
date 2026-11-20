@@ -13,15 +13,20 @@ import { OrdersTabs, ViewSwitch } from "@/components/OrdersTabs";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Insumos de empaque" };
+export async function generateMetadata() {
+  return { title: (await getT())("Insumos de empaque") };
+}
 
 type Row = { workDate: string; clientId: number; quantity: number };
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const sizeLabel = (size: string) => size.replace(/\s*\/\s*/g, " / ").replace(/\*/g, "×");
 
 export default async function SuppliesPage({ searchParams }: { searchParams: Promise<{ fecha?: string; vista?: string; cliente?: string; mes?: string }> }) {
+  const t = await getT();
   const today = await companyToday();
   const q = await searchParams;
   const date = q.fecha && DATE_RE.test(q.fecha) ? q.fecha : today;
@@ -66,8 +71,8 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
   const allMaterials = [...materials, ...hidden.filter((h) => supplies.some((s) => s.materialId === h.id && s.workDate >= month.from && s.workDate <= month.to))];
 
   const switchItems = [
-    { id: "dia", label: "Por día", href: `/ordenes/insumos?fecha=${date}` },
-    { id: "cliente", label: "Por cliente", href: `/ordenes/insumos?vista=cliente&fecha=${date}&mes=${monthKey}${q.cliente ? `&cliente=${q.cliente}` : ""}` },
+    { id: "dia", label: t("Por día"), href: `/ordenes/insumos?fecha=${date}` },
+    { id: "cliente", label: t("Por cliente"), href: `/ordenes/insumos?vista=cliente&fecha=${date}&mes=${monthKey}${q.cliente ? `&cliente=${q.cliente}` : ""}` },
   ];
 
   return (
@@ -114,26 +119,26 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-medium capitalize">
             {dayLong(date)}
-            {isToday && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary normal-case">Hoy</span>}
+            {isToday && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary normal-case"><Tr>Hoy</Tr></span>}
           </p>
           <div className="flex items-center gap-1">
-            <Link href={`/ordenes/insumos?fecha=${addDaysStr(date, -1)}`} className="btn-secondary h-8 px-2" aria-label="Día anterior">
+            <Link href={`/ordenes/insumos?fecha=${addDaysStr(date, -1)}`} className="btn-secondary h-8 px-2" aria-label={t("Día anterior")}>
               <ChevronLeft className="size-4" />
             </Link>
             <DateJump value={date} href="/ordenes/insumos?fecha={v}" />
-            <Link href={`/ordenes/insumos?fecha=${addDaysStr(date, 1)}`} className="btn-secondary h-8 px-2" aria-label="Día siguiente">
+            <Link href={`/ordenes/insumos?fecha=${addDaysStr(date, 1)}`} className="btn-secondary h-8 px-2" aria-label={t("Día siguiente")}>
               <ChevronRight className="size-4" />
             </Link>
             {!isToday && (
               <Link href="/ordenes/insumos" className="btn-secondary h-8 text-xs">
-                Hoy
+                <Tr>Hoy</Tr>
               </Link>
             )}
           </div>
         </div>
 
         <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          <Stat label="Empaques usados" value={formatNumber(piecesDay)} icon={Boxes} hint={`${formatNumber(noSupplyDay)} paquete(s) sin insumo`} />
+          <Stat label="Empaques usados" value={formatNumber(piecesDay)} icon={Boxes} hint={t("{v0} paquete(s) sin insumo", { v0: formatNumber(noSupplyDay) })} />
           <Stat label="Costo de insumos" value={formatMoney(dayMoney.cost)} icon={CircleDollarSign} hint={moneyHint(dayMoney)} />
           <Stat label="Órdenes del día" value={formatNumber(ordersDay)} icon={Package} href={`/ordenes?fecha=${date}`} hint="Capturadas por oleada" />
           <Stat
@@ -151,9 +156,9 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
           bodyClassName="p-0"
         >
           {materials.length === 0 ? (
-            <Empty icon={Boxes}>Agrega al menos un material (abajo) para empezar a capturar.</Empty>
+            <Empty icon={Boxes}><Tr>Agrega al menos un material (abajo) para empezar a capturar.</Tr></Empty>
           ) : clients.length === 0 ? (
-            <Empty icon={Boxes}>No hay clientes activos.</Empty>
+            <Empty icon={Boxes}><Tr>No hay clientes activos.</Tr></Empty>
           ) : (
             <OrderSheet
               key={date}
@@ -172,7 +177,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
               format="count"
               color="var(--chart-1)"
               total={monthPieces || undefined}
-              emptyText="Sin insumos registrados en el mes."
+              emptyText={t("Sin insumos registrados en el mes.")}
               rows={byMaterial
                 .filter((x) => x.total > 0 && !x.m.noSupply)
                 .sort((a, b) => b.total - a.total)
@@ -180,29 +185,29 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
             />
             {byMaterial.some((x) => x.m.noSupply && x.total > 0) && (
               <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
-                Sin insumo en el mes: <span className="font-medium text-foreground tabular-nums">{formatNumber(byMaterial.filter((x) => x.m.noSupply).reduce((a, x) => a + x.total, 0))}</span> paquetes
+                <Tr>Sin insumo en el mes:</Tr> <span className="font-medium text-foreground tabular-nums">{formatNumber(byMaterial.filter((x) => x.m.noSupply).reduce((a, x) => a + x.total, 0))}</span> <Tr>paquetes</Tr>
               </p>
             )}
           </Panel>
 
           <Panel className="lg:col-span-3" title="Consumo del mes por cliente" description="Da clic en un cliente para ver su detalle día por día." bodyClassName="p-0">
             {monthClients.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-muted-foreground">Sin insumos registrados en el mes.</p>
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground"><Tr>Sin insumos registrados en el mes.</Tr></p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="table min-w-[860px]">
                   <thead>
                     <tr className="text-xs text-muted-foreground [&>th]:px-2.5 [&>th]:py-2.5 [&>th]:font-medium">
-                      <th className="pl-5 text-left">Cliente</th>
+                      <th className="pl-5 text-left"><Tr>Cliente</Tr></th>
                       {allMaterials.map((m) => (
                         <th key={m.id} className="text-right leading-tight">
                           {m.name}
                         </th>
                       ))}
-                      <th className="text-right">Total</th>
-                      <th className="text-right">Costo</th>
-                      <th className="text-right">Venta</th>
-                      <th className="pr-5 text-right">Margen</th>
+                      <th className="text-right"><Tr>Total</Tr></th>
+                      <th className="text-right"><Tr>Costo</Tr></th>
+                      <th className="text-right"><Tr>Venta</Tr></th>
+                      <th className="pr-5 text-right"><Tr>Margen</Tr></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -226,7 +231,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                       </tr>
                     ))}
                     <tr className="border-t bg-muted font-semibold [&>td]:px-2.5 [&>td]:py-2.5">
-                      <td className="pl-5">Total</td>
+                      <td className="pl-5"><Tr>Total</Tr></td>
                       {byMaterial.map((x) => (
                         <td key={x.m.id} className="text-right tabular-nums">
                           {formatNumber(x.total)}
@@ -252,7 +257,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
     const withData = clients.filter((c) => supplies.some((s) => s.clientId === c.id && s.workDate >= month.from) || orders.some((o) => o.clientId === c.id && o.workDate >= month.from));
     const clientId = Number(q.cliente) || withData[0]?.id || clients[0]?.id;
     const client = clients.find((c) => c.id === clientId);
-    if (!client) return <Empty icon={Boxes}>No hay clientes registrados.</Empty>;
+    if (!client) return <Empty icon={Boxes}><Tr>No hay clientes registrados.</Tr></Empty>;
 
     const mine = supplies.filter((s) => s.clientId === client.id && s.workDate >= month.from && s.workDate <= month.to);
     const myOrders = orders.filter((o) => o.clientId === client.id && o.workDate >= month.from && o.workDate <= month.to);
@@ -279,17 +284,17 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
       <>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <NavSelect
-            label="Cliente"
+            label={t("Cliente")}
             value={String(client.id)}
             href={`/ordenes/insumos?vista=cliente&mes=${monthKey}&fecha=${date}&cliente={v}`}
             options={clients.map((c) => ({ value: String(c.id), label: c.name }))}
           />
           <div className="flex items-center gap-1">
-            <Link href={base(prevMonth)} className="btn-secondary h-8 px-2" aria-label="Mes anterior">
+            <Link href={base(prevMonth)} className="btn-secondary h-8 px-2" aria-label={t("Mes anterior")}>
               <ChevronLeft className="size-4" />
             </Link>
             <DateJump type="month" value={monthKey} href={`/ordenes/insumos?vista=cliente&cliente=${client.id}&fecha=${date}&mes={v}`} />
-            <Link href={base(nextMonth)} className="btn-secondary h-8 px-2" aria-label="Mes siguiente">
+            <Link href={base(nextMonth)} className="btn-secondary h-8 px-2" aria-label={t("Mes siguiente")}>
               <ChevronRight className="size-4" />
             </Link>
           </div>
@@ -300,7 +305,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
             label="Empaques del mes"
             value={formatNumber(pieces)}
             icon={Boxes}
-            hint={`${formatNumber(days.length ? Math.round((grand / days.length) * 10) / 10 : 0)} por día · ${formatNumber(grand - pieces)} sin insumo`}
+            hint={t("{v0} por día · {v1} sin insumo", { v0: formatNumber(days.length ? Math.round((grand / days.length) * 10) / 10 : 0), v1: formatNumber(grand - pieces) })}
           />
           <Stat label="Costo del mes" value={formatMoney(mineMoney.cost)} icon={CircleDollarSign} hint={moneyHint(mineMoney)} />
           <Stat label="Material más usado" value={top && colTotal(top.id) ? top.name : "—"} icon={Boxes} hint={top && colTotal(top.id) ? `${formatNumber(colTotal(top.id))} piezas` : undefined} />
@@ -308,13 +313,13 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
             label="Cuadre del mes"
             value={grand === ordTotal ? "Cuadra" : `${grand - ordTotal > 0 ? "+" : ""}${formatNumber(grand - ordTotal)}`}
             icon={grand === ordTotal ? CircleCheck : TriangleAlert}
-            hint={`${formatNumber(grand)} registradas vs. ${formatNumber(ordTotal)} órdenes`}
+            hint={t("{v0} registradas vs. {v1} órdenes", { v0: formatNumber(grand), v1: formatNumber(ordTotal) })}
           />
         </div>
 
-        <Panel title={client.name} description={<span className="capitalize">{monthName(month.from)} · da clic en un día para corregirlo</span>} bodyClassName="p-0">
+        <Panel title={client.name} description={<span className="capitalize">{monthName(month.from)} <Tr>· da clic en un día para corregirlo</Tr></span>} bodyClassName="p-0">
           {days.length === 0 ? (
-            <Empty icon={Boxes}>Sin insumos ni órdenes registrados en el mes.</Empty>
+            <Empty icon={Boxes}><Tr>Sin insumos ni órdenes registrados en el mes.</Tr></Empty>
           ) : (
             <div className="overflow-x-auto">
               <table className="table min-w-[880px]">
@@ -327,8 +332,8 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                         {m.size && <span className="mt-0.5 block text-[10.5px] leading-tight font-normal text-balance text-muted-foreground/80">{sizeLabel(m.size)}</span>}
                       </th>
                     ))}
-                    <th className="border-l text-right">Total</th>
-                    <th className="pr-5 text-right">Órdenes</th>
+                    <th className="border-l text-right"><Tr>Total</Tr></th>
+                    <th className="pr-5 text-right"><Tr>Órdenes</Tr></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,9 +354,9 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                         <span className="inline-flex items-center gap-2">
                           {formatNumber(x.ord)}
                           {x.total === x.ord ? (
-                            <CircleCheck aria-label="Cuadra" className="size-3.5 text-emerald-600" />
+                            <CircleCheck aria-label={t("Cuadra")} className="size-3.5 text-emerald-600" />
                           ) : (
-                            <span className="rounded-full bg-amber-50 px-1.5 text-[11px] font-medium text-amber-800" title="Piezas registradas menos órdenes">
+                            <span className="rounded-full bg-amber-50 px-1.5 text-[11px] font-medium text-amber-800" title={t("Piezas registradas menos órdenes")}>
                               {x.total - x.ord > 0 ? "+" : ""}
                               {formatNumber(x.total - x.ord)}
                             </span>
@@ -361,7 +366,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                     </tr>
                   ))}
                   <tr className="border-t bg-muted font-semibold [&>td]:px-2.5 [&>td]:py-2.5">
-                    <td className="pl-5">Totales</td>
+                    <td className="pl-5"><Tr>Totales</Tr></td>
                     {cols.map((m) => (
                       <td key={m.id} className="text-right tabular-nums">
                         {formatNumber(colTotal(m.id))}
@@ -372,8 +377,8 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                   </tr>
                   {(
                     [
-                      ["Costo", (m: (typeof cols)[number]) => supplyCost(colTotal(m.id), m), mineMoney.cost],
-                      ["Venta", (m: (typeof cols)[number]) => supplySale(colTotal(m.id), m), mineMoney.sale],
+                      [t("Costo"), (m: (typeof cols)[number]) => supplyCost(colTotal(m.id), m), mineMoney.cost],
+                      [t("Venta"), (m: (typeof cols)[number]) => supplySale(colTotal(m.id), m), mineMoney.sale],
                     ] as const
                   ).map(([label, f, total]) => (
                     <tr key={label} className="border-t text-xs text-muted-foreground [&>td]:px-2.5 [&>td]:py-2">
@@ -384,7 +389,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                         </td>
                       ))}
                       <td className="border-l text-right font-semibold text-foreground tabular-nums">{formatMoney(total)}</td>
-                      <td className="pr-5 text-right">{label === "Venta" && mineMoney.sale ? `Margen ${formatMoney(mineMoney.sale - mineMoney.cost)}` : ""}</td>
+                      <td className="pr-5 text-right">{label === "Venta" && mineMoney.sale ? t("Margen {v0}", { v0: formatMoney(mineMoney.sale - mineMoney.cost) }) : ""}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -408,38 +413,38 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
           {materials.map((m, i) => (
             <li key={m.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
               <Form action={updateMaterial.bind(null, m.id)} className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <input name="name" defaultValue={m.name} aria-label="Nombre del material" className="input h-8 w-44" required />
-                <input name="size" defaultValue={m.size} aria-label="Medidas" placeholder="Medidas (ej. 17*30)" className="input h-8 min-w-40 flex-1" />
+                <input name="name" defaultValue={m.name} aria-label={t("Nombre del material")} className="input h-8 w-44" required />
+                <input name="size" defaultValue={m.size} aria-label={t("Medidas")} placeholder={t("Medidas (ej. 17*30)")} className="input h-8 min-w-40 flex-1" />
                 {m.noSupply ? (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">No es consumo</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"><Tr>No es consumo</Tr></span>
                 ) : (
                   <>
-                    <MoneyInput name="unitCost" label="Costo" value={m.unitCost} />
-                    <MoneyInput name="unitPrice" label="Precio" value={m.unitPrice} />
-                    <span className="w-20 text-xs text-muted-foreground tabular-nums" title="Margen por pieza">
-                      {m.unitPrice ? `${formatMoney(m.unitPrice - m.unitCost)} c/u` : "Incluido"}
+                    <MoneyInput name="unitCost" label={t("Costo")} value={m.unitCost} />
+                    <MoneyInput name="unitPrice" label={t("Precio")} value={m.unitPrice} />
+                    <span className="w-20 text-xs text-muted-foreground tabular-nums" title={t("Margen por pieza")}>
+                      {m.unitPrice ? `${formatMoney(m.unitPrice - m.unitCost)} c/u` : t("Incluido")}
                     </span>
                   </>
                 )}
-                <SubmitButton className="btn-secondary h-8 text-xs">Guardar</SubmitButton>
+                <SubmitButton className="btn-secondary h-8 text-xs"><Tr>Guardar</Tr></SubmitButton>
               </Form>
               <div className="flex items-center gap-1">
                 <Form action={moveMaterial.bind(null, m.id)}>
                   <input type="hidden" name="dir" value="-1" />
-                  <button className="btn-secondary h-8 px-2" aria-label="Mover a la izquierda" disabled={i === 0}>
+                  <button className="btn-secondary h-8 px-2" aria-label={t("Mover a la izquierda")} disabled={i === 0}>
                     <ArrowUp className="size-3.5" />
                   </button>
                 </Form>
                 <Form action={moveMaterial.bind(null, m.id)}>
                   <input type="hidden" name="dir" value="1" />
-                  <button className="btn-secondary h-8 px-2" aria-label="Mover a la derecha" disabled={i === materials.length - 1}>
+                  <button className="btn-secondary h-8 px-2" aria-label={t("Mover a la derecha")} disabled={i === materials.length - 1}>
                     <ArrowDown className="size-3.5" />
                   </button>
                 </Form>
                 <Form action={toggleMaterial.bind(null, m.id)}>
                   <button className="btn-secondary h-8 px-2.5 text-xs">
                     <EyeOff className="size-3.5" />
-                    Ocultar
+                    <Tr>Ocultar</Tr>
                   </button>
                 </Form>
               </div>
@@ -448,21 +453,21 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
         </ul>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <Form action={addMaterial} resetOnSuccess className="flex w-full max-w-3xl flex-wrap items-center gap-2">
-            <input name="name" placeholder="Nuevo material (ej. Caja G)" aria-label="Nuevo material" className="input h-9 w-48" required />
-            <input name="size" placeholder="Medidas" aria-label="Medidas del nuevo material" className="input h-9 w-36" />
-            <MoneyInput name="unitCost" label="Costo" value={0} />
-            <MoneyInput name="unitPrice" label="Precio" value={0} />
+            <input name="name" placeholder={t("Nuevo material (ej. Caja G)")} aria-label={t("Nuevo material")} className="input h-9 w-48" required />
+            <input name="size" placeholder={t("Medidas")} aria-label={t("Medidas del nuevo material")} className="input h-9 w-36" />
+            <MoneyInput name="unitCost" label={t("Costo")} value={0} />
+            <MoneyInput name="unitPrice" label={t("Precio")} value={0} />
             <SubmitButton className="btn-primary">
               <Plus className="size-4" />
-              Agregar
+              <Tr>Agregar</Tr>
             </SubmitButton>
           </Form>
           {hidden.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Ocultos:</span>
+              <span className="text-muted-foreground"><Tr>Ocultos:</Tr></span>
               {hidden.map((m) => (
                 <Form key={m.id} action={toggleMaterial.bind(null, m.id)}>
-                  <button className="btn-secondary h-7 px-2 text-xs" title="Mostrar de nuevo">
+                  <button className="btn-secondary h-7 px-2 text-xs" title={t("Mostrar de nuevo")}>
                     <Eye className="size-3.5" />
                     {m.name}
                   </button>
@@ -490,7 +495,7 @@ function MoneyCells({ x }: { x: { cost: number; sale: number } }) {
 function MoneyInput({ name, label, value }: { name: string; label: string; value: number }) {
   return (
     <label className="relative">
-      <span className="sr-only">{label} por pieza</span>
+      <span className="sr-only">{label} <Tr>por pieza</Tr></span>
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[11px] text-muted-foreground">
         {label} $
       </span>

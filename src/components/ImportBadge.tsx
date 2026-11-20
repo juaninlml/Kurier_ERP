@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
 
 const TONES: Record<string, string> = {
   PENDIENTE: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20",
@@ -13,7 +14,7 @@ export function ImportBadge({ status }: { status: string }) {
   return (
     <Badge variant="outline" className={cn("gap-1.5 border-transparent", TONES[status])}>
       <span className="size-1.5 rounded-full bg-current opacity-70" aria-hidden />
-      {LABEL[status] ?? status}
+      <Tr>{LABEL[status] ?? status}</Tr>
     </Badge>
   );
 }

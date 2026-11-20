@@ -1,5 +1,6 @@
 import { getT } from "@/lib/i18n/server";
 import { LanguageSwitch } from "./LanguageSwitch";
+import { Tr } from "@/components/Tr";
 
 /** Marco de las páginas públicas (login e invitación). */
 export async function AuthCard({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export async function AuthCard({ children }: { children: React.ReactNode }) {
         <div className="mb-6 flex items-center justify-center gap-3 text-sidebar-foreground">
           <div className="grid size-11 place-items-center rounded-xl bg-sidebar-primary text-lg font-bold text-sidebar-primary-foreground shadow-sm">K</div>
           <div className="leading-tight">
-            <div className="text-lg font-semibold">Kurier ERP</div>
+            <div className="text-lg font-semibold"><Tr>Kurier ERP</Tr></div>
             <div className="text-xs text-sidebar-foreground/60">{t("Fulfillment · CDMX")}</div>
           </div>
         </div>

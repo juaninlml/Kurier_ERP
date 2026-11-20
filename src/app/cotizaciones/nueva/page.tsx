@@ -3,10 +3,12 @@ import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/kit";
 import { DEFAULT_PROFILE, editorData } from "@/lib/editor-data";
 import { addDays, toInputDate } from "@/lib/money";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ clientId?: string }> }) {
+  const t = await getT();
   const { clientId } = await searchParams;
   const { clients, services, clientRates, settings, brands } = await editorData();
   const today = new Date();
@@ -16,7 +18,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Nueva cotización"
         subtitle="Propuesta comercial para un prospecto (o renegociación con un cliente actual). Al aceptarse se da de alta el cliente con sus tarifas."
-        back={{ href: "/cotizaciones", label: "Cotizaciones" }}
+        back={{ href: "/cotizaciones", label: t("Cotizaciones") }}
       />
       {(
         <DocumentEditor
@@ -27,7 +29,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
           clientRates={clientRates}
           brands={brands}
           defaultTaxRate={settings.defaultTaxRate}
-          submitLabel="Crear cotización"
+          submitLabel={t("Crear cotización")}
           defaults={{
             clientId: clientId ? Number(clientId) : undefined,
             issueDate: toInputDate(today),

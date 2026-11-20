@@ -14,6 +14,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate, formatMoney } from "@/lib/money";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { Form } from "@/components/Form";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function QuotePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ aceptada?: string; tarifas?: string }>;
 }) {
+  const t = await getT();
   const id = Number((await params).id);
   const { aceptada, tarifas } = await searchParams;
   const quote = await prisma.quote.findUnique({
@@ -47,8 +50,8 @@ export default async function QuotePage({
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title={`Cotización ${quote.folio}`}
-        back={{ href: "/cotizaciones", label: "Cotizaciones" }}
+        title={t("Cotización {v0}", { v0: quote.folio })}
+        back={{ href: "/cotizaciones", label: t("Cotizaciones") }}
         subtitle={
           <span className="flex items-center gap-2">
             <StatusBadge status={quote.status} />
@@ -58,37 +61,37 @@ export default async function QuotePage({
               </Link>
             ) : (
               <span>
-                <span className="font-medium text-foreground">{party.name}</span> · prospecto
+                <span className="font-medium text-foreground">{party.name}</span> <Tr>· prospecto</Tr>
               </span>
             )}
-            · Emitida {formatDate(quote.issueDate)} · Vigente hasta {formatDate(quote.validUntil)}
+            <Tr>· Emitida</Tr> {formatDate(quote.issueDate)} <Tr>· Vigente hasta</Tr> {formatDate(quote.validUntil)}
           </span>
         }
         actions={
           <>
             <a href={`/api/pdf/cotizacion/${quote.id}`} target="_blank" className="btn-secondary">
-              <Eye className="size-4" /> Ver PDF
+              <Eye className="size-4" /> <Tr>Ver PDF</Tr>
             </a>
             <a href={`/api/pdf/cotizacion/${quote.id}?download`} className="btn-secondary">
-              <Download className="size-4" /> Descargar
+              <Download className="size-4" /> <Tr>Descargar</Tr>
             </a>
             <DriveButton refKey={`cotizacion:${quote.id}`} path={`/cotizaciones/${quote.id}`} />
             {editable && (
               <Link href={`/cotizaciones/${quote.id}/editar`} className="btn-secondary">
-                <Pencil className="size-4" /> Editar
+                <Pencil className="size-4" /> <Tr>Editar</Tr>
               </Link>
             )}
             {!accepted && (
               <Form action={acceptQuote.bind(null, quote.id)}>
                 <ConfirmButton message={acceptMessage} className="btn-kurier">
                   {party.isProspect ? <UserPlus className="size-4" /> : <BadgeCheck className="size-4" />}
-                  {party.isProspect ? "Aceptada: dar de alta cliente" : "Aceptada: actualizar tarifas"}
+                  {party.isProspect ? t("Aceptada: dar de alta cliente") : t("Aceptada: actualizar tarifas")}
                 </ConfirmButton>
               </Form>
             )}
             {accepted && quote.clientId && (
               <Link href={`/facturas/nueva?clientId=${quote.clientId}`} className="btn-kurier">
-                <ReceiptText className="size-4" /> Nueva factura del cliente
+                <ReceiptText className="size-4" /> <Tr>Nueva factura del cliente</Tr>
               </Link>
             )}
           </>
@@ -98,12 +101,12 @@ export default async function QuotePage({
       {aceptada && quote.client && (
         <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-900">
           <BadgeCheck />
-          <AlertTitle>{aceptada === "nuevo" ? `${quote.client.name} ya es cliente` : "Propuesta aceptada"}</AlertTitle>
+          <AlertTitle>{aceptada === "nuevo" ? t("{v0} ya es cliente", { v0: quote.client.name }) : t("Propuesta aceptada")}</AlertTitle>
           <AlertDescription className="text-emerald-900/80">
-            {aceptada === "nuevo" ? "Se dio de alta el cliente con los datos del prospecto. " : ""}
-            Tarifas negociadas: {added} nueva(s){updated ? `, ${updated} actualizada(s)` : ""}.{" "}
+            {aceptada === "nuevo" ? t("Se dio de alta el cliente con los datos del prospecto. ") : ""}
+            <Tr>Tarifas negociadas:</Tr> {added} <Tr>nueva(s)</Tr>{updated ? t(", {v0} actualizada(s)", { v0: updated }) : ""}.{" "}
             <Link href={`/clientes/${quote.client.id}`} className="font-medium underline">
-              Revisar tarifas y conceptos del WMS
+              <Tr>Revisar tarifas y conceptos del WMS</Tr>
             </Link>
           </AlertDescription>
         </Alert>
@@ -111,7 +114,7 @@ export default async function QuotePage({
 
       {quote.invoices.length > 0 && (
         <div className="mb-4 rounded-md bg-violet-50 px-4 py-3 text-sm text-violet-800">
-          Facturada en:{" "}
+          <Tr>Facturada en:</Tr>{" "}
           {quote.invoices.map((i, n) => (
             <span key={i.id}>
               {n > 0 && ", "}
@@ -127,9 +130,9 @@ export default async function QuotePage({
         <div className="min-w-0 space-y-6">
           {(quote.attention || profile.length > 0) && (
             <div className="card overflow-hidden">
-              <h2 className="border-b border-border px-4 py-3 font-semibold">Perfil de la operación cotizada</h2>
+              <h2 className="border-b border-border px-4 py-3 font-semibold"><Tr>Perfil de la operación cotizada</Tr></h2>
               <dl className="divide-y divide-border text-sm">
-                {[{ label: "Atención", value: quote.attention }, ...profile].filter((r) => r.value).map((r) => (
+                {[{ label: t("Atención"), value: quote.attention }, ...profile].filter((r) => r.value).map((r) => (
                   <div key={r.label} className="grid grid-cols-[200px_1fr] gap-3 px-4 py-2">
                     <dt className="font-medium text-primary">{r.label}</dt>
                     <dd>{r.value}</dd>
@@ -143,13 +146,13 @@ export default async function QuotePage({
             <div className="grid gap-6 xl:grid-cols-2">
               {perOrder.length > 0 && (
                 <div className="card overflow-hidden">
-                  <h2 className="border-b border-border px-4 py-3 font-semibold">Costo por pedido</h2>
+                  <h2 className="border-b border-border px-4 py-3 font-semibold"><Tr>Costo por pedido</Tr></h2>
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Tipo de pedido</th>
-                        <th className="text-right">Fulfillment</th>
-                        {quote.perOrderFee > 0 && <th className="text-right">Con guía de Kurier</th>}
+                        <th><Tr>Tipo de pedido</Tr></th>
+                        <th className="text-right"><Tr>Fulfillment</Tr></th>
+                        {quote.perOrderFee > 0 && <th className="text-right"><Tr>Con guía de Kurier</Tr></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -166,15 +169,15 @@ export default async function QuotePage({
               )}
               {scenarios && (
                 <div className="card overflow-hidden">
-                  <h2 className="border-b border-border px-4 py-3 font-semibold">Costo mensual según volumen</h2>
+                  <h2 className="border-b border-border px-4 py-3 font-semibold"><Tr>Costo mensual según volumen</Tr></h2>
                   <div className="overflow-x-auto">
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>Concepto</th>
+                          <th><Tr>Concepto</Tr></th>
                           {volumes.map((v) => (
                             <th key={v} className="text-right">
-                              {v.toLocaleString("es-MX")} pedidos
+                              {v.toLocaleString("es-MX")} <Tr>pedidos</Tr>
                             </th>
                           ))}
                         </tr>
@@ -191,7 +194,7 @@ export default async function QuotePage({
                           </tr>
                         ))}
                         <tr className="font-semibold">
-                          <td>Total mensual (con IVA)</td>
+                          <td><Tr>Total mensual (con IVA)</Tr></td>
                           {scenarios.total.map((v, j) => (
                             <td key={j} className="text-right tabular-nums text-kurier">
                               {formatMoney(v)}
@@ -209,13 +212,13 @@ export default async function QuotePage({
             <div className="card grid gap-4 p-5 text-sm md:grid-cols-2">
               {quote.notes && (
                 <div>
-                  <div className="label">Notas</div>
+                  <div className="label"><Tr>Notas</Tr></div>
                   <p className="whitespace-pre-line">{quote.notes}</p>
                 </div>
               )}
               {quote.terms && (
                 <div>
-                  <div className="label">Condiciones comerciales</div>
+                  <div className="label"><Tr>Condiciones comerciales</Tr></div>
                   <p className="whitespace-pre-line">{quote.terms}</p>
                 </div>
               )}
@@ -226,7 +229,7 @@ export default async function QuotePage({
         <aside className="space-y-4">
           {editable && (
             <div className="card p-4">
-              <div className="label mb-2">Estatus</div>
+              <div className="label mb-2"><Tr>Estatus</Tr></div>
               <div className="grid gap-1">
                 {(accepted ? (["BORRADOR", "ENVIADA", "ACEPTADA", "RECHAZADA"] as const) : (["BORRADOR", "ENVIADA", "RECHAZADA"] as const)).map((st) => {
                   const current = quote.status === st;
@@ -249,20 +252,20 @@ export default async function QuotePage({
           <div className="card space-y-2 p-4">
             {quote.status === "ACEPTADA" && (
               <Form action={acceptQuote.bind(null, quote.id)}>
-                <ConfirmButton message={`¿Volver a pasar las ${rateCount} tarifa(s) de esta propuesta a las tarifas negociadas de ${party.name}?`} className="btn-secondary w-full">
-                  <BadgeCheck className="size-4" /> Actualizar tarifas del cliente
+                <ConfirmButton message={t("¿Volver a pasar las {v0} tarifa(s) de esta propuesta a las tarifas negociadas de {v1}?", { v0: rateCount, v1: party.name })} className="btn-secondary w-full">
+                  <BadgeCheck className="size-4" /> <Tr>Actualizar tarifas del cliente</Tr>
                 </ConfirmButton>
               </Form>
             )}
             <Form action={duplicateQuote.bind(null, quote.id)}>
-              <SubmitButton className="btn-secondary w-full" pendingText="Duplicando…">
-                <Copy className="size-4" /> Duplicar cotización
+              <SubmitButton className="btn-secondary w-full" pendingText={t("Duplicando…")}>
+                <Copy className="size-4" /> <Tr>Duplicar cotización</Tr>
               </SubmitButton>
             </Form>
             {quote.invoices.length === 0 && (
               <Form action={deleteQuote.bind(null, quote.id)}>
-                <ConfirmButton message={`¿Eliminar la cotización ${quote.folio}?`} className="btn-danger w-full">
-                  <Trash2 className="size-4" /> Eliminar
+                <ConfirmButton message={t("¿Eliminar la cotización {v0}?", { v0: quote.folio })} className="btn-danger w-full">
+                  <Trash2 className="size-4" /> <Tr>Eliminar</Tr>
                 </ConfirmButton>
               </Form>
             )}

@@ -29,14 +29,19 @@ import { DateJump, OrderSheet, RateInput } from "@/components/OrderSheet";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { OrdersTabs } from "@/components/OrdersTabs";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Órdenes diarias" };
+export async function generateMetadata() {
+  return { title: (await getT())("Órdenes diarias") };
+}
 
 const avg = (total: number, n: number) => (n ? total / n : 0);
 const one = (n: number) => formatNumber(Math.round(n * 10) / 10);
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ fecha?: string }> }) {
+  const t = await getT();
   const today = await companyToday();
   const { fecha } = await searchParams;
   const date = fecha && DATE_RE.test(fecha) ? fecha : today;
@@ -122,21 +127,21 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         subtitle={
           <span className="capitalize">
             {dayLong(date)}
-            {isToday && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary normal-case">Hoy</span>}
+            {isToday && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary normal-case"><Tr>Hoy</Tr></span>}
           </span>
         }
         actions={
           <div className="flex items-center gap-1">
-            <Link href={`/ordenes?fecha=${addDaysStr(date, -1)}`} className="btn-secondary h-8 px-2" aria-label="Día anterior">
+            <Link href={`/ordenes?fecha=${addDaysStr(date, -1)}`} className="btn-secondary h-8 px-2" aria-label={t("Día anterior")}>
               <ChevronLeft className="size-4" />
             </Link>
             <DateJump value={date} />
-            <Link href={`/ordenes?fecha=${addDaysStr(date, 1)}`} className="btn-secondary h-8 px-2" aria-label="Día siguiente">
+            <Link href={`/ordenes?fecha=${addDaysStr(date, 1)}`} className="btn-secondary h-8 px-2" aria-label={t("Día siguiente")}>
               <ChevronRight className="size-4" />
             </Link>
             {!isToday && (
               <Link href="/ordenes" className="btn-secondary h-8 text-xs">
-                Hoy
+                <Tr>Hoy</Tr>
               </Link>
             )}
           </div>
@@ -153,9 +158,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           delta={prevSameDay ? <Delta pct={pctChange(dayTotal, prevSameDay)} label={`vs. ${dayShort(lastWeekSameDay)}`} /> : undefined}
           hint={prevSameDay ? undefined : "Total de todos los clientes"}
         />
-        <Stat label="Semana" value={formatNumber(weekTotal)} icon={CalendarRange} hint={`${one(avg(weekTotal, weekDays))} por día · ${weekDays} día(s) de lunes a sábado`} />
-        <Stat label="Mes" value={formatNumber(monthTotal)} icon={CalendarDays} hint={`${one(monthStats.dailyAvg)} por día · promedio de ${monthStats.counted} semana(s)`} />
-        <Stat label="Promedio semanal" value={one(monthStats.weeklyAvg)} icon={TrendingUp} hint={`Paquetes por semana en ${monthName(date)}`} />
+        <Stat label="Semana" value={formatNumber(weekTotal)} icon={CalendarRange} hint={t("{v0} por día · {v1} día(s) de lunes a sábado", { v0: one(avg(weekTotal, weekDays)), v1: weekDays })} />
+        <Stat label="Mes" value={formatNumber(monthTotal)} icon={CalendarDays} hint={t("{v0} por día · promedio de {v1} semana(s)", { v0: one(monthStats.dailyAvg), v1: monthStats.counted })} />
+        <Stat label="Promedio semanal" value={one(monthStats.weeklyAvg)} icon={TrendingUp} hint={t("Paquetes por semana en {v0}", { v0: monthName(date) })} />
       </div>
 
       <Panel
@@ -165,12 +170,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         bodyClassName="p-0"
       >
         {waves.length === 0 ? (
-          <Empty icon={Package}>Agrega al menos una oleada (abajo) para empezar a capturar.</Empty>
+          <Empty icon={Package}><Tr>Agrega al menos una oleada (abajo) para empezar a capturar.</Tr></Empty>
         ) : clients.length === 0 ? (
           <Empty icon={Package}>
-            No hay clientes activos.{" "}
+            <Tr>No hay clientes activos.</Tr>{" "}
             <Link href="/clientes/nuevo" className="text-primary underline">
-              Crear cliente
+              <Tr>Crear cliente</Tr>
             </Link>
           </Empty>
         ) : (
@@ -179,15 +184,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       </Panel>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-5">
-        <Panel className="lg:col-span-3" title="Tendencia" description={`Paquetes por día, del ${rangeLabel(chartFrom, date)}`} bodyClassName="p-5">
-          <ColumnChart points={points} series={[{ key: "total", name: "Paquetes", color: "var(--chart-1)" }]} height={240} format="count" emptyText="Sin órdenes capturadas en estos días." />
+        <Panel className="lg:col-span-3" title="Tendencia" description={t("Paquetes por día, del {v0}", { v0: rangeLabel(chartFrom, date) })} bodyClassName="p-5">
+          <ColumnChart points={points} series={[{ key: "total", name: t("Paquetes"), color: "var(--chart-1)" }]} height={240} format="count" emptyText={t("Sin órdenes capturadas en estos días.")} />
         </Panel>
         <Panel className="lg:col-span-2" title="Mes por cliente" description={<span className="capitalize">{monthName(date)}</span>} bodyClassName="p-5">
           <BarList
             format="count"
             color="var(--chart-1)"
             total={monthTotal}
-            emptyText="Sin órdenes en el mes."
+            emptyText={t("Sin órdenes en el mes.")}
             rows={withOrders.filter((s) => s.month > 0).slice(0, 8).map((s) => ({ key: String(s.id), label: s.name, value: s.month, hint: `${one(s.monthAvg)}/día` }))}
           />
         </Panel>
@@ -198,7 +203,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         title="Semanas del mes"
         description={
           <>
-            Semanas de lunes a sábado; la primera y la última pueden quedar cortadas por el cambio de mes. El promedio del mes es el promedio de los promedios de cada semana.
+            <Tr>Semanas de lunes a sábado; la primera y la última pueden quedar cortadas por el cambio de mes. El promedio del mes es el promedio de los promedios de cada semana.</Tr>
           </>
         }
         bodyClassName="p-0"
@@ -207,10 +212,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <table className="table min-w-[560px]">
             <thead>
               <tr className="text-xs text-muted-foreground [&>th]:px-3 [&>th]:py-2.5 [&>th]:font-medium">
-                <th className="pl-5 text-left">Semana</th>
-                <th className="text-right">Días lun–sáb</th>
-                <th className="text-right">Paquetes</th>
-                <th className="w-[38%] pr-5 text-right">Promedio diario</th>
+                <th className="pl-5 text-left"><Tr>Semana</Tr></th>
+                <th className="text-right"><Tr>Días lun–sáb</Tr></th>
+                <th className="text-right"><Tr>Paquetes</Tr></th>
+                <th className="w-[38%] pr-5 text-right"><Tr>Promedio diario</Tr></th>
               </tr>
             </thead>
             <tbody>
@@ -223,14 +228,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <tr key={w.from} className={`border-t [&>td]:px-3 [&>td]:py-2 ${current ? "bg-primary/[0.04]" : ""}`}>
                       <td className="pl-5">
                         <span className="font-medium">{rangeLabel(w.from, w.to)}</span>
-                        {current && <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">En curso</span>}
-                        {workdaysBetween(w.from, w.to) < 6 && !pending && <span className="ml-2 text-xs text-muted-foreground">cortada</span>}
+                        {current && <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"><Tr>En curso</Tr></span>}
+                        {workdaysBetween(w.from, w.to) < 6 && !pending && <span className="ml-2 text-xs text-muted-foreground"><Tr>cortada</Tr></span>}
                       </td>
                       <td className="text-right tabular-nums">{pending ? <span className="text-muted-foreground">—</span> : w.workdays}</td>
                       <td className="text-right font-medium tabular-nums">{pending ? <span className="text-muted-foreground">—</span> : formatNumber(w.total)}</td>
                       <td className="pr-5">
                         {pending ? (
-                          <span className="block text-right text-xs text-muted-foreground">{w.from > date ? "Aún no empieza" : "Sin días lun–sáb"}</span>
+                          <span className="block text-right text-xs text-muted-foreground">{w.from > date ? t("Aún no empieza") : t("Sin días lun–sáb")}</span>
                         ) : (
                           <div className="flex items-center justify-end gap-3">
                             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
@@ -249,14 +254,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               })()}
               <tr className="border-t bg-muted font-semibold [&>td]:px-3 [&>td]:py-2.5">
                 <td className="pl-5">
-                  Promedio del mes <span className="font-normal text-muted-foreground">· {monthStats.counted} semana(s)</span>
+                  <Tr>Promedio del mes</Tr> <span className="font-normal text-muted-foreground">· {monthStats.counted} <Tr>semana(s)</Tr></span>
                 </td>
                 <td />
-                <td className="text-right tabular-nums" title="Promedio de los totales semanales">
-                  {one(monthStats.weeklyAvg)} <span className="text-xs font-normal text-muted-foreground">/ semana</span>
+                <td className="text-right tabular-nums" title={t("Promedio de los totales semanales")}>
+                  {one(monthStats.weeklyAvg)} <span className="text-xs font-normal text-muted-foreground">/ <Tr>semana</Tr></span>
                 </td>
                 <td className="pr-5 text-right tabular-nums">
-                  {one(monthStats.dailyAvg)} <span className="text-xs font-normal text-muted-foreground">/ día</span>
+                  {one(monthStats.dailyAvg)} <span className="text-xs font-normal text-muted-foreground">/ <Tr>día</Tr></span>
                 </td>
               </tr>
             </tbody>
@@ -267,23 +272,23 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       <Panel
         className="mb-6"
         title="Resumen por cliente"
-        description={`Semana del ${rangeLabel(week.from, week.to)}. Promedios con semanas de lunes a sábado; el del mes es el promedio de sus semanas.`}
+        description={t("Semana del {v0}. Promedios con semanas de lunes a sábado; el del mes es el promedio de sus semanas.", { v0: rangeLabel(week.from, week.to) })}
         bodyClassName="p-0"
       >
         <div className="overflow-x-auto">
           <table className="table min-w-[1060px]">
             <thead>
               <tr className="text-xs text-muted-foreground [&>th]:px-3 [&>th]:py-2.5 [&>th]:font-medium">
-                <th className="pl-5 text-left">Cliente</th>
-                <th className="text-right">Día</th>
-                <th className="text-right">Semana</th>
-                <th className="text-right">Prom. diario semana</th>
-                <th className="text-right">Mes</th>
-                <th className="text-right">Prom. diario mes</th>
-                <th className="text-right">Prom. semanal</th>
-                <th className="text-right">Tarifa / paquete</th>
-                <th className="text-right">Importe semana</th>
-                <th className="pr-5 text-right">Resumen y factura</th>
+                <th className="pl-5 text-left"><Tr>Cliente</Tr></th>
+                <th className="text-right"><Tr>Día</Tr></th>
+                <th className="text-right"><Tr>Semana</Tr></th>
+                <th className="text-right"><Tr>Prom. diario semana</Tr></th>
+                <th className="text-right"><Tr>Mes</Tr></th>
+                <th className="text-right"><Tr>Prom. diario mes</Tr></th>
+                <th className="text-right"><Tr>Prom. semanal</Tr></th>
+                <th className="text-right"><Tr>Tarifa / paquete</Tr></th>
+                <th className="text-right"><Tr>Importe semana</Tr></th>
+                <th className="pr-5 text-right"><Tr>Resumen y factura</Tr></th>
               </tr>
             </thead>
             <tbody>
@@ -301,29 +306,29 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <td className="text-right">
                       <RateInput clientId={s.id} value={s.orderRate} fallback={s.rate.source === "tarifa" ? s.rate.rate : 0} fallbackLabel={s.rate.label} />
                     </td>
-                    <td className="text-right tabular-nums">{s.rate.rate ? formatMoney(amount) : <span className="text-xs text-muted-foreground">Sin tarifa</span>}</td>
+                    <td className="text-right tabular-nums">{s.rate.rate ? formatMoney(amount) : <span className="text-xs text-muted-foreground"><Tr>Sin tarifa</Tr></span>}</td>
                     <td className="pr-5">
                       <div className="flex items-center justify-end gap-1">
-                        <a href={pdf(s.id, week.from, week.to)} target="_blank" rel="noreferrer" className="btn-secondary h-8 px-2.5 text-xs" title="PDF de la semana">
+                        <a href={pdf(s.id, week.from, week.to)} target="_blank" rel="noreferrer" className="btn-secondary h-8 px-2.5 text-xs" title={t("PDF de la semana")}>
                           <FileDown className="size-3.5" />
-                          Semana
+                          <Tr>Semana</Tr>
                         </a>
-                        <a href={pdf(s.id, month.from, month.to)} target="_blank" rel="noreferrer" className="btn-secondary h-8 px-2.5 text-xs" title="PDF del mes">
+                        <a href={pdf(s.id, month.from, month.to)} target="_blank" rel="noreferrer" className="btn-secondary h-8 px-2.5 text-xs" title={t("PDF del mes")}>
                           <FileDown className="size-3.5" />
-                          Mes
+                          <Tr>Mes</Tr>
                         </a>
                         {s.invoice ? (
-                          <Link href={`/facturas/${s.invoice.id}`} className="btn-secondary h-8 px-2.5 text-xs text-emerald-700" title="Factura de esta semana">
+                          <Link href={`/facturas/${s.invoice.id}`} className="btn-secondary h-8 px-2.5 text-xs text-emerald-700" title={t("Factura de esta semana")}>
                             <PackageCheck className="size-3.5" />
                             {s.invoice.folio}
                           </Link>
                         ) : s.week > 0 ? (
-                          <Link href={`/facturas/nueva?ordenes=${s.id}&semana=${week.from}`} className="btn-primary h-8 px-2.5 text-xs" title="Crear la factura semanal de servicio logístico">
+                          <Link href={`/facturas/nueva?ordenes=${s.id}&semana=${week.from}`} className="btn-primary h-8 px-2.5 text-xs" title={t("Crear la factura semanal de servicio logístico")}>
                             <ReceiptText className="size-3.5" />
-                            Facturar
+                            <Tr>Facturar</Tr>
                           </Link>
                         ) : (
-                          <span className="inline-flex h-8 w-[5.6rem] items-center justify-center text-xs text-muted-foreground">Sin órdenes</span>
+                          <span className="inline-flex h-8 w-[5.6rem] items-center justify-center text-xs text-muted-foreground"><Tr>Sin órdenes</Tr></span>
                         )}
                       </div>
                     </td>
@@ -340,26 +345,26 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           {waves.map((w, i) => (
             <li key={w.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
               <Form action={renameWave.bind(null, w.id)} className="flex min-w-0 flex-1 items-center gap-2">
-                <input name="name" defaultValue={w.name} aria-label="Nombre de la oleada" className="input h-8 max-w-80" required />
-                <SubmitButton className="btn-secondary h-8 text-xs">Renombrar</SubmitButton>
+                <input name="name" defaultValue={w.name} aria-label={t("Nombre de la oleada")} className="input h-8 max-w-80" required />
+                <SubmitButton className="btn-secondary h-8 text-xs"><Tr>Renombrar</Tr></SubmitButton>
               </Form>
               <div className="flex items-center gap-1">
                 <Form action={moveWave.bind(null, w.id)}>
                   <input type="hidden" name="dir" value="-1" />
-                  <button className="btn-secondary h-8 px-2" aria-label="Mover a la izquierda" disabled={i === 0}>
+                  <button className="btn-secondary h-8 px-2" aria-label={t("Mover a la izquierda")} disabled={i === 0}>
                     <ArrowUp className="size-3.5" />
                   </button>
                 </Form>
                 <Form action={moveWave.bind(null, w.id)}>
                   <input type="hidden" name="dir" value="1" />
-                  <button className="btn-secondary h-8 px-2" aria-label="Mover a la derecha" disabled={i === waves.length - 1}>
+                  <button className="btn-secondary h-8 px-2" aria-label={t("Mover a la derecha")} disabled={i === waves.length - 1}>
                     <ArrowDown className="size-3.5" />
                   </button>
                 </Form>
                 <Form action={toggleWave.bind(null, w.id)}>
                   <button className="btn-secondary h-8 px-2.5 text-xs">
                     <EyeOff className="size-3.5" />
-                    Ocultar
+                    <Tr>Ocultar</Tr>
                   </button>
                 </Form>
               </div>
@@ -368,18 +373,18 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         </ul>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <Form action={addWave} resetOnSuccess className="flex w-full max-w-md items-center gap-2">
-            <input name="name" placeholder="Nueva oleada (ej. Primer Oleada Shein)" aria-label="Nueva oleada" className="input h-9" required />
+            <input name="name" placeholder={t("Nueva oleada (ej. Primer Oleada Shein)")} aria-label={t("Nueva oleada")} className="input h-9" required />
             <SubmitButton className="btn-primary">
               <Plus className="size-4" />
-              Agregar
+              <Tr>Agregar</Tr>
             </SubmitButton>
           </Form>
           {hiddenWaves.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Ocultas:</span>
+              <span className="text-muted-foreground"><Tr>Ocultas:</Tr></span>
               {hiddenWaves.map((w) => (
                 <Form key={w.id} action={toggleWave.bind(null, w.id)}>
-                  <button className="btn-secondary h-7 px-2 text-xs" title="Mostrar de nuevo">
+                  <button className="btn-secondary h-7 px-2 text-xs" title={t("Mostrar de nuevo")}>
                     <Eye className="size-3.5" />
                     {w.name}
                   </button>

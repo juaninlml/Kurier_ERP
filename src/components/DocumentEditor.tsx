@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/money";
 import { UNITS } from "@/lib/constants";
 import { Form } from "./Form";
 import { parseVolumes, scenarioTable, type PerOrderRow } from "@/lib/quote-extras";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 const SCALING_UNITS = ["orden", "pedido", "guía", "guia", "pieza", "envío", "envio"];
 
@@ -114,6 +116,7 @@ export function DocumentEditor({
   /** Marcas comerciales (la primera, id 0, es la principal). Con una sola no se muestra el selector. */
   brands?: BrandOpt[];
 }) {
+  const t = useT();
   const isQuote = kind === "quote";
   const [clientId, setClientId] = useState<number | undefined>(defaults.clientId);
   const brandOfClient = (id?: number) => clients.find((c) => c.id === id)?.brandId ?? 0;
@@ -187,11 +190,11 @@ export function DocumentEditor({
         {isQuote && (
           <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-3">
             <input type="hidden" name="partyType" value={partyType} />
-            <div className="inline-flex rounded-lg bg-muted p-1" role="radiogroup" aria-label="Destinatario de la propuesta">
+            <div className="inline-flex rounded-lg bg-muted p-1" role="radiogroup" aria-label={t("Destinatario de la propuesta")}>
               {(
                 [
-                  ["prospect", "Prospecto nuevo"],
-                  ["client", "Cliente actual"],
+                  ["prospect", t("Prospecto nuevo")],
+                  ["client", t("Cliente actual")],
                 ] as const
               ).map(([v, label]) => (
                 <button
@@ -208,19 +211,19 @@ export function DocumentEditor({
             </div>
             <p className="text-xs text-muted-foreground">
               {forProspect
-                ? "Al aceptarse la propuesta se da de alta el cliente con estos datos y sus tarifas."
-                : "Renegociación: al aceptarse, las tarifas se actualizan en las tarifas negociadas del cliente."}
+                ? t("Al aceptarse la propuesta se da de alta el cliente con estos datos y sus tarifas.")
+                : t("Renegociación: al aceptarse, las tarifas se actualizan en las tarifas negociadas del cliente.")}
             </p>
           </div>
         )}
         {forProspect ? (
           <>
             <label className="block md:col-span-1">
-              <span className="label">Prospecto (empresa o marca) *</span>
-              <input name="prospectName" required defaultValue={defaults.prospect?.name} placeholder="Cestco Dental" className="input" />
+              <span className="label"><Tr>Prospecto (empresa o marca) *</Tr></span>
+              <input name="prospectName" required defaultValue={defaults.prospect?.name} placeholder={t("Cestco Dental")} className="input" />
             </label>
             <label className="block">
-              <span className="label">Razón social</span>
+              <span className="label"><Tr>Razón social</Tr></span>
               <input name="prospectLegalName" defaultValue={defaults.prospect?.legalName} className="input" />
             </label>
             <label className="block">
@@ -228,18 +231,18 @@ export function DocumentEditor({
               <input name="prospectRfc" defaultValue={defaults.prospect?.rfc} className="input uppercase" />
             </label>
             <label className="block">
-              <span className="label">Correo</span>
+              <span className="label"><Tr>Correo</Tr></span>
               <input name="prospectEmail" type="email" defaultValue={defaults.prospect?.email} className="input" />
             </label>
             <label className="block">
-              <span className="label">Teléfono</span>
+              <span className="label"><Tr>Teléfono</Tr></span>
               <input name="prospectPhone" defaultValue={defaults.prospect?.phone} className="input" />
             </label>
             <div className="hidden md:block" />
           </>
         ) : (
         <label className="block">
-          <span className="label">Cliente</span>
+          <span className="label"><Tr>Cliente</Tr></span>
           <select name="clientId" defaultValue={defaults.clientId ?? ""} required className="input" onChange={(e) => {
               const id = Number(e.target.value) || undefined;
               setClientId(id);
@@ -247,7 +250,7 @@ export function DocumentEditor({
               setBrandId(brandOfClient(id));
             }}>
             <option value="" disabled>
-              Selecciona un cliente…
+              {t("Selecciona un cliente…")}
             </option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -259,7 +262,7 @@ export function DocumentEditor({
         )}
         {brands.length > 1 && (
           <label className="block">
-            <span className="label">Marca que emite</span>
+            <span className="label"><Tr>Marca que emite</Tr></span>
             <select name="brandId" className="input" value={brandId} onChange={(e) => setBrandId(Number(e.target.value))}>
               {brands.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -270,36 +273,36 @@ export function DocumentEditor({
           </label>
         )}
         <label className="block">
-          <span className="label">Fecha de emisión</span>
+          <span className="label"><Tr>Fecha de emisión</Tr></span>
           <input type="date" name="issueDate" defaultValue={defaults.issueDate} required className="input" />
         </label>
         <label className="block">
-          <span className="label">{isQuote ? "Vigente hasta" : "Fecha de vencimiento"}</span>
+          <span className="label">{isQuote ? t("Vigente hasta") : t("Fecha de vencimiento")}</span>
           <input type="date" name="secondDate" defaultValue={defaults.secondDate} required className="input" />
         </label>
 
         {isQuote ? (
           <label className="block md:col-span-3">
-            <span className="label">{forProspect ? "Contacto (atención)" : "Atención"}</span>
-            <input name="attention" defaultValue={defaults.attention} placeholder="Nombre del contacto (o “Por confirmar”)" className="input" />
+            <span className="label">{forProspect ? t("Contacto (atención)") : t("Atención")}</span>
+            <input name="attention" defaultValue={defaults.attention} placeholder={t("Nombre del contacto (o “Por confirmar”)")} className="input" />
           </label>
         ) : (
           <>
             <label className="block md:col-span-2">
-              <span className="label">Periodo facturado</span>
-              <input name="period" defaultValue={defaults.period} placeholder="15 al 22 de agosto de 2026 — ciclo semanal" className="input" />
+              <span className="label"><Tr>Periodo facturado</Tr></span>
+              <input name="period" defaultValue={defaults.period} placeholder={t("15 al 22 de agosto de 2026 — ciclo semanal")} className="input" />
             </label>
             <label className="block">
-              <span className="label">Condiciones de pago</span>
+              <span className="label"><Tr>Condiciones de pago</Tr></span>
               <input name="terms" defaultValue={defaults.terms} className="input" />
             </label>
             <label className="block md:col-span-2">
-              <span className="label">Volumen del periodo</span>
-              <input name="volume" defaultValue={defaults.volume} placeholder="39 pedidos, todos bajo la tarifa Orden Ligera negociada." className="input" />
+              <span className="label"><Tr>Volumen del periodo</Tr></span>
+              <input name="volume" defaultValue={defaults.volume} placeholder={t("39 pedidos, todos bajo la tarifa Orden Ligera negociada.")} className="input" />
             </label>
             <label className="block">
-              <span className="label">Almacenamiento</span>
-              <input name="storage" defaultValue={defaults.storage} placeholder="No se cobra en este periodo." className="input" />
+              <span className="label"><Tr>Almacenamiento</Tr></span>
+              <input name="storage" defaultValue={defaults.storage} placeholder={t("No se cobra en este periodo.")} className="input" />
             </label>
           </>
         )}
@@ -309,11 +312,11 @@ export function DocumentEditor({
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Perfil de la operación cotizada</h2>
-              <p className="text-xs text-muted-foreground">El cliente se agrega solo. Las filas sin detalle no se imprimen.</p>
+              <h2 className="font-semibold"><Tr>Perfil de la operación cotizada</Tr></h2>
+              <p className="text-xs text-muted-foreground"><Tr>El cliente se agrega solo. Las filas sin detalle no se imprimen.</Tr></p>
             </div>
             <button type="button" className="btn-secondary" onClick={() => setProfile((p) => [...p, { label: "", value: "" }])}>
-              <Plus className="size-4" /> Fila
+              <Plus className="size-4" /> <Tr>Fila</Tr>
             </button>
           </div>
           <div className="space-y-2">
@@ -321,17 +324,17 @@ export function DocumentEditor({
               <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-2">
                 <input
                   className="input font-medium"
-                  placeholder="Concepto"
+                  placeholder={t("Concepto")}
                   value={r.label}
                   onChange={(e) => setProfile((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                 />
                 <input
                   className="input"
-                  placeholder="Detalle"
+                  placeholder={t("Detalle")}
                   value={r.value}
                   onChange={(e) => setProfile((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
                 />
-                <button type="button" title="Quitar" aria-label="Quitar" className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setProfile((p) => p.filter((_, j) => j !== i))}>
+                <button type="button" title={t("Quitar")} aria-label={t("Quitar")} className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setProfile((p) => p.filter((_, j) => j !== i))}>
                   <Trash2 className="size-4" />
                 </button>
               </div>
@@ -343,11 +346,11 @@ export function DocumentEditor({
       <div className="card overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div>
-            <h2 className="font-semibold">{isQuote ? "Servicios y tarifas" : "Detalle de servicios facturados"}</h2>
+            <h2 className="font-semibold">{isQuote ? t("Servicios y tarifas") : t("Detalle de servicios facturados")}</h2>
             <p className="text-xs text-muted-foreground">
               {isQuote
-                ? "Cantidad 0 = solo se muestra la tarifa. Con cantidad, el concepto entra al costo mensual estimado."
-                : "Los conceptos con cantidad 0 no se facturan."}
+                ? t("Cantidad 0 = solo se muestra la tarifa. Con cantidad, el concepto entra al costo mensual estimado.")
+                : t("Los conceptos con cantidad 0 no se facturan.")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -360,7 +363,7 @@ export function DocumentEditor({
                   e.target.value = "";
                 }}
               >
-                <option value="">+ Sección completa…</option>
+                <option value="">{t("+ Sección completa…")}</option>
                 {sections.map(([name, list]) => (
                   <option key={name} value={name}>
                     {name} ({list.length})
@@ -376,19 +379,19 @@ export function DocumentEditor({
                 e.target.value = "";
               }}
             >
-              <option value="">+ Servicio del tarifario…</option>
+              <option value="">{t("+ Servicio del tarifario…")}</option>
               {sections.map(([name, list]) => (
                 <optgroup key={name} label={name}>
                   {list.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} — {s.priceText || (s.atCost ? "Al costo" : formatMoney(s.unitPrice))}
+                      {s.name} — {s.priceText || (s.atCost ? t("Al costo") : formatMoney(s.unitPrice))}
                     </option>
                   ))}
                 </optgroup>
               ))}
             </select>
             <button type="button" className="btn-secondary" onClick={() => append([emptyLine(defaultTaxRate)])}>
-              <Plus className="size-4" /> Concepto libre
+              <Plus className="size-4" /> <Tr>Concepto libre</Tr>
             </button>
           </div>
         </div>
@@ -397,25 +400,25 @@ export function DocumentEditor({
           {lines.map((l, i) => (
             <div key={i} className={`space-y-2 px-5 py-4 ${isQuote && l.quantity === 0 ? "bg-muted/40" : ""}`}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1.2fr)_90px_130px_80px_80px_120px_auto]">
-                <Cell label="Concepto" className="col-span-2 sm:col-span-4 xl:col-span-1">
-                  <input className="input font-medium" value={l.description} placeholder="Nombre del servicio" onChange={(e) => update(i, { description: e.target.value })} />
+                <Cell label={t("Concepto")} className="col-span-2 sm:col-span-4 xl:col-span-1">
+                  <input className="input font-medium" value={l.description} placeholder={t("Nombre del servicio")} onChange={(e) => update(i, { description: e.target.value })} />
                 </Cell>
-                <Cell label="Unidad">
+                <Cell label={t("Unidad")}>
                   <input className="input" list="units" value={l.unit ?? ""} onChange={(e) => update(i, { unit: e.target.value })} />
                 </Cell>
-                <Cell label="Cant.">
+                <Cell label={t("Cant.")}>
                   <input type="number" step="any" min="0" className="input text-right" value={l.quantity} onChange={(e) => update(i, { quantity: num(e.target.value) })} />
                 </Cell>
                 {l.atCost ? (
-                  <Cell label="Importe al costo">
+                  <Cell label={t("Importe al costo")}>
                     <input type="number" step="0.01" min="0" className="input text-right" value={l.amount ?? 0} onChange={(e) => update(i, { amount: num(e.target.value) })} />
                   </Cell>
                 ) : (
-                  <Cell label="P. unitario">
+                  <Cell label={t("P. unitario")}>
                     <input type="number" step="0.01" min="0" className="input text-right" value={l.unitPrice} onChange={(e) => update(i, { unitPrice: num(e.target.value) })} />
                   </Cell>
                 )}
-                <Cell label="Desc. %">
+                <Cell label={t("Desc. %")}>
                   <input
                     type="number"
                     step="any"
@@ -427,53 +430,53 @@ export function DocumentEditor({
                     onChange={(e) => update(i, { discountPct: num(e.target.value) })}
                   />
                 </Cell>
-                <Cell label="IVA %">
+                <Cell label={t("IVA %")}>
                   <input type="number" step="any" min="0" className="input text-right" value={l.taxRate ?? 0} onChange={(e) => update(i, { taxRate: num(e.target.value) })} />
                 </Cell>
-                <Cell label="Importe">
+                <Cell label={t("Importe")}>
                   <div className="py-2 text-right text-sm font-medium tabular-nums">{formatMoney(lineAmount(l))}</div>
                 </Cell>
                 <div className="flex items-end justify-end gap-1 pb-2">
-                  <button type="button" title="Subir" aria-label="Subir" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, -1)}>
+                  <button type="button" title={t("Subir")} aria-label={t("Subir")} className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, -1)}>
                     <ChevronUp className="size-4" />
                   </button>
-                  <button type="button" title="Bajar" aria-label="Bajar" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, 1)}>
+                  <button type="button" title={t("Bajar")} aria-label={t("Bajar")} className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, 1)}>
                     <ChevronDown className="size-4" />
                   </button>
-                  <button type="button" title="Eliminar" aria-label="Eliminar" className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(i)}>
+                  <button type="button" title={t("Eliminar")} aria-label={t("Eliminar")} className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(i)}>
                     <Trash2 className="size-4" />
                   </button>
                 </div>
               </div>
               <div className={`grid grid-cols-2 gap-2 ${isQuote ? "sm:grid-cols-4 xl:grid-cols-[100px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,3fr)_auto]" : "sm:grid-cols-[100px_minmax(0,1fr)_auto]"}`}>
-                <Cell label="Clave">
+                <Cell label={t("Clave")}>
                   <input className="input text-xs" value={l.code ?? ""} onChange={(e) => update(i, { code: e.target.value })} />
                 </Cell>
                 {isQuote && (
-                  <Cell label="Sección">
+                  <Cell label={t("Sección")}>
                     <input className="input text-xs" list="sections" value={l.section ?? ""} onChange={(e) => update(i, { section: e.target.value })} />
                   </Cell>
                 )}
-                <Cell label={isQuote ? "Tarifa (texto opcional)" : "Precio unitario (texto opcional)"}>
+                <Cell label={isQuote ? t("Tarifa (texto opcional)") : t("Precio unitario (texto opcional)")}>
                   <input
                     className="input text-xs"
-                    placeholder={l.atCost ? "Variable (al costo)" : isQuote ? "Ej. Sin costo, A cotización" : ""}
+                    placeholder={l.atCost ? t("Variable (al costo)") : isQuote ? t("Ej. Sin costo, A cotización") : ""}
                     value={l.priceText ?? ""}
                     onChange={(e) => update(i, { priceText: e.target.value })}
                   />
                 </Cell>
                 {isQuote && (
-                  <Cell label="Descripción" className="col-span-2 sm:col-span-4 xl:col-span-1">
+                  <Cell label={t("Descripción")} className="col-span-2 sm:col-span-4 xl:col-span-1">
                     <textarea rows={1} className="input min-h-[38px] text-xs" value={l.detail ?? ""} onChange={(e) => update(i, { detail: e.target.value })} />
                   </Cell>
                 )}
                 <div className="flex flex-col justify-end gap-1 pb-1.5 text-xs text-muted-foreground">
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={Boolean(l.atCost)} onChange={(e) => update(i, { atCost: e.target.checked })} /> Al costo
+                    <input type="checkbox" checked={Boolean(l.atCost)} onChange={(e) => update(i, { atCost: e.target.checked })} /> <Tr>Al costo</Tr>
                   </label>
                   {isQuote && (
-                    <label className="flex items-center gap-2 whitespace-nowrap" title="En los escenarios por volumen, la cantidad crece en proporción a los pedidos">
-                      <input type="checkbox" checked={Boolean(l.scales)} onChange={(e) => update(i, { scales: e.target.checked })} /> Escala con volumen
+                    <label className="flex items-center gap-2 whitespace-nowrap" title={t("En los escenarios por volumen, la cantidad crece en proporción a los pedidos")}>
+                      <input type="checkbox" checked={Boolean(l.scales)} onChange={(e) => update(i, { scales: e.target.checked })} /> <Tr>Escala con volumen</Tr>
                     </label>
                   )}
                 </div>
@@ -494,14 +497,14 @@ export function DocumentEditor({
 
         <div className="flex justify-end border-t border-border bg-muted px-5 py-4">
           <dl className="w-full max-w-xs space-y-1 text-sm">
-            {isQuote && <div className="label">Costo mensual estimado</div>}
+            {isQuote && <div className="label"><Tr>Costo mensual estimado</Tr></div>}
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Subtotal sin IVA</dt>
+              <dt className="text-muted-foreground"><Tr>Subtotal sin IVA</Tr></dt>
               <dd className="tabular-nums">{formatMoney(totals.subtotal)}</dd>
             </div>
             {totals.discount > 0 && (
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Descuento</dt>
+                <dt className="text-muted-foreground"><Tr>Descuento</Tr></dt>
                 <dd className="tabular-nums">−{formatMoney(totals.discount)}</dd>
               </div>
             )}
@@ -510,7 +513,7 @@ export function DocumentEditor({
               <dd className="tabular-nums">{formatMoney(totals.tax)}</dd>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
-              <dt>{isQuote ? "Total estimado" : "Total a pagar"}</dt>
+              <dt>{isQuote ? t("Total estimado") : t("Total a pagar")}</dt>
               <dd className="tabular-nums text-kurier">{formatMoney(totals.total)}</dd>
             </div>
           </dl>
@@ -522,11 +525,11 @@ export function DocumentEditor({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <div>
-                <h2 className="font-semibold">Costo por pedido</h2>
-                <p className="text-xs text-muted-foreground">Opcional. Combinaciones típicas de pedido y su costo de fulfillment.</p>
+                <h2 className="font-semibold"><Tr>Costo por pedido</Tr></h2>
+                <p className="text-xs text-muted-foreground"><Tr>Opcional. Combinaciones típicas de pedido y su costo de fulfillment.</Tr></p>
               </div>
               <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setPerOrder((p) => [...p, { label: "", amount: 0 }])}>
-                <Plus className="size-4" /> Fila
+                <Plus className="size-4" /> <Tr>Fila</Tr>
               </button>
             </div>
             <div className="space-y-2">
@@ -534,7 +537,7 @@ export function DocumentEditor({
                 <div key={i} className="grid grid-cols-[minmax(0,1fr)_110px_auto] gap-2">
                   <input
                     className="input"
-                    placeholder="1 a 2 piezas, bolsa estándar"
+                    placeholder={t("1 a 2 piezas, bolsa estándar")}
                     value={r.label}
                     onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                   />
@@ -546,14 +549,14 @@ export function DocumentEditor({
                     value={r.amount}
                     onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: num(e.target.value) } : x)))}
                   />
-                  <button type="button" title="Quitar" aria-label="Quitar" className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
+                  <button type="button" title={t("Quitar")} aria-label={t("Quitar")} className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
                     <Trash2 className="size-4" />
                   </button>
                 </div>
               ))}
             </div>
             <label className="mt-3 block">
-              <span className="label">Comisión de guía para la columna “Con guía de Kurier” (0 = no se muestra)</span>
+              <span className="label"><Tr>Comisión de guía para la columna “Con guía de Kurier” (0 = no se muestra)</Tr></span>
               <input
                 type="number"
                 step="0.01"
@@ -567,18 +570,18 @@ export function DocumentEditor({
           </div>
 
           <div>
-            <h2 className="font-semibold">Costo mensual según volumen</h2>
+            <h2 className="font-semibold"><Tr>Costo mensual según volumen</Tr></h2>
             <p className="mb-2 text-xs text-muted-foreground">
-              Opcional. Recalcula el costo estimado para varios volúmenes. Los conceptos con “Escala con volumen” crecen en proporción; los demás
-              (ej. sistema) quedan fijos.
+              <Tr>Opcional. Recalcula el costo estimado para varios volúmenes. Los conceptos con “Escala con volumen” crecen en proporción; los demás
+              (ej. sistema) quedan fijos.</Tr>
             </p>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="label">Pedidos del costo estimado</span>
+                <span className="label"><Tr>Pedidos del costo estimado</Tr></span>
                 <input type="number" min="0" step="1" name="baseVolume" className="input text-right" value={baseVolume} onChange={(e) => setBaseVolume(num(e.target.value))} />
               </label>
               <label className="block">
-                <span className="label">Volúmenes a comparar</span>
+                <span className="label"><Tr>Volúmenes a comparar</Tr></span>
                 <input name="scenarios" className="input" placeholder="250, 500, 1000" value={scenarios} onChange={(e) => setScenarios(e.target.value)} />
               </label>
             </div>
@@ -587,7 +590,7 @@ export function DocumentEditor({
                 <table className="table text-xs">
                   <thead>
                     <tr>
-                      <th>Concepto</th>
+                      <th><Tr>Concepto</Tr></th>
                       {volumes.map((v) => (
                         <th key={v} className="text-right">
                           {v.toLocaleString("es-MX")}
@@ -607,7 +610,7 @@ export function DocumentEditor({
                       </tr>
                     ))}
                     <tr className="font-semibold">
-                      <td>Total con IVA</td>
+                      <td><Tr>Total con IVA</Tr></td>
                       {scenarioPreview.total.map((v, j) => (
                         <td key={j} className="text-right tabular-nums text-kurier">
                           {formatMoney(v)}
@@ -620,7 +623,7 @@ export function DocumentEditor({
             ) : (
               (baseVolume > 0 || volumes.length > 0) && (
                 <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  Para ver los escenarios indica los pedidos del estimado, los volúmenes y al menos un concepto con cantidad.
+                  <Tr>Para ver los escenarios indica los pedidos del estimado, los volúmenes y al menos un concepto con cantidad.</Tr>
                 </p>
               )
             )}
@@ -630,12 +633,12 @@ export function DocumentEditor({
 
       <div className={`card grid gap-4 p-5 ${isQuote ? "md:grid-cols-2" : ""}`}>
         <label className="block">
-          <span className="label">{isQuote ? "Nota del costo estimado (aparece en el PDF)" : "Nota bajo el detalle (aparece en el PDF)"}</span>
+          <span className="label">{isQuote ? t("Nota del costo estimado (aparece en el PDF)") : t("Nota bajo el detalle (aparece en el PDF)")}</span>
           <textarea name="notes" rows={4} defaultValue={defaults.notes} className="input" />
         </label>
         {isQuote && (
           <label className="block">
-            <span className="label">Condiciones comerciales (una por línea; “Título: texto”)</span>
+            <span className="label"><Tr>Condiciones comerciales (una por línea; “Título: texto”)</Tr></span>
             <textarea name="terms" rows={8} defaultValue={defaults.terms} className="input" />
           </label>
         )}

@@ -6,6 +6,8 @@ import { incomeStatement, receivables, parseRange, AGING_BUCKETS } from "@/lib/r
 import { AGING_LABEL, flowSeries } from "@/lib/insights";
 import { SuppliesPanel } from "@/components/SuppliesPanel";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ function presets() {
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
   const [stmt, ar, flow] = await Promise.all([incomeStatement(from, to), receivables(), flowSeries(from, to)]);
@@ -34,14 +37,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Reportes financieros"
-        subtitle={`Periodo: ${formatDate(from)} – ${formatDate(to)}`}
+        subtitle={t("Periodo: {v0} – {v1}", { v0: formatDate(from), v1: formatDate(to) })}
         actions={
           <>
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}`} target="_blank" className="btn-secondary">
-              <Eye className="size-4" /> Ver PDF
+              <Eye className="size-4" /> <Tr>Ver PDF</Tr>
             </a>
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}&download`} className="btn-primary">
-              <Download className="size-4" /> Descargar PDF
+              <Download className="size-4" /> <Tr>Descargar PDF</Tr>
             </a>
           </>
         }
@@ -55,19 +58,19 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             aria-current={p.from === fromStr && p.to === toStr ? "true" : undefined}
             className="btn-secondary aria-[current]:border-primary/40 aria-[current]:bg-primary/5 aria-[current]:text-primary"
           >
-            {p.label}
+            <Tr>{p.label}</Tr>
           </Link>
         ))}
         <form className="ml-auto flex flex-wrap items-end gap-2">
           <label>
-            <span className="label">Desde</span>
+            <span className="label"><Tr>Desde</Tr></span>
             <input type="date" name="from" defaultValue={fromStr} className="input" />
           </label>
           <label>
-            <span className="label">Hasta</span>
+            <span className="label"><Tr>Hasta</Tr></span>
             <input type="date" name="to" defaultValue={toStr} className="input" />
           </label>
-          <button className="btn-secondary">Aplicar</button>
+          <button className="btn-secondary"><Tr>Aplicar</Tr></button>
         </form>
       </div>
 
@@ -87,12 +90,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <ColumnChart
           height={240}
           series={[
-            { key: "income", name: "Ingresos", color: "var(--chart-1)" },
-            { key: "expense", name: "Egresos", color: "var(--chart-2)" },
+            { key: "income", name: t("Ingresos"), color: "var(--chart-1)" },
+            { key: "expense", name: t("Egresos"), color: "var(--chart-2)" },
           ]}
           points={flow.points.map((p) => ({ key: p.key, label: p.label, full: p.full, values: { income: p.income, expense: p.expense } }))}
-          diff={{ label: "Neto", plus: "income", minus: "expense" }}
-          emptyText="Sin movimientos en este periodo."
+          diff={{ label: t("Neto"), plus: "income", minus: "expense" }}
+          emptyText={t("Sin movimientos en este periodo.")}
         />
       </Panel>
 
@@ -101,8 +104,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="grid gap-6 lg:grid-cols-2">
         {(
           [
-            ["Ingresos por categoría", stmt.income, stmt.incomeTotal, "var(--chart-1)"],
-            ["Egresos por categoría", stmt.expense, stmt.expenseTotal, "var(--chart-2)"],
+            [t("Ingresos por categoría"), stmt.income, stmt.incomeTotal, "var(--chart-1)"],
+            [t("Egresos por categoría"), stmt.expense, stmt.expenseTotal, "var(--chart-2)"],
           ] as const
         ).map(([title, rows, total, color]) => (
           <Panel
@@ -114,7 +117,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <BarList
               color={color}
               total={total}
-              emptyText="Sin movimientos."
+              emptyText={t("Sin movimientos.")}
               rows={rows.map((r) => ({ key: r.category, label: r.category, value: r.amount, hint: `(${r.count})` }))}
             />
           </Panel>
@@ -122,35 +125,35 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="card mt-6 p-5">
-        <h2 className="mb-3 text-[0.95rem] font-semibold">Resumen de IVA (estimado)</h2>
+        <h2 className="mb-3 text-[0.95rem] font-semibold"><Tr>Resumen de IVA (estimado)</Tr></h2>
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">IVA cobrado</dt>
+            <dt className="text-muted-foreground"><Tr>IVA cobrado</Tr></dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.incomeTax)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">IVA pagado</dt>
+            <dt className="text-muted-foreground"><Tr>IVA pagado</Tr></dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.expenseTax)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Diferencia</dt>
+            <dt className="text-muted-foreground"><Tr>Diferencia</Tr></dt>
             <dd className="text-lg font-semibold tabular-nums">{formatMoney(stmt.ivaBalance)}</dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs text-muted-foreground">Cifras informativas basadas en los movimientos capturados; no sustituyen la declaración de tu contador.</p>
+        <p className="mt-3 text-xs text-muted-foreground"><Tr>Cifras informativas basadas en los movimientos capturados; no sustituyen la declaración de tu contador.</Tr></p>
       </div>
 
       <div className="card mt-6 overflow-x-auto">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-          <h2 className="text-[0.95rem] font-semibold">Antigüedad de saldos (cuentas por cobrar)</h2>
+          <h2 className="text-[0.95rem] font-semibold"><Tr>Antigüedad de saldos (cuentas por cobrar)</Tr></h2>
           <span className="font-semibold tabular-nums">{formatMoney(ar.total)}</span>
         </div>
         <div className="border-b border-border p-5">
           <SegmentedBar
-            emptyText="Sin saldos pendientes"
+            emptyText={t("Sin saldos pendientes")}
             parts={AGING_BUCKETS.map((b, i) => ({
               key: b,
-              name: AGING_LABEL[b]!,
+              name: t(AGING_LABEL[b]!),
               value: ar.byBucket[b],
               color: `var(--aging-${i})`,
               ink: i === 1 ? ("dark" as const) : undefined,
@@ -161,11 +164,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <table className="table">
             <thead>
               <tr>
-                <th>Folio</th>
-                <th>Cliente</th>
-                <th>Vencimiento</th>
-                <th>Días vencida</th>
-                <th className="text-right">Saldo</th>
+                <th><Tr>Folio</Tr></th>
+                <th><Tr>Cliente</Tr></th>
+                <th><Tr>Vencimiento</Tr></th>
+                <th><Tr>Días vencida</Tr></th>
+                <th className="text-right"><Tr>Saldo</Tr></th>
               </tr>
             </thead>
             <tbody>

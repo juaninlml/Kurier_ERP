@@ -9,11 +9,16 @@ import { prisma } from "@/lib/db";
 import { previewImport } from "@/lib/wms/imports";
 import { clientOrdersSummary, DATE_RE, rangeLabel, weekOf } from "@/lib/orders";
 import { suppliesByMaterial } from "@/lib/supplies";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Nueva factura" };
+export async function generateMetadata() {
+  return { title: (await getT())("Nueva factura") };
+}
 
 export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string; ordenes?: string; semana?: string }> }) {
+  const t = await getT();
   const { clientId, quoteId, importId, ordenes, semana } = await searchParams;
   const { clients, services, clientRates, settings, brands } = await editorData();
   const today = new Date();
@@ -26,8 +31,8 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
     items: [],
   };
   let defaults = base;
-  let subtitle: string = "Documento informativo, sin timbrado fiscal";
-  let back = { href: "/facturas", label: "Facturas" };
+  let subtitle: string = t("Documento informativo, sin timbrado fiscal");
+  let back = { href: "/facturas", label: t("Facturas") };
 
   if (ordenes && semana && DATE_RE.test(semana)) {
     // Factura semanal de servicio logístico desde Órdenes diarias.
@@ -37,7 +42,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
       const supplyLines = sup.list
         .filter((m) => !m.noSupply && m.unitPrice > 0)
         .map((m) => ({
-          description: `Material de empaque: ${m.name}`,
+          description: `Material de empaque: ${m.name}`, // se guarda en la factura: siempre en español
           detail: m.size ? `Medidas ${m.size.replace(/\*/g, "×")} cm` : "",
           section: "Material de empaque",
           unit: "Pieza",
@@ -45,7 +50,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           unitPrice: m.unitPrice,
           taxRate: settings.defaultTaxRate,
         }));
-      const period = rangeLabel(week.from, week.to);
+      const period = rangeLabel(week.from, week.to, "es-MX"); // se guarda en la factura: siempre en español
       const breakdown = sum.byWave.filter((w) => w.total > 0).map((w) => `${w.name}: ${w.total}`).join(" · ");
       defaults = {
         ...base,
@@ -67,9 +72,14 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
         ],
       };
       subtitle = sum.rate.rate
-        ? `Desde Órdenes diarias: ${sum.total} paquetes × ${formatMoney(sum.rate.rate)} (${sum.rate.label.toLowerCase()})${supplyLines.length ? `, más ${supplyLines.length} material(es) de empaque (${formatMoney(sup.sale)})` : ""}. Revisa y ajusta antes de crearla.`
-        : `Desde Órdenes diarias: ${sum.total} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.`;
-      back = { href: `/ordenes?fecha=${week.from}`, label: "Órdenes diarias" };
+        ? t("Desde Órdenes diarias: {v0} paquetes × {v1} ({v2}){v3}. Revisa y ajusta antes de crearla.", {
+            v0: sum.total,
+            v1: formatMoney(sum.rate.rate),
+            v2: t(sum.rate.label).toLowerCase(),
+            v3: supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: supplyLines.length, v1: formatMoney(sup.sale) }) : "",
+          })
+        : t("Desde Órdenes diarias: {v0} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.", { v0: sum.total });
+      back = { href: `/ordenes?fecha=${week.from}`, label: t("Órdenes diarias") };
     }
   } else if (importId) {
     const imp = await prisma.wmsImport.findUnique({ where: { id: Number(importId) } });
@@ -84,20 +94,20 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
       volume: billing.volumeText,
       storage: billing.groups.some((g) => /almacen/i.test(g.section)) ? "" : "No se cobra en este periodo.",
       notes: [
-        `Estado de cobro del WMS ${imp.folio}${billing.volumeText ? `: ${billing.volumeText}` : ""}.`,
+        `Estado de cobro del WMS ${imp.folio}${billing.volumeText ? `: ${billing.volumeText}` : ""}.`, // nota guardada en la factura
         billing.groups.some((g) => g.line.atCost) ? "Las guías de envío se facturan al costo real de paquetería del periodo, sin margen." : "",
       ]
         .filter(Boolean)
         .join(" "),
       items: billing.groups.map((g) => g.line),
     };
-    subtitle = `Desde el estado de cobro ${imp.folio} del WMS (total WMS ${formatMoney(statement.total)}). Revisa y ajusta antes de crearla.`;
+    subtitle = t("Desde el estado de cobro {v0} del WMS (total WMS {v1}). Revisa y ajusta antes de crearla.", { v0: imp.folio, v1: formatMoney(statement.total) });
     back = { href: `/facturas/importar/${imp.id}`, label: imp.folio };
   } else if (quoteId) {
     const quote = await prisma.quote.findUnique({ where: { id: Number(quoteId) }, include: { items: { orderBy: { position: "asc" } } } });
     if (quote) {
       defaults = { ...base, clientId: quote.clientId ?? undefined, brandId: quote.brandId ?? undefined, quoteId: quote.id, items: itemsForEditor(quote.items) };
-      subtitle = `Con las tarifas de la cotización ${quote.folio}. Captura las cantidades del periodo; los conceptos con cantidad 0 no se facturan.`;
+      subtitle = t("Con las tarifas de la cotización {v0}. Captura las cantidades del periodo; los conceptos con cantidad 0 no se facturan.", { v0: quote.folio });
       back = { href: `/cotizaciones/${quote.id}`, label: quote.folio };
     }
   }
@@ -107,9 +117,9 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
       <PageHeader title="Nueva factura" subtitle={subtitle} back={back} />
       {clients.length === 0 ? (
         <div className="card p-6 text-sm">
-          Primero da de alta un cliente.{" "}
+          <Tr>Primero da de alta un cliente.</Tr>{" "}
           <Link href="/clientes/nuevo" className="text-primary underline">
-            Crear cliente
+            <Tr>Crear cliente</Tr>
           </Link>
         </div>
       ) : (
@@ -121,7 +131,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           clientRates={clientRates}
           brands={brands}
           defaultTaxRate={settings.defaultTaxRate}
-          submitLabel="Crear factura"
+          submitLabel={t("Crear factura")}
           defaults={defaults}
         />
       )}

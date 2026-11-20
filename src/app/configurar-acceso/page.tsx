@@ -9,7 +9,9 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Configurar la cuenta maestra" };
+export async function generateMetadata() {
+  return { title: (await getT())("Configurar la cuenta maestra") };
+}
 
 /**
  * Vincula (o vuelve a vincular, si cambiaste de teléfono) el autenticador de la cuenta maestra.
@@ -52,7 +54,7 @@ export default async function OwnerSetupPage() {
             <span className="label">{t("Clave de instalación (ERP_SETUP_KEY)")}</span>
             <input name="setupKey" type="password" required autoComplete="off" className="input" />
           </label>
-          <SubmitButton className="btn-primary w-full" pendingText="Verificando…">
+          <SubmitButton className="btn-primary w-full" pendingText={t("Verificando…")}>
             <KeyRound className="size-4" /> {t("Continuar")}
           </SubmitButton>
         </Form>

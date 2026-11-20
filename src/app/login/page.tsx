@@ -9,7 +9,9 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Iniciar sesión" };
+export async function generateMetadata() {
+  return { title: (await getT())("Iniciar sesión") };
+}
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string; vinculado?: string; email?: string }> }) {
   const { callbackUrl, vinculado, email } = await searchParams;
@@ -54,7 +56,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <input type="hidden" name="next" value={next} />
         <label className="block">
           <span className="label">{t("Correo")}</span>
-          <input name="email" type="email" required autoComplete="username" defaultValue={email ?? ""} className="input" placeholder="nombre@empresa.com" />
+          <input name="email" type="email" required autoComplete="username" defaultValue={email ?? ""} className="input" placeholder={t("nombre@empresa.com")} />
         </label>
         <label className="block">
           <span className="label flex items-center gap-1.5">
@@ -72,7 +74,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             placeholder="000000"
           />
         </label>
-        <SubmitButton className="btn-primary h-10 w-full" pendingText="Verificando…">
+        <SubmitButton className="btn-primary h-10 w-full" pendingText={t("Verificando…")}>
           <KeyRound className="size-4" /> {t("Entrar")}
         </SubmitButton>
       </Form>

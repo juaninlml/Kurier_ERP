@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 /*
  * Tablero de asistencias. Cada día es una barra sobre un mismo eje de horas para toda la semana,
@@ -112,6 +114,7 @@ function DayBar({ c, axis, nowMin, tall }: { c: DayCell; axis: Axis; nowMin?: nu
 }
 
 function DayDetail({ c, name, label }: { c: DayCell; name: string; label: string }) {
+  const t = useT();
   return (
     <div className="min-w-48 space-y-1">
       <div className="flex items-baseline justify-between gap-3">
@@ -119,35 +122,35 @@ function DayDetail({ c, name, label }: { c: DayCell; name: string; label: string
         <span className="opacity-70 capitalize">{label}</span>
       </div>
       <div className="opacity-80">
-        {STATUS_LABEL[c.status]}
-        {c.atMeal && " · en comida"} · horario {hhmm(c.schedStart)}–{hhmm(c.schedEnd)}
+        {t(STATUS_LABEL[c.status])}
+        {c.atMeal && t(" · en comida")} <Tr>· horario</Tr> {hhmm(c.schedStart)}–{hhmm(c.schedEnd)}
       </div>
       {c.inMin !== null && (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 tabular-nums">
-          <dt className="opacity-70">Entrada</dt>
+          <dt className="opacity-70"><Tr>Entrada</Tr></dt>
           <dd className="text-right font-medium">{hhmm(c.inMin)}</dd>
           {c.mealFrom !== null && (
             <>
-              <dt className="opacity-70">Comida</dt>
+              <dt className="opacity-70"><Tr>Comida</Tr></dt>
               <dd className="text-right font-medium">
                 {hhmm(c.mealFrom)}–{c.mealTo !== null ? hhmm(c.mealTo) : "…"}
               </dd>
             </>
           )}
-          <dt className="opacity-70">Salida</dt>
+          <dt className="opacity-70"><Tr>Salida</Tr></dt>
           <dd className="text-right font-medium">
             {c.outMin !== null ? hhmm(c.outMin) : "—"}
             {c.autoExit && " (auto)"}
           </dd>
-          <dt className="opacity-70">Trabajado</dt>
+          <dt className="opacity-70"><Tr>Trabajado</Tr></dt>
           <dd className="text-right font-medium">{c.workedHours.toFixed(1)} h</dd>
         </dl>
       )}
       {(c.late || c.overtimeMin > 0 || c.earlyMin > 0) && (
         <div className="flex flex-wrap gap-1 pt-0.5">
-          {c.late && <span className="rounded bg-amber-400/25 px-1.5 py-px">Retardo {c.lateMin} min</span>}
-          {c.earlyMin > 0 && c.status === "OK" && !c.autoExit && <span className="rounded bg-background/15 px-1.5 py-px">Salió {c.earlyMin} min antes</span>}
-          {c.overtimeMin > 0 && <span className="rounded bg-violet-400/30 px-1.5 py-px">Extra {(c.overtimeMin / 60).toFixed(1)} h</span>}
+          {c.late && <span className="rounded bg-amber-400/25 px-1.5 py-px"><Tr>Retardo</Tr> {c.lateMin} <Tr>min</Tr></span>}
+          {c.earlyMin > 0 && c.status === "OK" && !c.autoExit && <span className="rounded bg-background/15 px-1.5 py-px"><Tr>Salió</Tr> {c.earlyMin} <Tr>min antes</Tr></span>}
+          {c.overtimeMin > 0 && <span className="rounded bg-violet-400/30 px-1.5 py-px"><Tr>Extra</Tr> {(c.overtimeMin / 60).toFixed(1)} h</span>}
         </div>
       )}
     </div>
@@ -155,13 +158,14 @@ function DayDetail({ c, name, label }: { c: DayCell; name: string; label: string
 }
 
 export function Legend() {
+  const t = useT();
   const items: [string, string][] = [
-    ["Horario", "bg-primary/15"],
-    ["Trabajado", "bg-[var(--chart-1)]"],
-    ["Retardo", "bg-[var(--aging-1)]"],
-    ["Horas extra", "bg-[var(--chart-4)]"],
-    ["Falta", "bg-rose-100 ring-1 ring-rose-300 ring-inset"],
-    ["Descanso", "hatch"],
+    [t("Horario"), "bg-primary/15"],
+    [t("Trabajado"), "bg-[var(--chart-1)]"],
+    [t("Retardo"), "bg-[var(--aging-1)]"],
+    [t("Horas extra"), "bg-[var(--chart-4)]"],
+    [t("Falta"), "bg-rose-100 ring-1 ring-rose-300 ring-inset"],
+    [t("Descanso"), "hatch"],
   ];
   return (
     <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
@@ -177,6 +181,7 @@ export function Legend() {
 
 /** Semana: una fila por empleado, una barra por día y el avance de horas contra lo programado. */
 export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: EmployeeWeek[]; days: string[]; dayLabels: string[]; today: string; nowMin: number }) {
+  const t = useT();
   const axis = axisFor(rows);
 
   return (
@@ -184,13 +189,13 @@ export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: Emplo
       <div className="min-w-[1040px]">
         {/* Encabezado */}
         <div className="grid grid-cols-[minmax(180px,1.3fr)_repeat(7,minmax(0,1fr))_150px] items-end gap-x-2 border-b px-5 pt-1 pb-2 text-xs text-muted-foreground">
-          <span>Empleado</span>
+          <span><Tr>Empleado</Tr></span>
           {days.map((d, i) => (
             <span key={d} className={cn("rounded-md px-1 py-0.5 text-center", d === today && "bg-primary/10 font-medium text-primary")}>
               {dayLabels[i]}
             </span>
           ))}
-          <span className="text-right">Horas de la semana</span>
+          <span className="text-right"><Tr>Horas de la semana</Tr></span>
         </div>
         <div className="grid grid-cols-[minmax(180px,1.3fr)_repeat(7,minmax(0,1fr))_150px] gap-x-2 px-5 pt-1.5 text-[10px] text-muted-foreground/80">
           <span />
@@ -215,7 +220,7 @@ export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: Emplo
                   <div className="truncate text-[11px] text-muted-foreground">
                     {r.schedule}
                     {r.detail && ` · ${r.detail}`}
-                    {r.noKiosk && <span className="text-amber-700"> · sin autenticador</span>}
+                    {r.noKiosk && <span className="text-amber-700"> <Tr>· sin autenticador</Tr></span>}
                   </div>
                 </div>
                 {r.cells.map((c, i) => (
@@ -227,7 +232,7 @@ export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: Emplo
                           "group block rounded-md p-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50",
                           c.date === today && "bg-primary/5",
                         )}
-                        aria-label={`${r.name}, ${dayLabels[i]}: ${STATUS_LABEL[c.status]}${c.inMin !== null ? `, ${c.workedHours.toFixed(1)} horas` : ""}`}
+                        aria-label={`${r.name}, ${dayLabels[i]}: ${t(STATUS_LABEL[c.status])}${c.inMin !== null ? t(", {v0} horas", { v0: c.workedHours.toFixed(1) }) : ""}`}
                       >
                         <DayBar c={c} axis={axis} nowMin={c.date === today && c.status === "EN_CURSO" ? nowMin : undefined} />
                         <span className="mt-1 flex items-center justify-between gap-1 text-[10px] leading-none tabular-nums">
@@ -237,9 +242,9 @@ export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: Emplo
                               <span className="font-medium text-foreground">{c.workedHours.toFixed(1)}h</span>
                             </>
                           ) : c.status === "FALTA" ? (
-                            <span className="font-medium text-rose-700">Falta</span>
+                            <span className="font-medium text-rose-700"><Tr>Falta</Tr></span>
                           ) : c.status === "DESCANSO" ? (
-                            <span className="text-muted-foreground">Descanso</span>
+                            <span className="text-muted-foreground"><Tr>Descanso</Tr></span>
                           ) : (
                             <span className="text-muted-foreground/60">—</span>
                           )}
@@ -260,9 +265,9 @@ export function WeekGrid({ rows, days, dayLabels, today, nowMin }: { rows: Emplo
                     <div className="viz-grow-right h-full rounded-full bg-[var(--chart-1)]" style={{ width: `${progress * 100}%` }} />
                   </div>
                   <div className="mt-1 flex justify-end gap-1 text-[10px]">
-                    {r.absences > 0 && <span className="rounded bg-rose-50 px-1 text-rose-700">{r.absences} falta{r.absences > 1 ? "s" : ""}</span>}
-                    {r.lates > 0 && <span className="rounded bg-amber-50 px-1 text-amber-800">{r.lates} retardo{r.lates > 1 ? "s" : ""}</span>}
-                    {r.otMin > 0 && <span className="rounded bg-violet-50 px-1 text-violet-700">+{(r.otMin / 60).toFixed(1)} h extra</span>}
+                    {r.absences > 0 && <span className="rounded bg-rose-50 px-1 text-rose-700">{r.absences} <Tr>falta</Tr>{r.absences > 1 ? "s" : ""}</span>}
+                    {r.lates > 0 && <span className="rounded bg-amber-50 px-1 text-amber-800">{r.lates} <Tr>retardo</Tr>{r.lates > 1 ? "s" : ""}</span>}
+                    {r.otMin > 0 && <span className="rounded bg-violet-50 px-1 text-violet-700">+{(r.otMin / 60).toFixed(1)} <Tr>h extra</Tr></span>}
                   </div>
                 </div>
               </li>
@@ -287,6 +292,7 @@ const TODAY_GROUPS: { key: string; label: string; tone: string; match: (c: DayCe
 
 /** Hoy: quién está, en qué momento del turno, sobre un eje de horas con la marca de "ahora". */
 export function TodayBoard({ rows, nowMin }: { rows: TodayRow[]; nowMin: number }) {
+  const t = useT();
   const axis = axisFor(rows.map((r) => ({ cells: [r.cell] }) as EmployeeWeek));
   const span = axis.to - axis.from;
   const step = span > 12 * 60 ? 120 : 60;
@@ -303,7 +309,7 @@ export function TodayBoard({ rows, nowMin }: { rows: TodayRow[]; nowMin: number 
           return (
             <li key={g.key} className={cn("inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ring-1 ring-inset", g.tone)}>
               <span className="text-base font-semibold tabular-nums">{n}</span>
-              {g.label}
+              {t(g.label)}
             </li>
           );
         })}
@@ -355,10 +361,10 @@ export function TodayBoard({ rows, nowMin }: { rows: TodayRow[]; nowMin: number 
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={6} className="block px-3 py-2">
-                      <DayDetail c={r.cell} name={r.name} label="hoy" />
+                      <DayDetail c={r.cell} name={r.name} label={t("hoy")} />
                     </TooltipContent>
                   </Tooltip>
-                  <span className={cn("justify-self-end rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", g?.tone)}>{g?.label}</span>
+                  <span className={cn("justify-self-end rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset", g?.tone)}>{g ? t(g.label) : null}</span>
                 </li>
               );
             })}

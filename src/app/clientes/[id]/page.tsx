@@ -8,10 +8,13 @@ import { ClientRates } from "@/components/ClientRates";
 import { PageHeader, StatusBadge, Stat, Empty } from "@/components/kit";
 import { formatDate, formatMoney } from "@/lib/money";
 import { brandOptions } from "@/lib/brands";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ nuevo?: string }> }) {
+  const t = await getT();
   const id = Number((await params).id);
   const { nuevo } = await searchParams;
   const client = await prisma.client.findUnique({
@@ -34,31 +37,31 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       <PageHeader
         title={client.name}
         subtitle={[client.legalName, brandName && `Factura: ${brandName}`].filter(Boolean).join(" · ") || undefined}
-        back={{ href: "/clientes", label: "Clientes" }}
+        back={{ href: "/clientes", label: t("Clientes") }}
         actions={
           <>
             <a href={`/api/pdf/estado-cuenta/${client.id}`} target="_blank" className="btn-secondary">
-              <FileDown className="size-4" /> Estado de cuenta PDF
+              <FileDown className="size-4" /> <Tr>Estado de cuenta PDF</Tr>
             </a>
             <Link href={`/cotizaciones/nueva?clientId=${client.id}`} className="btn-secondary">
-              <Plus className="size-4" /> Cotización
+              <Plus className="size-4" /> <Tr>Cotización</Tr>
             </Link>
             <Link href={`/facturas/nueva?clientId=${client.id}`} className="btn-primary">
-              <Plus className="size-4" /> Factura
+              <Plus className="size-4" /> <Tr>Factura</Tr>
             </Link>
           </>
         }
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Saldo por cobrar" value={formatMoney(balance)} hint={`${open.length} factura(s) abiertas`} />
+        <Stat label="Saldo por cobrar" value={formatMoney(balance)} hint={t("{v0} factura(s) abiertas", { v0: open.length })} />
         <Stat label="Facturado (histórico)" value={formatMoney(billed)} />
         <Stat label="Cotizaciones" value={String(client.quotes.length)} />
       </div>
 
       {nuevo && (
         <div className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          Cliente creado. Ahora asígnale sus tarifas negociadas: cárgalas del tarifario o de otro cliente y ajusta los precios.
+          <Tr>Cliente creado. Ahora asígnale sus tarifas negociadas: cárgalas del tarifario o de otro cliente y ajusta los precios.</Tr>
         </div>
       )}
       <div id="tarifas" className="mb-6 scroll-mt-6">
@@ -67,9 +70,9 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card overflow-x-auto">
-          <h2 className="border-b border-border px-4 py-3 font-semibold">Facturas</h2>
+          <h2 className="border-b border-border px-4 py-3 font-semibold"><Tr>Facturas</Tr></h2>
           {client.invoices.length === 0 ? (
-            <Empty>Sin facturas.</Empty>
+            <Empty><Tr>Sin facturas.</Tr></Empty>
           ) : (
             <table className="table">
               <tbody>
@@ -92,9 +95,9 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
           )}
         </div>
         <div className="card overflow-x-auto">
-          <h2 className="border-b border-border px-4 py-3 font-semibold">Cotizaciones</h2>
+          <h2 className="border-b border-border px-4 py-3 font-semibold"><Tr>Cotizaciones</Tr></h2>
           {client.quotes.length === 0 ? (
-            <Empty>Sin cotizaciones.</Empty>
+            <Empty><Tr>Sin cotizaciones.</Tr></Empty>
           ) : (
             <table className="table">
               <tbody>
@@ -119,7 +122,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       </div>
 
 
-      <h2 className="mb-3 mt-8 font-semibold">Datos del cliente</h2>
+      <h2 className="mb-3 mt-8 font-semibold"><Tr>Datos del cliente</Tr></h2>
       <ClientForm action={updateClient.bind(null, client.id)} client={client} brands={brands} />
     </div>
   );

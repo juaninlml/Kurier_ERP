@@ -10,7 +10,7 @@ type Summary = NonNullable<Awaited<ReturnType<typeof clientOrdersSummary>>>;
 /** Resumen de órdenes de un cliente en un periodo: totales, promedio y desglose por día y oleada. */
 export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summary }) {
   const c = palette(s);
-  const period = rangeLabel(data.from, data.to);
+  const period = rangeLabel(data.from, data.to, "es-MX");
   const days = data.days.length;
   // Semanas de lunes a sábado; con varias semanas, el promedio es el de los promedios semanales.
   const avg = data.weekly.dailyAvg;
@@ -80,7 +80,7 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
               ]}
               styles={["label", "normal", "strong", "strong"]}
               rows={[
-                ...counted.map((w) => [rangeLabel(w.from, w.to), String(w.workdays), formatNumber(w.total), one(w.dailyAvg)]),
+                ...counted.map((w) => [rangeLabel(w.from, w.to, "es-MX"), String(w.workdays), formatNumber(w.total), one(w.dailyAvg)]),
                 [`Promedio de ${counted.length} semanas`, "", `${one(data.weekly.weeklyAvg)} / semana`, `${one(avg)} / día`],
               ]}
             />
@@ -94,14 +94,14 @@ export function OrdersSummaryPdf({ s, data }: { s: CompanySettings; data: Summar
           cols={cols}
           styles={["label", ...data.waves.map(() => "normal" as const), "strong"]}
           rows={[
-            ...data.days.map((d) => [dayShort(d.date), ...data.waves.map((w) => (d.byWave[w.id] ? formatNumber(d.byWave[w.id]) : "—")), formatNumber(d.total)]),
+            ...data.days.map((d) => [dayShort(d.date, "es-MX"), ...data.waves.map((w) => (d.byWave[w.id] ? formatNumber(d.byWave[w.id]) : "—")), formatNumber(d.total)]),
             ["Total", ...data.byWave.map((w) => formatNumber(w.total)), formatNumber(data.total)],
           ]}
         />
         {days === 0 ? (
           <Note>Sin órdenes capturadas en este periodo.</Note>
         ) : (
-          <Note>{`Día con más paquetes: ${dayShort(peak!.date)} (${formatNumber(peak!.total)}). El promedio diario cuenta los días de lunes a sábado.${data.rate.rate ? " Importe estimado sin IVA, con la tarifa por paquete del servicio logístico." : ""}`}</Note>
+          <Note>{`Día con más paquetes: ${dayShort(peak!.date, "es-MX")} (${formatNumber(peak!.total)}). El promedio diario cuenta los días de lunes a sábado.${data.rate.rate ? " Importe estimado sin IVA, con la tarifa por paquete del servicio logístico." : ""}`}</Note>
         )}
         {data.byMaterial.length > 0 && (
           <>

@@ -5,10 +5,12 @@ import { DocumentEditor } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const t = await getT();
   const id = Number((await params).id);
   const inv = await prisma.invoice.findUnique({
     where: { id },
@@ -20,7 +22,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title={`Editar ${inv.folio}`} back={{ href: `/facturas/${id}`, label: inv.folio }} />
+      <PageHeader title={t("Editar {v0}", { v0: inv.folio })} back={{ href: `/facturas/${id}`, label: inv.folio }} />
       <DocumentEditor
         kind="invoice"
         action={updateInvoice.bind(null, id)}
@@ -29,7 +31,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         clientRates={clientRates}
           brands={brands}
         defaultTaxRate={settings.defaultTaxRate}
-        submitLabel="Guardar cambios"
+        submitLabel={t("Guardar cambios")}
         defaults={{
           clientId: inv.clientId,
           brandId: inv.brandId ?? 0,

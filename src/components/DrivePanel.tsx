@@ -6,6 +6,8 @@ import { syncDrive } from "@/app/actions/drive";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/money";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 const STEPS = [
   "En Google Cloud Console crea un proyecto (o usa uno existente) y activa la «Google Drive API».",
@@ -22,9 +24,9 @@ export async function DrivePanel() {
     <section className="card mt-6 p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">Google Drive</h2>
+          <h2 className="font-semibold"><Tr>Google Drive</Tr></h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Copia en PDF de facturas, cotizaciones, nóminas pagadas y resúmenes de órdenes facturados, ordenada en carpetas por cliente y año.
+            <Tr>Copia en PDF de facturas, cotizaciones, nóminas pagadas y resúmenes de órdenes facturados, ordenada en carpetas por cliente y año.</Tr>
           </p>
         </div>
       </div>
@@ -38,11 +40,11 @@ function Setup() {
     <div className="rounded-lg border border-dashed p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-medium">
         <CircleAlert className="size-4 text-muted-foreground" aria-hidden />
-        Sin configurar. Los documentos se siguen generando al abrirlos; solo falta la copia en Drive.
+        <Tr>Sin configurar. Los documentos se siguen generando al abrirlos; solo falta la copia en Drive.</Tr>
       </p>
       <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
         {STEPS.map((s) => (
-          <li key={s}>{s}</li>
+          <li key={s}><Tr>{s}</Tr></li>
         ))}
       </ol>
     </div>
@@ -50,6 +52,7 @@ function Setup() {
 }
 
 async function Connected() {
+  const t = await getT();
   const [check, { total, pending }, errors, counts] = await Promise.all([
     driveCheck(),
     pendingRefs(),
@@ -65,10 +68,10 @@ async function Connected() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           <span className="flex items-center gap-2">
             <CircleCheck className="size-4" aria-hidden />
-            Conectado a la carpeta <strong className="font-semibold">{check.name}</strong>
+            <Tr>Conectado a la carpeta</Tr> <strong className="font-semibold">{check.name}</strong>
           </span>
           <a href={check.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline">
-            Abrir en Drive
+            <Tr>Abrir en Drive</Tr>
             <ExternalLink className="size-3.5" aria-hidden />
           </a>
         </div>
@@ -76,7 +79,7 @@ async function Connected() {
         <div className="flex items-start gap-2 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-900">
           <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
-            No se pudo conectar: {check.error}
+            <Tr>No se pudo conectar:</Tr> {check.error}
           </span>
         </div>
       )}
@@ -85,7 +88,7 @@ async function Connected() {
         <div>
           <div className="mb-1.5 flex items-baseline justify-between text-sm">
             <span className="font-medium">
-              {total - pending.length} de {total} documentos en Drive
+              {total - pending.length} <Tr>de</Tr> {total} <Tr>documentos en Drive</Tr>
             </span>
             <span className="text-muted-foreground tabular-nums">{pct}%</span>
           </div>
@@ -95,29 +98,29 @@ async function Connected() {
           <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {(Object.keys(KIND_LABEL) as ArchiveKind[]).map((k) => (
               <span key={k}>
-                {KIND_LABEL[k]}: <span className="font-medium text-foreground tabular-nums">{counts.find((c) => c.kind === k)?._count ?? 0}</span>
+                <Tr>{KIND_LABEL[k]}</Tr>: <span className="font-medium text-foreground tabular-nums">{counts.find((c) => c.kind === k)?._count ?? 0}</span>
               </span>
             ))}
-            {saved === 0 && <span>Aún no se ha subido ningún documento.</span>}
+            {saved === 0 && <span><Tr>Aún no se ha subido ningún documento.</Tr></span>}
           </p>
         </div>
         <Form action={syncDrive} successMessage="Lote subido." className="flex flex-col items-end gap-1">
-          <SubmitButton className="btn-primary" pendingText="Subiendo…">
+          <SubmitButton className="btn-primary" pendingText={t("Subiendo…")}>
             <CloudUpload className="size-4" />
-            {pending.length ? `Subir pendientes (${pending.length})` : "Revisar de nuevo"}
+            {pending.length ? t("Subir pendientes ({v0})", { v0: pending.length }) : t("Revisar de nuevo")}
           </SubmitButton>
-          {pending.length > 15 && <span className="text-xs text-muted-foreground">Sube de 15 en 15; repite hasta terminar.</span>}
+          {pending.length > 15 && <span className="text-xs text-muted-foreground"><Tr>Sube de 15 en 15; repite hasta terminar.</Tr></span>}
         </Form>
       </div>
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <FolderTree className="mt-px size-3.5 shrink-0" aria-hidden />
-        Clientes / cliente / Facturas · Cotizaciones · Resúmenes de órdenes / año — Nómina / año / semana. Al editar un documento se reemplaza su PDF y Drive conserva la versión anterior en su historial.
+        <Tr>Clientes / cliente / Facturas · Cotizaciones · Resúmenes de órdenes / año — Nómina / año / semana. Al editar un documento se reemplaza su PDF y Drive conserva la versión anterior en su historial.</Tr>
       </p>
 
       {errors.length > 0 && (
         <div className="rounded-lg border">
-          <p className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">Últimos errores</p>
+          <p className="border-b px-4 py-2 text-xs font-medium text-muted-foreground"><Tr>Últimos errores</Tr></p>
           <ul className="divide-y text-sm">
             {errors.map((e) => (
               <li key={e.refKey} className="flex flex-wrap justify-between gap-2 px-4 py-2">

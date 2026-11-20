@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ["/login", "/invitacion", "/configurar-acceso", "/kiosco", 
 export const isPublicPath = (pathname: string) => PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
 /**
- * Configuración compatible con el middleware (edge): solo valida la sesión.
+ * Configuración del proxy (src/proxy.ts): solo valida la sesión, sin consultar la base.
  * El inicio de sesión (correo + código del autenticador) está en src/auth.ts.
  */
 export default {

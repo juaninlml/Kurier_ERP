@@ -8,6 +8,8 @@ import { breakEven } from "@/lib/payroll";
 import { formatMoney, formatNumber } from "@/lib/money";
 import { saveBreakEven } from "@/app/actions/payroll";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 export type BreakEvenInputs = {
   beOrderRate: number;
@@ -33,6 +35,7 @@ export function BreakEvenCalculator({
   payrollMonthly: number;
   activeClients: number;
 }) {
+  const t = useT();
   const [v, setV] = useState(initial);
   const set = (k: keyof BreakEvenInputs, val: number | boolean) => setV((x) => ({ ...x, [k]: val }));
   const clients = v.beClients > 0 ? v.beClients : activeClients;
@@ -54,7 +57,7 @@ export function BreakEvenCalculator({
 
   const num = (k: keyof BreakEvenInputs, label: string, opts: { step?: string; suffix?: string; hint?: string } = {}) => (
     <label className="block">
-      <span className="label">{label}</span>
+      <span className="label">{t(label)}</span>
       <div className="relative">
         <input
           name={k}
@@ -75,50 +78,50 @@ export function BreakEvenCalculator({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <Form action={saveBreakEven} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          {num("beOrderRate", "Tarifa promedio por orden", { hint: "Fulfillment sin IVA" })}
-          {num("beVariableCost", "Costo variable por orden", { hint: "Empaque, etiqueta, insumos" })}
+          {num("beOrderRate", "Tarifa promedio por orden", { hint: t("Fulfillment sin IVA") })}
+          {num("beVariableCost", "Costo variable por orden", { hint: t("Empaque, etiqueta, insumos") })}
           {num("beShippingCost", "Costo promedio de guía")}
           {num("beShippingMarkup", "Markup sobre la guía", { suffix: "%", step: "0.1" })}
           {num("beGuideShare", "Órdenes con guía de Kurier", { suffix: "%", step: "1" })}
-          {num("beWorkingDays", "Días operativos al mes", { step: "1", hint: "Lunes a sábado ≈ 26" })}
-          {num("beSystemFee", "Cobro de sistema / cliente", { hint: "Mensual" })}
-          {num("beClients", "Clientes que pagan sistema", { step: "1", hint: `0 = clientes activos (${activeClients})` })}
+          {num("beWorkingDays", "Días operativos al mes", { step: "1", hint: t("Lunes a sábado ≈ 26") })}
+          {num("beSystemFee", "Cobro de sistema / cliente", { hint: t("Mensual") })}
+          {num("beClients", "Clientes que pagan sistema", { step: "1", hint: t("0 = clientes activos ({v0})", { v0: activeClients }) })}
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="beIncludePayroll" checked={v.beIncludePayroll} onChange={(e) => set("beIncludePayroll", e.target.checked)} />
-          Incluir la nómina de empleados activos ({formatMoney(payrollMonthly)} / mes)
+          <Tr>Incluir la nómina de empleados activos (</Tr>{formatMoney(payrollMonthly)} / <Tr>mes</Tr>)
         </label>
         <div className="flex justify-end">
-          <SubmitButton className="btn-secondary">Guardar supuestos</SubmitButton>
+          <SubmitButton className="btn-secondary"><Tr>Guardar supuestos</Tr></SubmitButton>
         </div>
       </Form>
 
       <div className="space-y-4">
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <Target className="size-4" /> Para cubrir los gastos fijos necesitas
+            <Target className="size-4" /> <Tr>Para cubrir los gastos fijos necesitas</Tr>
           </div>
           <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
               <div className="text-4xl font-semibold tracking-tight text-primary tabular-nums">{ok ? formatNumber(r.ordersDay) : "—"}</div>
-              <div className="text-sm text-muted-foreground">órdenes por día</div>
+              <div className="text-sm text-muted-foreground"><Tr>órdenes por día</Tr></div>
             </div>
             <div className="pb-1">
               <div className="text-xl font-semibold tabular-nums">{ok ? formatNumber(r.ordersMonth) : "—"}</div>
-              <div className="text-xs text-muted-foreground">órdenes al mes</div>
+              <div className="text-xs text-muted-foreground"><Tr>órdenes al mes</Tr></div>
             </div>
           </div>
-          {!ok && <p className="mt-2 text-sm text-rose-700">El margen por orden es cero o negativo: revisa la tarifa y el costo variable.</p>}
+          {!ok && <p className="mt-2 text-sm text-rose-700"><Tr>El margen por orden es cero o negativo: revisa la tarifa y el costo variable.</Tr></p>}
         </div>
 
         <dl className="card divide-y text-sm">
           {[
-            ["Gastos fijos mensuales", formatMoney(fixedMonthly), v.beIncludePayroll ? `Incluye nómina ${formatMoney(payrollMonthly)}` : "Sin nómina"],
-            ["− Ingreso por sistema", formatMoney(r.systemIncome), `${clients} cliente(s) × ${formatMoney(v.beSystemFee)}`],
-            ["= Por cubrir con órdenes", formatMoney(r.toCover), ""],
-            ["Margen por orden", formatMoney(r.marginPerOrder), `${formatMoney(v.beOrderRate)} tarifa + ${formatMoney(r.shippingMargin)} markup de guía − ${formatMoney(v.beVariableCost)} variable`],
-            ["Facturado por orden al cliente", formatMoney(r.billedPerOrder), "Tarifa + guía con markup, sin IVA"],
-            ["Facturación mensual en el equilibrio", ok ? formatMoney(r.revenueMonth) : "—", "Sin IVA, incluye sistema"],
+            [t("Gastos fijos mensuales"), formatMoney(fixedMonthly), v.beIncludePayroll ? t("Incluye nómina {v0}", { v0: formatMoney(payrollMonthly) }) : t("Sin nómina")],
+            [t("− Ingreso por sistema"), formatMoney(r.systemIncome), t("{v0} cliente(s) × {v1}", { v0: clients, v1: formatMoney(v.beSystemFee) })],
+            [t("= Por cubrir con órdenes"), formatMoney(r.toCover), ""],
+            [t("Margen por orden"), formatMoney(r.marginPerOrder), t("{v0} tarifa + {v1} markup de guía − {v2} variable", { v0: formatMoney(v.beOrderRate), v1: formatMoney(r.shippingMargin), v2: formatMoney(v.beVariableCost) })],
+            [t("Facturado por orden al cliente"), formatMoney(r.billedPerOrder), t("Tarifa + guía con markup, sin IVA")],
+            [t("Facturación mensual en el equilibrio"), ok ? formatMoney(r.revenueMonth) : "—", t("Sin IVA, incluye sistema")],
           ].map(([label, value, hint]) => (
             <div key={label} className="flex items-start justify-between gap-4 px-4 py-2.5">
               <dt>
@@ -131,12 +134,12 @@ export function BreakEvenCalculator({
         </dl>
 
         <div className="card overflow-hidden">
-          <div className="border-b px-4 py-2.5 text-sm font-medium">Sensibilidad a la tarifa promedio</div>
+          <div className="border-b px-4 py-2.5 text-sm font-medium"><Tr>Sensibilidad a la tarifa promedio</Tr></div>
           <div className="overflow-x-auto">
             <table className="table text-xs">
               <thead>
                 <tr>
-                  <th>Tarifa</th>
+                  <th><Tr>Tarifa</Tr></th>
                   {rates.map((t) => (
                     <th key={t} className={cn("text-right", t === v.beOrderRate && "text-primary")}>
                       {formatMoney(t)}
@@ -146,7 +149,7 @@ export function BreakEvenCalculator({
               </thead>
               <tbody>
                 <tr>
-                  <td>Órdenes / día</td>
+                  <td><Tr>Órdenes / día</Tr></td>
                   {rates.map((t) => {
                     const x = breakEven({ ...params, orderRate: t });
                     return (

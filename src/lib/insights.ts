@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { round2 } from "./money";
+import { requestLocale } from "./request-lang";
 
 // Series y agregados para las gráficas del ERP (inicio, reportes, nómina).
 
@@ -20,7 +21,7 @@ export type FlowPoint = { key: string; label: string; full: string; income: numb
  * Ingresos y egresos agrupados por día (rangos de hasta 45 días) o por mes.
  * Las fechas de los movimientos se guardan a mediodía UTC, así que se agrupa en UTC.
  */
-export async function flowSeries(from: Date, to: Date, locale = "es-MX"): Promise<{ points: FlowPoint[]; unit: "day" | "month" }> {
+export async function flowSeries(from: Date, to: Date, locale = requestLocale()): Promise<{ points: FlowPoint[]; unit: "day" | "month" }> {
   const txs = await prisma.transaction.findMany({ where: { date: { gte: from, lte: to } }, select: { date: true, type: true, amount: true } });
   const unit = (to.getTime() - from.getTime()) / DAY_MS <= 45 ? "day" : "month";
   const keyOf = (d: Date) => (unit === "day" ? d.toISOString().slice(0, 10) : d.toISOString().slice(0, 7));

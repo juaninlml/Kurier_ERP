@@ -2,8 +2,10 @@ import type { Client } from "@prisma/client";
 import { Field } from "./kit";
 import { SubmitButton } from "./SubmitButton";
 import { Form } from "./Form";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
-export function ClientForm({
+export async function ClientForm({
   action,
   client,
   brands = [],
@@ -13,6 +15,7 @@ export function ClientForm({
   /** Marcas que pueden facturarle (id 0 = la principal). Con una sola no se muestra. */
   brands?: { id: number; name: string }[];
 }) {
+  const t = await getT();
   return (
     <Form action={action} successMessage={client ? "Cambios guardados." : undefined} className="card space-y-4 p-5">
       <div className="grid gap-4 md:grid-cols-3">
@@ -50,7 +53,7 @@ export function ClientForm({
         )}
         {brands.length <= 1 && client?.brandId ? <input type="hidden" name="brandId" value={client.brandId} /> : null}
         <Field label="Nombre en el WMS" hint="Como aparece en los estados de cobro del WMS (ej. Basic&Pure). Sirve para reconocer al cliente al importar.">
-          <input name="wmsName" defaultValue={client?.wmsName} className="input" placeholder="Basic&Pure" />
+          <input name="wmsName" defaultValue={client?.wmsName} className="input" placeholder={t("Basic&Pure")} />
         </Field>
         <Field label="Notas internas" className="md:col-span-2">
           <textarea name="notes" rows={3} defaultValue={client?.notes} className="input" />
@@ -59,12 +62,12 @@ export function ClientForm({
       <div className="flex items-center justify-between">
         {client ? (
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="active" defaultChecked={client.active} /> Cliente activo
+            <input type="checkbox" name="active" defaultChecked={client.active} /> <Tr>Cliente activo</Tr>
           </label>
         ) : (
           <span />
         )}
-        <SubmitButton>{client ? "Guardar cambios" : "Crear cliente"}</SubmitButton>
+        <SubmitButton>{client ? t("Guardar cambios") : t("Crear cliente")}</SubmitButton>
       </div>
     </Form>
   );

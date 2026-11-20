@@ -9,6 +9,7 @@ import { rateLabel } from "@/lib/totals";
 import { getSettings } from "@/lib/settings";
 import { Form } from "@/components/Form";
 import { getT } from "@/lib/i18n/server";
+import { Tr } from "@/components/Tr";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +30,14 @@ export default async function ServicesPage() {
     <div>
       <PageHeader
         title={t("Tarifario de servicios")}
-        subtitle={`${services.filter((x) => x.active).length} servicios activos · Precios sin IVA, MXN. Es la base para armar cotizaciones y facturas.`}
+        subtitle={t("{v0} servicios activos · Precios sin IVA, MXN. Es la base para armar cotizaciones y facturas.", { v0: services.filter((x) => x.active).length })}
         actions={
           <>
             <a href="/servicios/tablas" className="btn-secondary">
-              Textos y tablas del PDF
+              <Tr>Textos y tablas del PDF</Tr>
             </a>
             <a href="/api/pdf/tarifario" target="_blank" className="btn-primary">
-              PDF del tarifario
+              <Tr>PDF del tarifario</Tr>
             </a>
           </>
         }
@@ -54,9 +55,9 @@ export default async function ServicesPage() {
               <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
                 <h2 className="flex items-center gap-2.5 text-[0.95rem] font-semibold">
                   <span className="h-4 w-1 rounded-full bg-kurier" aria-hidden />
-                  {sec?.name ?? "Sin sección"}
+                  {sec?.name ?? t("Sin sección")}
                 </h2>
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">{items.length} servicio(s)</span>
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">{items.length} <Tr>servicio(s)</Tr></span>
               </div>
               <div className="overflow-x-auto">
                 <table className="table">
@@ -76,12 +77,12 @@ export default async function ServicesPage() {
                           </Link>
                           <div className="font-mono text-[10px] text-muted-foreground">
                             {sv.code}
-                            {!sv.active && " · inactivo"}
+                            {!sv.active && t(" · inactivo")}
                           </div>
                         </td>
                         <td className="whitespace-nowrap font-medium text-kurier">
                           {rateLabel(sv, formatMoney)}
-                          {sv.priceText && sv.unitPrice > 0 && <div className="text-[10px] font-normal text-muted-foreground">base {formatMoney(sv.unitPrice)}</div>}
+                          {sv.priceText && sv.unitPrice > 0 && <div className="text-[10px] font-normal text-muted-foreground"><Tr>base</Tr> {formatMoney(sv.unitPrice)}</div>}
                         </td>
                         <td className="text-xs text-muted-foreground">{sv.description}</td>
                       </tr>
@@ -99,7 +100,7 @@ export default async function ServicesPage() {
                     className="input text-xs italic"
                   />
                   <SubmitButton className="btn-secondary whitespace-nowrap text-xs" pendingText="…">
-                    Guardar nota
+                    <Tr>Guardar nota</Tr>
                   </SubmitButton>
                 </Form>
               )}

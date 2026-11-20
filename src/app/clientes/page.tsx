@@ -8,7 +8,9 @@ import { formatMoney } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Clientes" };
+export async function generateMetadata() {
+  return { title: (await getT())("Clientes") };
+}
 
 const initials = (name: string) =>
   name
@@ -47,7 +49,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         }
       />
       <div className="card overflow-hidden">
-        <FilterBar basePath="/clientes" q={q} placeholder="Buscar por nombre o RFC" />
+        <FilterBar basePath="/clientes" q={q} placeholder={t("Buscar por nombre o RFC")} />
         {clients.length === 0 ? (
           <Empty
             icon={Users}

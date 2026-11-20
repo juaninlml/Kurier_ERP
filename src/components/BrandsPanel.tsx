@@ -6,6 +6,8 @@ import { Field } from "./kit";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { Badge } from "@/components/ui/badge";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 /**
  * Configuración → Marcas comerciales. La principal son los datos de arriba; cada marca
@@ -13,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
  * de los clientes asignados a ella.
  */
 export async function BrandsPanel({ mainName }: { mainName: string }) {
+  const t = await getT();
   const brands = await prisma.brand.findMany({
     orderBy: { tradeName: "asc" },
     omit: { logoData: true },
@@ -21,10 +24,10 @@ export async function BrandsPanel({ mainName }: { mainName: string }) {
   return (
     <section className="card mt-6 overflow-hidden">
       <header className="border-b px-5 py-4">
-        <h2 className="font-semibold">Marcas comerciales</h2>
+        <h2 className="font-semibold"><Tr>Marcas comerciales</Tr></h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Si facturas con más de una marca, da de alta aquí las adicionales y asigna cada cliente a su marca (en la ficha del cliente). Sus documentos salen con el nombre, correo, teléfono, logo y
-          colores de esa marca. La principal es <strong className="font-medium text-foreground">{mainName}</strong>, con los datos de arriba.
+          <Tr>Si facturas con más de una marca, da de alta aquí las adicionales y asigna cada cliente a su marca (en la ficha del cliente). Sus documentos salen con el nombre, correo, teléfono, logo y
+          colores de esa marca. La principal es</Tr> <strong className="font-medium text-foreground">{mainName}</strong><Tr>, con los datos de arriba.</Tr>
         </p>
       </header>
       <ul className="divide-y">
@@ -36,12 +39,12 @@ export async function BrandsPanel({ mainName }: { mainName: string }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{b.tradeName}</span>
-                    {!b.active && <Badge variant="secondary">Inactiva</Badge>}
+                    {!b.active && <Badge variant="secondary"><Tr>Inactiva</Tr></Badge>}
                   </div>
-                  <div className="truncate text-xs text-muted-foreground">{[b.legalName, b.email, b.phone].filter(Boolean).join(" · ") || "Sin datos de contacto"}</div>
+                  <div className="truncate text-xs text-muted-foreground">{[b.legalName, b.email, b.phone].filter(Boolean).join(" · ") || t("Sin datos de contacto")}</div>
                 </div>
                 <span className="hidden text-xs text-muted-foreground sm:inline">
-                  {b._count.clients} cliente(s) · {b._count.invoices} factura(s)
+                  {b._count.clients} <Tr>cliente(s) ·</Tr> {b._count.invoices} <Tr>factura(s)</Tr>
                 </span>
                 <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
               </summary>
@@ -50,10 +53,10 @@ export async function BrandsPanel({ mainName }: { mainName: string }) {
                   <BrandFields brand={b} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" name="active" value="on" defaultChecked={b.active} /> Activa (aparece al facturar)
+                      <input type="checkbox" name="active" value="on" defaultChecked={b.active} /> <Tr>Activa (aparece al facturar)</Tr>
                       <input type="hidden" name="active" value="off" />
                     </label>
-                    <SubmitButton>Guardar marca</SubmitButton>
+                    <SubmitButton><Tr>Guardar marca</Tr></SubmitButton>
                   </div>
                 </Form>
               </div>
@@ -63,13 +66,13 @@ export async function BrandsPanel({ mainName }: { mainName: string }) {
       </ul>
       <details className="group border-t" open={brands.length === 0}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm font-medium text-primary hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
-          <Plus className="size-4" /> Agregar marca
+          <Plus className="size-4" /> <Tr>Agregar marca</Tr>
         </summary>
         <div className="border-t bg-muted/30 px-5 py-4">
           <Form action={createBrand} resetOnSuccess className="space-y-4">
             <BrandFields />
             <div className="flex justify-end">
-              <SubmitButton>Agregar marca</SubmitButton>
+              <SubmitButton><Tr>Agregar marca</Tr></SubmitButton>
             </div>
           </Form>
         </div>
@@ -78,34 +81,35 @@ export async function BrandsPanel({ mainName }: { mainName: string }) {
   );
 }
 
-function BrandFields({ brand }: { brand?: Omit<Brand, "logoData"> }) {
+async function BrandFields({ brand }: { brand?: Omit<Brand, "logoData"> }) {
+  const t = await getT();
   return (
     <div className="grid gap-4 md:grid-cols-[180px_1fr]">
       <div className="space-y-2">
         <div className="grid h-28 place-items-center rounded-lg border border-dashed bg-background p-2">
           {brand?.logoMime ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={`/api/logo/${brand.id}?v=${brand.updatedAt.getTime()}`} alt={`Logo de ${brand.tradeName}`} className="max-h-full max-w-full object-contain" />
+            <img src={`/api/logo/${brand.id}?v=${brand.updatedAt.getTime()}`} alt={t("Logo de {v0}", { v0: brand.tradeName })} className="max-h-full max-w-full object-contain" />
           ) : (
-            <span className="text-center text-xs text-muted-foreground">Sin logo</span>
+            <span className="text-center text-xs text-muted-foreground"><Tr>Sin logo</Tr></span>
           )}
         </div>
-        <input type="file" name="logo" accept="image/png,image/jpeg" aria-label="Logo (PNG o JPG, máx. 1 MB)" className="input text-xs" />
+        <input type="file" name="logo" accept="image/png,image/jpeg" aria-label={t("Logo (PNG o JPG, máx. 1 MB)")} className="input text-xs" />
         {brand?.logoMime && (
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" name="removeLogo" /> Quitar logo
+            <input type="checkbox" name="removeLogo" /> <Tr>Quitar logo</Tr>
           </label>
         )}
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         <Field label="Nombre comercial *">
-          <input name="tradeName" required defaultValue={brand?.tradeName} className="input" placeholder="LOE Fulfillment" />
+          <input name="tradeName" required defaultValue={brand?.tradeName} className="input" placeholder={t("LOE Fulfillment")} />
         </Field>
         <Field label="Leyenda bajo el nombre" className="md:col-span-2">
-          <input name="tagline" defaultValue={brand?.tagline} className="input" placeholder="Fulfillment para dropshipping internacional" />
+          <input name="tagline" defaultValue={brand?.tagline} className="input" placeholder={t("Fulfillment para dropshipping internacional")} />
         </Field>
         <Field label="Razón social" hint="Vacío = la de la marca principal">
-          <input name="legalName" defaultValue={brand?.legalName} className="input" placeholder="Logística Oriente Express S.A. de C.V." />
+          <input name="legalName" defaultValue={brand?.legalName} className="input" placeholder={t("Logística Oriente Express S.A. de C.V.")} />
         </Field>
         <Field label="RFC" hint="Vacío = el de la principal">
           <input name="rfc" defaultValue={brand?.rfc} className="input uppercase" />

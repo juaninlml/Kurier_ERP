@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ArrowRight, ChevronLeft, Inbox, type LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Tr } from "./Tr";
+
+/** Los textos fijos que reciben estos componentes se traducen solos (los datos, como nombres, no tienen traducción y quedan igual). */
+const tx = (v: React.ReactNode) => (typeof v === "string" ? <Tr>{v}</Tr> : v);
 
 export function PageHeader({
   title,
@@ -22,13 +26,13 @@ export function PageHeader({
           className="mb-3 inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="size-4" />
-          {back.label}
+          {tx(back.label)}
         </Link>
       )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem]">{title}</h1>
-          {subtitle && <div className="mt-1.5 text-sm text-pretty text-muted-foreground">{subtitle}</div>}
+          <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem]">{tx(title)}</h1>
+          {subtitle && <div className="mt-1.5 text-sm text-pretty text-muted-foreground">{tx(subtitle)}</div>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
@@ -66,7 +70,7 @@ export function Stat({
     >
       <CardContent className="px-5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-medium text-muted-foreground">{label}</div>
+          <div className="text-sm font-medium text-muted-foreground">{tx(label)}</div>
           {Icon && (
             <div
               className={cn(
@@ -90,7 +94,7 @@ export function Stat({
         {(hint || delta || href) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             {delta}
-            {hint && <span>{hint}</span>}
+            {hint && <span>{tx(hint)}</span>}
             {href && (
               <ArrowRight
                 aria-hidden
@@ -117,7 +121,7 @@ export function Empty({ children, icon: Icon = Inbox, action }: { children: Reac
       <div className="grid size-11 place-items-center rounded-full bg-muted text-muted-foreground">
         <Icon className="size-5" />
       </div>
-      <div className="max-w-sm text-sm text-muted-foreground">{children}</div>
+      <div className="max-w-sm text-sm text-muted-foreground">{tx(children)}</div>
       {action}
     </div>
   );
@@ -126,9 +130,9 @@ export function Empty({ children, icon: Icon = Inbox, action }: { children: Reac
 export function Field({ label, children, className, hint }: { label: string; children: React.ReactNode; className?: string; hint?: string }) {
   return (
     <label className={cn("block", className)}>
-      <span className="label">{label}</span>
+      <span className="label">{tx(label)}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-muted-foreground">{tx(hint)}</span>}
     </label>
   );
 }
@@ -154,8 +158,8 @@ export function Panel({
       {(title || action) && (
         <header className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5">
           <div className="min-w-0">
-            {title && <h2 className="text-[0.95rem] font-semibold">{title}</h2>}
-            {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+            {title && <h2 className="text-[0.95rem] font-semibold">{tx(title)}</h2>}
+            {description && <p className="mt-0.5 text-xs text-muted-foreground">{tx(description)}</p>}
           </div>
           {action}
         </header>

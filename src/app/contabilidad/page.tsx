@@ -10,6 +10,7 @@ import { ColumnChart } from "@/components/charts";
 import { getSettings } from "@/lib/settings";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
+import { Tr } from "@/components/Tr";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function AccountingPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; type?: string; category?: string }>;
 }) {
+  const tr = await getT();
   const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
@@ -44,17 +46,17 @@ export default async function AccountingPage({
     <div>
       <PageHeader
         title={t("Contabilidad")}
-        subtitle={`Movimientos del ${formatDate(from)} al ${formatDate(to)}`}
+        subtitle={tr("Movimientos del {v0} al {v1}", { v0: formatDate(from), v1: formatDate(to) })}
         actions={
           <>
             <Link href="/contabilidad/gastos-fijos" className="btn-secondary">
-              Gastos fijos y punto de equilibrio
+              <Tr>Gastos fijos y punto de equilibrio</Tr>
             </Link>
             <Link href={`/contabilidad/reportes?from=${fromStr}&to=${toStr}`} className="btn-secondary">
-              Ver reportes
+              <Tr>Ver reportes</Tr>
             </Link>
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}`} target="_blank" className="btn-primary">
-              Reporte PDF
+              <Tr>Reporte PDF</Tr>
             </a>
           </>
         }
@@ -109,12 +111,12 @@ export default async function AccountingPage({
                 <option value="">{t("Todas")}</option>
                 <optgroup label={t("Ingresos")}>
                   {INCOME_CATEGORIES.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c} value={c}>{tr(c)}</option>
                   ))}
                 </optgroup>
                 <optgroup label={t("Egresos")}>
                   {EXPENSE_CATEGORIES.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c} value={c}>{tr(c)}</option>
                   ))}
                 </optgroup>
               </select>
@@ -147,7 +149,7 @@ export default async function AccountingPage({
                           </Link>
                         ) : (
                           <Link href={`/contabilidad/movimientos/${t.id}`} className="hover:text-primary">
-                            {t.description || "(sin concepto)"}
+                            {t.description || tr("(sin concepto)")}
                           </Link>
                         )}
                         {t.client && !t.payment && <div className="text-xs text-muted-foreground">{t.client.name}</div>}
@@ -175,7 +177,7 @@ export default async function AccountingPage({
             action={createTransaction}
             clients={clients}
             defaultTaxRate={settings.defaultTaxRate}
-            submitLabel="Registrar movimiento"
+            submitLabel={tr("Registrar movimiento")}
             tx={{ type: "EGRESO", category: "", amount: 0, tax: 0, date: toInputDate(new Date()), description: "", method: "Transferencia", reference: "", clientId: null }}
           />
         </div>

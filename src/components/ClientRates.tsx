@@ -9,6 +9,8 @@ import { RateFields } from "./RateFields";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { rateLabel } from "@/lib/totals";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 /** Conceptos que ya conocemos del WMS (de importaciones previas y del tarifario), para sugerirlos. */
 async function knownWmsConcepts() {
@@ -30,6 +32,7 @@ async function knownWmsConcepts() {
 
 /** Panel "Tarifas negociadas" de la ficha del cliente. */
 export async function ClientRates({ clientId }: { clientId: number }) {
+  const t = await getT();
   const [rates, services, quotes, wmsConcepts, sections, donors] = await Promise.all([
     prisma.clientRate.findMany({ where: { clientId }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
     prisma.service.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }] }),
@@ -48,40 +51,40 @@ export async function ClientRates({ clientId }: { clientId: number }) {
   const quickLoad = (
     <div className={empty ? "grid gap-3 px-5 py-5 md:grid-cols-2" : "mb-4 grid gap-3 border-b pb-4 md:grid-cols-2"}>
       <Form action={copyRatesFromTariff.bind(null, clientId)} className="rounded-lg border bg-card p-3">
-        <p className="text-sm font-medium">Partir del tarifario estándar</p>
-        <p className="mb-2.5 text-xs text-muted-foreground">Copia los servicios y luego ajusta los precios negociados.</p>
+        <p className="text-sm font-medium"><Tr>Partir del tarifario estándar</Tr></p>
+        <p className="mb-2.5 text-xs text-muted-foreground"><Tr>Copia los servicios y luego ajusta los precios negociados.</Tr></p>
         <div className="flex flex-wrap items-center gap-2">
-          <select name="section" className="input h-8 w-auto min-w-40 text-xs" defaultValue="" aria-label="Sección del tarifario">
-            <option value="">Todo el tarifario</option>
+          <select name="section" className="input h-8 w-auto min-w-40 text-xs" defaultValue="" aria-label={t("Sección del tarifario")}>
+            <option value="">{t("Todo el tarifario")}</option>
             {sections.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.name}
               </option>
             ))}
           </select>
-          <SubmitButton className="btn-secondary h-8 text-xs" pendingText="Copiando…">
-            <Tags className="size-3.5" /> Cargar
+          <SubmitButton className="btn-secondary h-8 text-xs" pendingText={t("Copiando…")}>
+            <Tags className="size-3.5" /> <Tr>Cargar</Tr>
           </SubmitButton>
         </div>
       </Form>
       <Form action={copyRatesFromClient.bind(null, clientId)} className="rounded-lg border bg-card p-3">
-        <p className="text-sm font-medium">Copiar de otro cliente</p>
-        <p className="mb-2.5 text-xs text-muted-foreground">Útil cuando negociaste las mismas condiciones.</p>
+        <p className="text-sm font-medium"><Tr>Copiar de otro cliente</Tr></p>
+        <p className="mb-2.5 text-xs text-muted-foreground"><Tr>Útil cuando negociaste las mismas condiciones.</Tr></p>
         {donors.length ? (
           <div className="flex flex-wrap items-center gap-2">
-            <select name="fromClientId" className="input h-8 w-auto min-w-40 text-xs" aria-label="Cliente origen">
+            <select name="fromClientId" className="input h-8 w-auto min-w-40 text-xs" aria-label={t("Cliente origen")}>
               {donors.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name} ({d._count.rates})
                 </option>
               ))}
             </select>
-            <SubmitButton className="btn-secondary h-8 text-xs" pendingText="Copiando…">
-              <Users className="size-3.5" /> Copiar
+            <SubmitButton className="btn-secondary h-8 text-xs" pendingText={t("Copiando…")}>
+              <Users className="size-3.5" /> <Tr>Copiar</Tr>
             </SubmitButton>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Ningún otro cliente tiene tarifas todavía.</p>
+          <p className="text-xs text-muted-foreground"><Tr>Ningún otro cliente tiene tarifas todavía.</Tr></p>
         )}
       </Form>
     </div>
@@ -94,15 +97,15 @@ export async function ClientRates({ clientId }: { clientId: number }) {
       action={
         quotes.length > 0 ? (
           <Form action={copyRatesFromQuote.bind(null, clientId)} className="flex items-center gap-2">
-            <select name="quoteId" className="input h-8 w-auto text-xs" defaultValue={quotes[0].id} aria-label="Cotización">
+            <select name="quoteId" className="input h-8 w-auto text-xs" defaultValue={quotes[0].id} aria-label={t("Cotización")}>
               {quotes.map((q) => (
                 <option key={q.id} value={q.id}>
                   {q.folio}
                 </option>
               ))}
             </select>
-            <SubmitButton className="btn-secondary h-8 text-xs" pendingText="Copiando…">
-              <Copy className="size-3.5" /> Copiar de cotización
+            <SubmitButton className="btn-secondary h-8 text-xs" pendingText={t("Copiando…")}>
+              <Copy className="size-3.5" /> <Tr>Copiar de cotización</Tr>
             </SubmitButton>
           </Form>
         ) : undefined
@@ -110,7 +113,7 @@ export async function ClientRates({ clientId }: { clientId: number }) {
     >
       {empty ? (
         <>
-          <Empty icon={Tags}>Este cliente todavía no tiene tarifas negociadas; mientras tanto se usa el tarifario estándar. Cárgalas de una vez o agrégalas una por una.</Empty>
+          <Empty icon={Tags}><Tr>Este cliente todavía no tiene tarifas negociadas; mientras tanto se usa el tarifario estándar. Cárgalas de una vez o agrégalas una por una.</Tr></Empty>
           <div className="border-t bg-muted/30">{quickLoad}</div>
         </>
       ) : (
@@ -123,7 +126,7 @@ export async function ClientRates({ clientId }: { clientId: number }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{r.name}</span>
                       {r.code && <span className="font-mono text-[11px] text-muted-foreground">{r.code}</span>}
-                      {!r.active && <Badge variant="secondary">Inactiva</Badge>}
+                      {!r.active && <Badge variant="secondary"><Tr>Inactiva</Tr></Badge>}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {r.wmsConcept ? (
@@ -131,7 +134,7 @@ export async function ClientRates({ clientId }: { clientId: number }) {
                           WMS: <span className="text-foreground">{r.wmsConcept}</span>
                         </>
                       ) : (
-                        <span className="text-amber-700">Sin concepto del WMS: no se aplicará al importar</span>
+                        <span className="text-amber-700"><Tr>Sin concepto del WMS: no se aplicará al importar</Tr></span>
                       )}
                     </div>
                   </div>
@@ -143,15 +146,15 @@ export async function ClientRates({ clientId }: { clientId: number }) {
                     <RateFields rate={r} wmsConcepts={wmsConcepts} />
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" name="active" value="on" defaultChecked={r.active} /> Activa
+                        <input type="checkbox" name="active" value="on" defaultChecked={r.active} /> <Tr>Activa</Tr>
                         <input type="hidden" name="active" value="off" />
                       </label>
-                      <SubmitButton className="btn-primary">Guardar tarifa</SubmitButton>
+                      <SubmitButton className="btn-primary"><Tr>Guardar tarifa</Tr></SubmitButton>
                     </div>
                   </Form>
                   <Form action={deleteRate.bind(null, r.id)} className="mt-2">
-                    <ConfirmButton message={`¿Eliminar la tarifa “${r.name}”?`} className="btn-danger h-8 text-xs">
-                      <Trash2 className="size-3.5" /> Eliminar
+                    <ConfirmButton message={t("¿Eliminar la tarifa “{v0}”?", { v0: r.name })} className="btn-danger h-8 text-xs">
+                      <Trash2 className="size-3.5" /> <Tr>Eliminar</Tr>
                     </ConfirmButton>
                   </Form>
                 </div>
@@ -162,14 +165,14 @@ export async function ClientRates({ clientId }: { clientId: number }) {
       )}
       <details className="group border-t" open={empty}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm font-medium text-primary hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
-          <Plus className="size-4" /> Agregar tarifa
+          <Plus className="size-4" /> <Tr>Agregar tarifa</Tr>
         </summary>
         <div className="border-t bg-muted/30 px-5 py-4">
           {!empty && quickLoad}
           <Form action={createRate.bind(null, clientId)} className="space-y-3">
             <RateFields services={services} wmsConcepts={wmsConcepts} />
             <div className="flex justify-end">
-              <SubmitButton>Agregar tarifa</SubmitButton>
+              <SubmitButton><Tr>Agregar tarifa</Tr></SubmitButton>
             </div>
           </Form>
         </div>

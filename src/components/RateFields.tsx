@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { ClientRate } from "@prisma/client";
 import { UNITS } from "@/lib/constants";
 import { Field } from "./kit";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 export type ServicePick = {
   id: number;
@@ -21,6 +23,7 @@ export type ServicePick = {
 
 /** Campos de una tarifa del cliente. Al dar de alta permite partir de un servicio del tarifario. */
 export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate; services?: ServicePick[]; wmsConcepts: string[] }) {
+  const t = useT();
   const [v, setV] = useState({
     code: rate?.code ?? "",
     name: rate?.name ?? "",
@@ -58,9 +61,9 @@ export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate;
                 });
             }}
           >
-            <option value="">— Elegir —</option>
+            <option value="">{t("— Elegir —")}</option>
             {[...new Set(services.map((s) => s.section))].map((sec) => (
-              <optgroup key={sec} label={sec || "Otros"}>
+              <optgroup key={sec} label={sec || t("Otros")}>
                 {services
                   .filter((s) => s.section === sec)
                   .map((s) => (
@@ -75,14 +78,14 @@ export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate;
       )}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Field label="Nombre en la factura *">
-          <input name="name" required className="input" value={v.name} onChange={(e) => set({ name: e.target.value })} placeholder="Orden Ligera (hasta 2 SKUs)" />
+          <input name="name" required className="input" value={v.name} onChange={(e) => set({ name: e.target.value })} placeholder={t("Orden Ligera (hasta 2 SKUs)")} />
         </Field>
         <Field label="Clave">
           <input name="code" className="input uppercase" value={v.code} onChange={(e) => set({ code: e.target.value })} />
         </Field>
       </div>
       <Field label="Concepto en el WMS" hint="Cómo aparece en el estado de cobro del WMS. Si son varios, sepáralos con punto y coma.">
-        <input name="wmsConcept" list={listId} className="input" value={v.wmsConcept} onChange={(e) => set({ wmsConcept: e.target.value })} placeholder="Procesamiento de pedido" />
+        <input name="wmsConcept" list={listId} className="input" value={v.wmsConcept} onChange={(e) => set({ wmsConcept: e.target.value })} placeholder={t("Procesamiento de pedido")} />
         <datalist id={listId}>
           {wmsConcepts.map((c) => (
             <option key={c} value={c} />
@@ -100,14 +103,14 @@ export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate;
           <input name="taxRate" type="number" step="any" min="0" className="input text-right" value={v.taxRate} onChange={(e) => set({ taxRate: Number(e.target.value) || 0 })} />
         </Field>
         <Field label="Tarifa en texto">
-          <input name="priceText" className="input" value={v.priceText} onChange={(e) => set({ priceText: e.target.value })} placeholder="Opcional" />
+          <input name="priceText" className="input" value={v.priceText} onChange={(e) => set({ priceText: e.target.value })} placeholder={t("Opcional")} />
         </Field>
       </div>
       <Field label="Descripción (opcional)">
         <input name="description" className="input" value={v.description} onChange={(e) => set({ description: e.target.value })} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="atCost" checked={v.atCost} onChange={(e) => set({ atCost: e.target.checked })} /> Al costo: se factura el importe que reporta el WMS (ej. fletes)
+        <input type="checkbox" name="atCost" checked={v.atCost} onChange={(e) => set({ atCost: e.target.checked })} /> <Tr>Al costo: se factura el importe que reporta el WMS (ej. fletes)</Tr>
       </label>
       {v.atCost && <input type="hidden" name="unitPrice" value={0} />}
       <datalist id="rate-units">

@@ -15,7 +15,9 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Usuarios y accesos" };
+export async function generateMetadata() {
+  return { title: (await getT())("Usuarios y accesos") };
+}
 
 const ROLE: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
 
@@ -33,7 +35,7 @@ export default async function UsersPage() {
   const now = new Date();
   const fmt = (d: Date) => d.toLocaleDateString(localeOf(lang), { day: "numeric", month: "short", year: "numeric" });
   const statusOf = (i: (typeof invitations)[number]) =>
-    i.usedAt ? ["Usada", "bg-emerald-50 text-emerald-700"] : i.revokedAt ? ["Cancelada", "bg-slate-100 text-slate-600"] : i.expiresAt < now ? ["Vencida", "bg-slate-100 text-slate-600"] : ["Pendiente", "bg-amber-50 text-amber-800"];
+    i.usedAt ? [t("Usada"), "bg-emerald-50 text-emerald-700"] : i.revokedAt ? [t("Cancelada"), "bg-slate-100 text-slate-600"] : i.expiresAt < now ? [t("Vencida"), "bg-slate-100 text-slate-600"] : [t("Pendiente"), "bg-amber-50 text-amber-800"];
 
   return (
     <div>
@@ -155,7 +157,7 @@ export default async function UsersPage() {
         <Panel title={t("Nueva invitación")} description={t("Se genera un link para compartir por WhatsApp o correo.")} className="h-fit xl:sticky xl:top-6">
           <Form action={createInvitation} resetOnSuccess className="space-y-3 p-5">
             <Field label={t("Correo (opcional)")} hint={t("Si lo indicas, la cuenta se crea con ese correo. Si no, la persona lo escribe al abrir el link.")}>
-              <input name="email" type="email" className="input" placeholder="nombre@empresa.com" />
+              <input name="email" type="email" className="input" placeholder={t("nombre@empresa.com")} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("Rol")}>

@@ -202,8 +202,8 @@ export default async function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-2">
         {(
           [
-            ["Últimas facturas", "/facturas", recentInvoices, ReceiptText, "/facturas/nueva"],
-            ["Últimas cotizaciones", "/cotizaciones", recentQuotes, FileText, "/cotizaciones/nueva"],
+            [t("Últimas facturas"), "/facturas", recentInvoices, ReceiptText, "/facturas/nueva"],
+            [t("Últimas cotizaciones"), "/cotizaciones", recentQuotes, FileText, "/cotizaciones/nueva"],
           ] as const
         ).map(([title, href, rows, Icon, newHref]) => (
           <Panel

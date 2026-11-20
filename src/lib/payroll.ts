@@ -1,4 +1,5 @@
 import { round2 } from "./money";
+import { requestLang } from "./request-lang";
 
 /**
  * Cálculos de nómina según la Ley Federal del Trabajo (sin ISR, IMSS ni carga patronal).
@@ -59,6 +60,14 @@ export function seniority(start: Date, at = new Date()) {
 }
 
 export function seniorityLabel(s: { years: number; months: number; days: number }) {
+  if (requestLang() === "en") {
+    const en = [
+      s.years ? `${s.years} year${s.years === 1 ? "" : "s"}` : "",
+      s.months ? `${s.months} month${s.months === 1 ? "" : "s"}` : "",
+      !s.years && !s.months ? `${s.days} day${s.days === 1 ? "" : "s"}` : "",
+    ].filter(Boolean);
+    return en.join(", ") || "Less than a day";
+  }
   const parts = [
     s.years ? `${s.years} año${s.years === 1 ? "" : "s"}` : "",
     s.months ? `${s.months} mes${s.months === 1 ? "" : "es"}` : "",

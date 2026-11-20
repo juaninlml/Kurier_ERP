@@ -13,13 +13,19 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge } from "@/components/ui/badge";
 import { qrSvg } from "@/lib/totp";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
+import { requestLocale } from "@/lib/request-lang";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Asistencias" };
+export async function generateMetadata() {
+  return { title: (await getT())("Asistencias") };
+}
 
 const DAY = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ semana?: string }> }) {
+  const t = await getT();
   const me = await getCurrentUser();
   const admin = canManageUsers(me.role);
   await autoCloseShifts();
@@ -47,7 +53,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         .map(async (d) => [d.id, await qrSvg(`${origin}/kiosco/activar/${d.activationToken}`)] as const),
     ),
   );
-  const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
+  const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(requestLocale(), { day: "numeric", month: "short", timeZone: "UTC" });
   const localMin = (d?: { at: Date }) => (d ? Math.round(localParts(d.at, tz).minutes) : null);
 
   const rows: EmployeeWeek[] = employees.map((e) => {
@@ -121,32 +127,32 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const latesTotal = rows.reduce((a, r) => a + r.lates, 0);
   const otTotal = rows.reduce((a, r) => a + r.otMin, 0) / 60;
   const todayIdx = days.indexOf(today);
-  const dayLabels = days.map((d, i) => `${DAY[i]} ${fmtDay(d).split(" ")[0]}`);
+  const dayLabels = days.map((d, i) => `${t(DAY[i]!)} ${fmtDay(d).split(" ")[0]}`);
 
   return (
     <div>
       <PageHeader
         title="Asistencias"
         subtitle="Checadas del kiosco: entrada, comida y salida. Sin horas extra autorizadas, la salida se registra sola 5 min después del horario."
-        back={{ href: "/nomina", label: "Nómina" }}
+        back={{ href: "/nomina", label: t("Nómina") }}
         actions={
           <a href="/kiosco" target="_blank" className="btn-secondary">
-            <MonitorSmartphone className="size-4" /> Abrir kiosco
+            <MonitorSmartphone className="size-4" /> <Tr>Abrir kiosco</Tr>
           </a>
         }
       />
 
       {employees.length > 0 && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          <Stat label="Asistencia" value={rate(attended.length, due.length)} icon={UserCheck} hint={absencesTotal ? `${absencesTotal} falta(s) en la semana` : "Sin faltas en la semana"} />
+          <Stat label="Asistencia" value={rate(attended.length, due.length)} icon={UserCheck} hint={absencesTotal ? t("{v0} falta(s) en la semana", { v0: absencesTotal }) : "Sin faltas en la semana"} />
           <Stat label="Puntualidad" value={rate(onTime.length, attended.length)} icon={CalendarCheck} hint={latesTotal ? `${latesTotal} retardo(s)` : "Sin retardos"} />
           <Stat
             label="Horas trabajadas"
             value={`${workedTotal.toFixed(1)} h`}
             icon={Clock}
-            hint={dueHours ? `de ${dueHours.toFixed(0)} h programadas a la fecha (${rate(workedTotal, dueHours)})` : "Aún no hay días por trabajar"}
+            hint={dueHours ? t("de {v0} h programadas a la fecha ({v1})", { v0: dueHours.toFixed(0), v1: rate(workedTotal, dueHours) }) : "Aún no hay días por trabajar"}
           />
-          <Stat label="Horas extra" value={`${otTotal.toFixed(1)} h`} icon={Hourglass} hint={`${auths.length} autorización(es) esta semana`} />
+          <Stat label="Horas extra" value={`${otTotal.toFixed(1)} h`} icon={Hourglass} hint={t("{v0} autorización(es) esta semana", { v0: auths.length })} />
         </div>
       )}
 
@@ -154,10 +160,10 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         <Panel
           className="mb-6"
           title="Hoy en el almacén"
-          description={`${fmtDay(today)} · se actualiza al recargar la página`}
+          description={t("{v0} · se actualiza al recargar la página", { v0: fmtDay(today) })}
           action={
             <Link href="/nomina/asistencias" className="btn-secondary h-8 text-xs">
-              Actualizar
+              <Tr>Actualizar</Tr>
             </Link>
           }
           bodyClassName="p-5"
@@ -168,24 +174,24 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
       <Panel
         className="mb-6"
-        title={`Semana del ${fmtDay(monday)} al ${fmtDay(sunday)}`}
+        title={t("Semana del {v0} al {v1}", { v0: fmtDay(monday), v1: fmtDay(sunday) })}
         description="Cada barra es un día sobre el mismo eje de horas. Pasa el cursor para ver las checadas; da clic para corregirlas."
         action={
           <div className="flex gap-1">
-            <Link href={`/nomina/asistencias?semana=${addDaysStr(monday, -7)}`} className="btn-secondary h-8 px-2" aria-label="Semana anterior">
+            <Link href={`/nomina/asistencias?semana=${addDaysStr(monday, -7)}`} className="btn-secondary h-8 px-2" aria-label={t("Semana anterior")}>
               <ChevronLeft className="size-4" />
             </Link>
             <Link href="/nomina/asistencias" className="btn-secondary h-8 text-xs">
-              Hoy
+              <Tr>Hoy</Tr>
             </Link>
-            <Link href={`/nomina/asistencias?semana=${addDaysStr(monday, 7)}`} className="btn-secondary h-8 px-2" aria-label="Semana siguiente">
+            <Link href={`/nomina/asistencias?semana=${addDaysStr(monday, 7)}`} className="btn-secondary h-8 px-2" aria-label={t("Semana siguiente")}>
               <ChevronRight className="size-4" />
             </Link>
           </div>
         }
       >
         {employees.length === 0 ? (
-          <Empty icon={Clock}>No hay empleados activos.</Empty>
+          <Empty icon={Clock}><Tr>No hay empleados activos.</Tr></Empty>
         ) : (
           <>
             <div className="border-b px-5 py-3">
@@ -203,11 +209,11 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
               <Field label="Empleado">
                 <select name="employeeId" required className="input" defaultValue="">
                   <option value="" disabled>
-                    Elegir…
+                    {t("Elegir…")}
                   </option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.name} (sale {e.scheduleEnd})
+                      {e.name} {t("(sale")} {e.scheduleEnd})
                     </option>
                   ))}
                 </select>
@@ -219,17 +225,17 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                 <input name="until" type="time" required className="input" />
               </Field>
               <Field label="Motivo">
-                <input name="note" className="input" placeholder="Ej. cierre de pedidos" />
+                <input name="note" className="input" placeholder={t("Ej. cierre de pedidos")} />
               </Field>
               <div className="sm:col-span-2">
                 <SubmitButton className="btn-primary">
-                  <Timer className="size-4" /> Autorizar
+                  <Timer className="size-4" /> <Tr>Autorizar</Tr>
                 </SubmitButton>
               </div>
             </Form>
           )}
           {auths.length === 0 ? (
-            <Empty icon={Timer}>Sin horas extra autorizadas esta semana.</Empty>
+            <Empty icon={Timer}><Tr>Sin horas extra autorizadas esta semana.</Tr></Empty>
           ) : (
             <ul className="divide-y">
               {auths.map((a) => (
@@ -237,13 +243,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                   <div>
                     <div className="font-medium">{a.employee.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {fmtDay(a.workDate)} · hasta {a.until}
+                      {fmtDay(a.workDate)} <Tr>· hasta</Tr> {a.until}
                       {a.note && ` · ${a.note}`}
                     </div>
                   </div>
                   {admin && (
                     <Form action={deleteOvertime.bind(null, a.id)}>
-                      <ConfirmButton message="¿Quitar esta autorización de horas extra?" className="btn-danger h-8 px-2">
+                      <ConfirmButton message={t("¿Quitar esta autorización de horas extra?")} className="btn-danger h-8 px-2">
                         <Trash2 className="size-3.5" />
                       </ConfirmButton>
                     </Form>
@@ -259,14 +265,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
             <Panel title="Kioscos (tablets)" description="Escanea el QR con la tablet, o abre /kiosco en ella y autorízala con tu código. Queda como kiosco aunque nadie inicie sesión.">
               <Form action={createKioskDevice} resetOnSuccess className="flex flex-wrap items-end gap-2 border-b p-5">
                 <Field label="Nombre de la tablet" className="min-w-48 flex-1">
-                  <input name="name" required className="input" placeholder="Tablet entrada almacén" />
+                  <input name="name" required className="input" placeholder={t("Tablet entrada almacén")} />
                 </Field>
                 <SubmitButton className="btn-primary">
-                  <Plus className="size-4" /> Generar QR
+                  <Plus className="size-4" /> <Tr>Generar QR</Tr>
                 </SubmitButton>
               </Form>
               {devices.length === 0 ? (
-                <Empty icon={MonitorSmartphone}>Aún no hay tablets autorizadas.</Empty>
+                <Empty icon={MonitorSmartphone}><Tr>Aún no hay tablets autorizadas.</Tr></Empty>
               ) : (
                 <ul className="divide-y">
                   {devices.map((d) => (
@@ -275,30 +281,30 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                         <div>
                           <div className="font-medium">{d.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {d.activationToken ? "Pendiente de escanear el QR en la tablet" : d.lastSeenAt ? `Activa · última conexión ${d.lastSeenAt.toLocaleString("es-MX", { timeZone: tz, dateStyle: "short", timeStyle: "short" })}` : "Autorizada"}
+                            {d.activationToken ? t("Pendiente de escanear el QR en la tablet") : d.lastSeenAt ? t("Activa · última conexión {v0}", { v0: d.lastSeenAt.toLocaleString("es-MX", { timeZone: tz, dateStyle: "short", timeStyle: "short" }) }) : t("Autorizada")}
                           </div>
                         </div>
                         {d.active ? (
                           <Form action={deactivateKioskDevice.bind(null, d.id)}>
-                            <ConfirmButton message={`¿Desactivar ${d.name}? Dejará de funcionar como kiosco.`} className="btn-danger h-8 text-xs">
-                              Desactivar
+                            <ConfirmButton message={t("¿Desactivar {v0}? Dejará de funcionar como kiosco.", { v0: d.name })} className="btn-danger h-8 text-xs">
+                              <Tr>Desactivar</Tr>
                             </ConfirmButton>
                           </Form>
                         ) : (
-                          <Badge variant="secondary">Desactivada</Badge>
+                          <Badge variant="secondary"><Tr>Desactivada</Tr></Badge>
                         )}
                       </div>
                       {d.active && d.activationToken && qrs.get(d.id) && (
                         <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-3">
                           <div className="size-32 shrink-0 rounded-md bg-white p-1.5 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qrs.get(d.id)! }} />
                           <p className="text-xs text-muted-foreground">
-                            Escanea este QR con la <span className="font-medium text-foreground">cámara de la tablet</span> y toca «Autorizar». También puedes abrir <span className="font-mono">/kiosco</span> en la tablet y autorizarla con tu código del autenticador.
+                            <Tr>Escanea este QR con la</Tr> <span className="font-medium text-foreground"><Tr>cámara de la tablet</Tr></span> <Tr>y toca «Autorizar». También puedes abrir</Tr> <span className="font-mono">/kiosco</span> <Tr>en la tablet y autorizarla con tu código del autenticador.</Tr>
                           </p>
                         </div>
                       )}
                       {d.active && d.activationToken && (
                         <div className="flex items-center gap-2">
-                          <input readOnly value={`${origin}/kiosco/activar/${d.activationToken}`} className="input h-8 min-w-0 flex-1 font-mono text-xs" aria-label="Link de autorización" />
+                          <input readOnly value={`${origin}/kiosco/activar/${d.activationToken}`} className="input h-8 min-w-0 flex-1 font-mono text-xs" aria-label={t("Link de autorización")} />
                           <CopyButton value={`${origin}/kiosco/activar/${d.activationToken}`} />
                         </div>
                       )}
@@ -320,7 +326,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                   <input name="overtimeRate" type="number" min="1" step="0.5" defaultValue={s.overtimeRate} className="input text-right" />
                 </Field>
                 <div className="sm:col-span-3">
-                  <SubmitButton className="btn-secondary">Guardar reglas</SubmitButton>
+                  <SubmitButton className="btn-secondary"><Tr>Guardar reglas</Tr></SubmitButton>
                 </div>
               </Form>
             </Panel>

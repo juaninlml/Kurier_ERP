@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 
 /** Pestañas de la sección: órdenes por oleada e insumos de empaque (comparten fecha). */
-export function OrdersTabs({ active, date }: { active: "ordenes" | "insumos"; date: string }) {
+export async function OrdersTabs({ active, date }: { active: "ordenes" | "insumos"; date: string }) {
+  const t = await getT();
   const tabs = [
-    { id: "ordenes", label: "Órdenes por oleada", href: `/ordenes?fecha=${date}` },
-    { id: "insumos", label: "Insumos de empaque", href: `/ordenes/insumos?fecha=${date}` },
+    { id: "ordenes", label: t("Órdenes por oleada"), href: `/ordenes?fecha=${date}` },
+    { id: "insumos", label: t("Insumos de empaque"), href: `/ordenes/insumos?fecha=${date}` },
   ] as const;
   return (
-    <nav aria-label="Secciones de órdenes diarias" className="mb-6 flex gap-1 border-b">
+    <nav aria-label={t("Secciones de órdenes diarias")} className="mb-6 flex gap-1 border-b">
       {tabs.map((t) => (
         <Link
           key={t.id}

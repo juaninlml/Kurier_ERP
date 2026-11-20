@@ -11,9 +11,13 @@ import { employeeBenefits } from "@/lib/payroll-data";
 import { monthlyCost, seniorityLabel, weeklyOf } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
+import { Tr } from "@/components/Tr";
+import { requestLocale } from "@/lib/request-lang";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Nómina" };
+export async function generateMetadata() {
+  return { title: (await getT())("Nómina") };
+}
 
 /** Semana anterior completa (lunes a domingo). */
 function lastWeek(now = new Date()) {
@@ -58,7 +62,7 @@ export default async function PayrollPage() {
         <Stat label={t("Empleados activos")} value={String(active.length)} icon={Users} />
         <Stat label={t("Nómina semanal")} value={formatMoney(weekly)} hint={t("Salarios semanales + bonos fijos")} icon={CalendarDays} />
         <Stat label={t("Costo mensual")} value={formatMoney(monthly)} hint={t("Con aguinaldo y prima prorrateados")} icon={Wallet} href="/contabilidad/gastos-fijos" />
-        <Stat label={`Aguinaldo ${new Date().getFullYear()}`} value={formatMoney(aguinaldo)} hint={t("A pagar al corte del 20 de diciembre")} icon={Gift} />
+        <Stat label={t("Aguinaldo {v0}", { v0: new Date().getFullYear() })} value={formatMoney(aguinaldo)} hint={t("A pagar al corte del 20 de diciembre")} icon={Gift} />
       </div>
 
       {runs.length > 1 && (
@@ -76,7 +80,7 @@ export default async function PayrollPage() {
               .reverse()
               .map((r) => ({
                 key: String(r.id),
-                label: r.periodStart.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""),
+                label: r.periodStart.toLocaleDateString(requestLocale(), { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""),
                 full: `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}${r.status === "PAGADA" ? "" : ` · ${t("Borrador")}`}`,
                 values: { total: r.total },
               }))}
@@ -95,7 +99,7 @@ export default async function PayrollPage() {
                 </Link>
               }
             >
-              Aún no hay empleados registrados.
+              <Tr>Aún no hay empleados registrados.</Tr>
             </Empty>
           ) : (
             <div className="overflow-x-auto">
@@ -119,12 +123,12 @@ export default async function PayrollPage() {
                         </Link>
                         <div className="text-xs text-muted-foreground">
                           {[e.position, e.area].filter(Boolean).join(" · ") || "—"}
-                          {!e.active && " · baja"}
+                          {!e.active && t(" · baja")}
                         </div>
                       </td>
                       <td className="whitespace-nowrap">
                         {seniorityLabel(b.seniority)}
-                        <div className="text-xs text-muted-foreground">Desde {formatDate(e.startDate)}</div>
+                        <div className="text-xs text-muted-foreground"><Tr>Desde</Tr> {formatDate(e.startDate)}</div>
                       </td>
                       <td className="text-right tabular-nums">{formatMoney(e.dailySalary)}</td>
                       <td className="text-right tabular-nums">{formatMoney(b.weeklySalary + e.weeklyBonus)}</td>
@@ -132,7 +136,7 @@ export default async function PayrollPage() {
                         {b.vacationEntitled ? (
                           <>
                             <span className="font-medium">{formatNumber(b.vacationAvailable)}</span>
-                            <span className="text-muted-foreground"> / {b.vacationEntitled} días</span>
+                            <span className="text-muted-foreground"> / {b.vacationEntitled} <Tr>días</Tr></span>
                           </>
                         ) : (
                           <span className="text-xs text-muted-foreground">{t("Al cumplir 1 año: 12")}</span>
@@ -161,7 +165,7 @@ export default async function PayrollPage() {
               <Field label={t("Fecha de pago")}>
                 <input type="date" name="payDate" defaultValue={toInputDate(new Date(end.getTime() + 5 * 86400000))} className="input" />
               </Field>
-              <SubmitButton className="btn-primary w-full" pendingText="Creando…">
+              <SubmitButton className="btn-primary w-full" pendingText={t("Creando…")}>
                 <Plus className="size-4" /> {t("Crear nómina")}
               </SubmitButton>
             </Form>
@@ -179,7 +183,7 @@ export default async function PayrollPage() {
                         <div className="text-sm font-medium">
                           {formatDate(r.periodStart)} – {formatDate(r.periodEnd)}
                         </div>
-                        <div className="text-xs text-muted-foreground">{r._count.lines} empleado(s)</div>
+                        <div className="text-xs text-muted-foreground">{r._count.lines} <Tr>empleado(s)</Tr></div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold tabular-nums">{formatMoney(r.total)}</div>
@@ -191,7 +195,7 @@ export default async function PayrollPage() {
                               : "border-transparent bg-amber-50 text-amber-800"
                           }
                         >
-                          {r.status === "PAGADA" ? "Pagada" : "Borrador"}
+                          {r.status === "PAGADA" ? t("Pagada") : t("Borrador")}
                         </Badge>
                       </div>
                     </Link>

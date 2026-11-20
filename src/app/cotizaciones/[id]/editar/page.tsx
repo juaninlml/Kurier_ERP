@@ -6,10 +6,12 @@ import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor, parseProfileJson } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
 import { parsePerOrder } from "@/lib/quote-extras";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditQuotePage({ params }: { params: Promise<{ id: string }> }) {
+  const t = await getT();
   const id = Number((await params).id);
   const quote = await prisma.quote.findUnique({ where: { id }, include: { items: { orderBy: { position: "asc" } } } });
   if (!quote) notFound();
@@ -18,7 +20,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title={`Editar ${quote.folio}`} back={{ href: `/cotizaciones/${id}`, label: quote.folio }} />
+      <PageHeader title={t("Editar {v0}", { v0: quote.folio })} back={{ href: `/cotizaciones/${id}`, label: quote.folio }} />
       <DocumentEditor
         kind="quote"
         action={updateQuote.bind(null, id)}
@@ -27,7 +29,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         clientRates={clientRates}
           brands={brands}
         defaultTaxRate={settings.defaultTaxRate}
-        submitLabel="Guardar cambios"
+        submitLabel={t("Guardar cambios")}
         defaults={{
           clientId: quote.clientId ?? undefined,
           brandId: quote.brandId ?? 0,

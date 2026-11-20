@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLang, useT } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
+import { Tr } from "@/components/Tr";
 
 export type SidebarUser = { name: string; email: string; image: string; role: string };
 
@@ -96,7 +97,7 @@ function Brand() {
     <Link href="/" className="flex items-center gap-2.5 px-2">
       <div className="grid size-9 place-items-center rounded-lg bg-sidebar-primary text-base font-bold text-sidebar-primary-foreground shadow-sm">K</div>
       <div className="leading-tight">
-        <div className="text-sm font-semibold">Kurier ERP</div>
+        <div className="text-sm font-semibold"><Tr>Kurier ERP</Tr></div>
         <div className="text-[11px] text-sidebar-foreground/60">{t("Fulfillment · CDMX")}</div>
       </div>
     </Link>
@@ -194,10 +195,10 @@ function UserMenu({ user }: { user: SidebarUser }) {
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={lang} onValueChange={(v) => start(async () => void (await setLanguage(v)))}>
           <DropdownMenuRadioItem value="es" disabled={pending}>
-            Español
+            <Tr>Español</Tr>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="en" disabled={pending}>
-            English
+            <Tr>English</Tr>
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />

@@ -1,4 +1,8 @@
-import { en } from "./en";
+import { en as enBase } from "./en";
+import { enModules } from "./en-modules";
+
+/** Diccionario completo (base + módulos). */
+const en: Record<string, string> = { ...enModules, ...enBase };
 
 export type Lang = "es" | "en";
 export const LANGS: Lang[] = ["es", "en"];

@@ -5,17 +5,19 @@ import { Languages } from "lucide-react";
 import { useLang } from "./I18nProvider";
 import { setLanguage } from "@/app/actions/account";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/I18nProvider";
 
 /** Selector Español / English (guarda la preferencia en una cookie y en el perfil). */
 export function LanguageSwitch({ dark }: { dark?: boolean }) {
+  const t = useT();
   const lang = useLang();
   const [pending, start] = useTransition();
   const options = [
-    ["es", "ES", "Español"],
-    ["en", "EN", "English"],
+    ["es", "ES", t("Español")],
+    ["en", "EN", t("English")],
   ] as const;
   return (
-    <div className={cn("inline-flex items-center gap-1 rounded-lg p-1 text-xs", dark ? "bg-white/10 text-white" : "bg-muted")} role="radiogroup" aria-label="Idioma / Language">
+    <div className={cn("inline-flex items-center gap-1 rounded-lg p-1 text-xs", dark ? "bg-white/10 text-white" : "bg-muted")} role="radiogroup" aria-label={t("Idioma / Language")}>
       <Languages className="mx-1 size-3.5 opacity-70" aria-hidden />
       {options.map(([v, label, name]) => (
         <button

@@ -10,7 +10,9 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Vincular autenticador" };
+export async function generateMetadata() {
+  return { title: (await getT())("Vincular autenticador") };
+}
 
 const ROLE: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
 
@@ -125,7 +127,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
           className="input h-12 text-center font-mono text-2xl tracking-[0.4em]"
           placeholder="000000"
         />
-        <SubmitButton className="btn-primary h-10 w-full" pendingText="Verificando…">
+        <SubmitButton className="btn-primary h-10 w-full" pendingText={t("Verificando…")}>
           <Smartphone className="size-4" /> {t("Vincular y continuar")}
         </SubmitButton>
       </Form>

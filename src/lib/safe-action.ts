@@ -27,7 +27,7 @@ function wrap<A extends unknown[]>(fn: (...args: A) => Promise<unknown>, require
   return async (...args: A): Promise<ActionResult> => {
     try {
       // Las server actions se pueden invocar desde cualquier ruta (incluso /login, que es pública),
-      // así que la sesión se valida aquí y no solo en el middleware.
+      // así que la sesión se valida aquí y no solo en el proxy.
       if (requireSession && !(await getSessionUser())) return { error: SESSION_EXPIRED };
       await fn(...args);
     } catch (e) {

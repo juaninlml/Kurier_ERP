@@ -4,23 +4,26 @@ import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { toInputDate } from "@/lib/money";
 import { SalaryFields } from "./SalaryFields";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
-export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<unknown>; e?: Employee }) {
+export async function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<unknown>; e?: Employee }) {
+  const t = await getT();
   return (
     <Form action={action} successMessage={e ? "Cambios guardados." : undefined} className="card space-y-6 p-5">
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Datos laborales</h3>
+        <h3 className="text-sm font-semibold"><Tr>Datos laborales</Tr></h3>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Nombre completo *" className="md:col-span-2">
             <input name="name" required defaultValue={e?.name} className="input" />
           </Field>
           <Field label="Puesto">
-            <input name="position" defaultValue={e?.position} className="input" placeholder="Auxiliar de almacén" />
+            <input name="position" defaultValue={e?.position} className="input" placeholder={t("Auxiliar de almacén")} />
           </Field>
           <Field label="Área">
-            <input name="area" list="areas" defaultValue={e?.area} className="input" placeholder="Almacén" />
+            <input name="area" list="areas" defaultValue={e?.area} className="input" placeholder={t("Almacén")} />
             <datalist id="areas">
-              {["Almacén", "Última milla", "Administración", "Atención a clientes", "Dirección"].map((a) => (
+              {[t("Almacén"), t("Última milla"), t("Administración"), t("Atención a clientes"), t("Dirección")].map((a) => (
                 <option key={a} value={a} />
               ))}
             </datalist>
@@ -36,7 +39,7 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Horario (kiosco de asistencia)</h3>
+        <h3 className="text-sm font-semibold"><Tr>Horario (kiosco de asistencia)</Tr></h3>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <Field label="Entrada">
             <input name="scheduleStart" type="time" required defaultValue={e?.scheduleStart ?? "09:00"} className="input" />
@@ -54,7 +57,7 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Datos personales y de pago</h3>
+        <h3 className="text-sm font-semibold"><Tr>Datos personales y de pago</Tr></h3>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="RFC">
             <input name="rfc" defaultValue={e?.rfc} className="input uppercase" />
@@ -89,12 +92,12 @@ export function EmployeeForm({ action, e }: { action: (fd: FormData) => Promise<
       <div className="flex items-center justify-between">
         {e ? (
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="active" defaultChecked={e.active} /> Empleado activo
+            <input type="checkbox" name="active" defaultChecked={e.active} /> <Tr>Empleado activo</Tr>
           </label>
         ) : (
           <span />
         )}
-        <SubmitButton>{e ? "Guardar cambios" : "Dar de alta"}</SubmitButton>
+        <SubmitButton>{e ? t("Guardar cambios") : t("Dar de alta")}</SubmitButton>
       </div>
     </Form>
   );

@@ -5,6 +5,8 @@ import { BarList } from "./charts";
 import { formatMoney, formatNumber } from "@/lib/money";
 import { marginPct, suppliesByMaterial } from "@/lib/supplies";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 /**
  * Reportes → insumos de empaque del periodo: lo que costó lo consumido, lo que se vende al
@@ -12,6 +14,7 @@ import { cn } from "@/lib/utils";
  * en Contabilidad y la venta entra con las facturas (aquí no se duplica ningún movimiento).
  */
 export async function SuppliesPanel({ from, to }: { from: string; to: string }) {
+  const t = await getT();
   const s = await suppliesByMaterial(from, to);
   if (!s.list.length) return null;
   const pct = marginPct(s.sale, s.cost);
@@ -27,7 +30,7 @@ export async function SuppliesPanel({ from, to }: { from: string; to: string }) 
       description="Costo de las bolsas y cajas usadas en el periodo contra lo que se cobra por ellas."
       action={
         <Link href="/ordenes/insumos" className="group/link inline-flex items-center gap-1 text-xs font-medium text-primary">
-          Ver insumos
+          <Tr>Ver insumos</Tr>
           <ArrowRight aria-hidden className="size-3.5 transition-[translate] duration-(--dur-state) ease-(--ease-out) group-hover/link:translate-x-0.5 motion-reduce:translate-x-0" />
         </Link>
       }
@@ -43,11 +46,11 @@ export async function SuppliesPanel({ from, to }: { from: string; to: string }) 
         ))}
       </dl>
       <div>
-        <p className="mb-3 text-xs font-medium text-muted-foreground">Costo por material</p>
+        <p className="mb-3 text-xs font-medium text-muted-foreground"><Tr>Costo por material</Tr></p>
         <BarList
           color="var(--chart-2)"
           total={s.cost || undefined}
-          emptyText="Captura el costo de cada material en Insumos → Materiales."
+          emptyText={t("Captura el costo de cada material en Insumos → Materiales.")}
           rows={s.list
             .filter((m) => m.cost > 0)
             .sort((a, b) => b.cost - a.cost)

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS } from "@/lib/constants";
 import { SubmitButton } from "./SubmitButton";
 import { Form } from "./Form";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 type Tx = {
   type: string;
@@ -30,6 +32,8 @@ export function TransactionForm({
   defaultTaxRate: number;
   submitLabel: string;
 }) {
+  const tr = useT();
+  const t = useT();
   const [type, setType] = useState(tx.type);
   const [amount, setAmount] = useState(String(tx.amount || ""));
   const [tax, setTax] = useState(String(tx.tax || ""));
@@ -51,60 +55,60 @@ export function TransactionForm({
             }`}
           >
             <input type="radio" name="type" value={t} checked={type === t} onChange={() => setType(t)} className="sr-only" />
-            {t === "INGRESO" ? "Ingreso" : "Egreso"}
+            {t === "INGRESO" ? tr("Ingreso") : tr("Egreso")}
           </label>
         ))}
       </div>
       <label className="block">
-        <span className="label">Categoría</span>
+        <span className="label"><Tr>Categoría</Tr></span>
         <select name="category" key={type} defaultValue={(categories as readonly string[]).includes(tx.category) ? tx.category : ""} required className="input">
           <option value="" disabled>
-            Selecciona…
+            {t("Selecciona…")}
           </option>
           {categories.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>{tr(c)}</option>
           ))}
         </select>
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="label">Monto total (con IVA)</span>
+          <span className="label"><Tr>Monto total (con IVA)</Tr></span>
           <input name="amount" type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="input" />
         </label>
         <label className="block">
           <span className="label flex justify-between">
-            IVA incluido
+            <Tr>IVA incluido</Tr>
             <button type="button" onClick={calcTax} className="normal-case text-primary hover:underline">
-              calcular {defaultTaxRate}%
+              <Tr>calcular</Tr> {defaultTaxRate}%
             </button>
           </span>
           <input name="tax" type="number" step="0.01" min="0" value={tax} onChange={(e) => setTax(e.target.value)} className="input" />
         </label>
       </div>
       <label className="block">
-        <span className="label">Fecha</span>
+        <span className="label"><Tr>Fecha</Tr></span>
         <input name="date" type="date" defaultValue={tx.date} required className="input" />
       </label>
       <label className="block">
-        <span className="label">Concepto</span>
-        <input name="description" defaultValue={tx.description} className="input" placeholder="Ej. Renta de bodega noviembre" />
+        <span className="label"><Tr>Concepto</Tr></span>
+        <input name="description" defaultValue={tx.description} className="input" placeholder={t("Ej. Renta de bodega noviembre")} />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="label">Método</span>
+          <span className="label"><Tr>Método</Tr></span>
           <select name="method" defaultValue={tx.method} className="input">
             {PAYMENT_METHODS.map((m) => (
-              <option key={m}>{m}</option>
+              <option key={m} value={m}>{tr(m)}</option>
             ))}
           </select>
         </label>
         <label className="block">
-          <span className="label">Referencia</span>
+          <span className="label"><Tr>Referencia</Tr></span>
           <input name="reference" defaultValue={tx.reference} className="input" />
         </label>
       </div>
       <label className="block">
-        <span className="label">Cliente (opcional)</span>
+        <span className="label"><Tr>Cliente (opcional)</Tr></span>
         <select name="clientId" defaultValue={tx.clientId ?? ""} className="input">
           <option value="">—</option>
           {clients.map((c) => (

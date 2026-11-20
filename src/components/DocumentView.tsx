@@ -1,5 +1,6 @@
 import { formatMoney, formatNumber } from "@/lib/money";
 import { groupBySection, rateLabel } from "@/lib/totals";
+import { Tr } from "@/components/Tr";
 
 type Item = {
   id: number;
@@ -44,12 +45,12 @@ export function DocumentView({
         <table className="table">
           <thead>
             <tr>
-              <th>{isQuote ? "Servicio" : "Concepto"}</th>
-              {isQuote && <th>Tarifa</th>}
-              {isQuote && <th>Descripción</th>}
-              <th className="text-right">Cantidad</th>
-              {!isQuote && <th className="text-right">Precio unitario</th>}
-              <th className="text-right">Importe</th>
+              <th><Tr>{isQuote ? "Servicio" : "Concepto"}</Tr></th>
+              {isQuote && <th><Tr>Tarifa</Tr></th>}
+              {isQuote && <th><Tr>Descripción</Tr></th>}
+              <th className="text-right"><Tr>Cantidad</Tr></th>
+              {!isQuote && <th className="text-right"><Tr>Precio unitario</Tr></th>}
+              <th className="text-right"><Tr>Importe</Tr></th>
             </tr>
           </thead>
           <tbody>
@@ -68,7 +69,7 @@ export function DocumentView({
                     </td>
                     {!isQuote && (
                       <td className="whitespace-nowrap text-right tabular-nums">
-                        {i.priceText || (i.atCost ? "Variable (al costo)" : formatMoney(i.unitPrice))}
+                        {i.priceText || (i.atCost ? <Tr>Variable (al costo)</Tr> : formatMoney(i.unitPrice))}
                         {i.discountPct > 0 && <div className="text-xs text-muted-foreground">−{i.discountPct}%</div>}
                       </td>
                     )}
@@ -82,14 +83,14 @@ export function DocumentView({
       </div>
       <div className="flex justify-end border-t border-border bg-muted px-5 py-4">
         <dl className="w-full max-w-xs space-y-1 text-sm">
-          {isQuote && <div className="label">Costo mensual estimado</div>}
+          {isQuote && <div className="label"><Tr>Costo mensual estimado</Tr></div>}
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Subtotal sin IVA</dt>
+            <dt className="text-muted-foreground"><Tr>Subtotal sin IVA</Tr></dt>
             <dd className="tabular-nums">{formatMoney(subtotal)}</dd>
           </div>
           {discount > 0 && (
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Descuento</dt>
+              <dt className="text-muted-foreground"><Tr>Descuento</Tr></dt>
               <dd className="tabular-nums">−{formatMoney(discount)}</dd>
             </div>
           )}
@@ -98,7 +99,7 @@ export function DocumentView({
             <dd className="tabular-nums">{formatMoney(tax)}</dd>
           </div>
           <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
-            <dt>{isQuote ? "Total estimado" : "Total a pagar"}</dt>
+            <dt><Tr>{isQuote ? "Total estimado" : "Total a pagar"}</Tr></dt>
             <dd className="tabular-nums text-kurier">{formatMoney(total)}</dd>
           </div>
           {extra}

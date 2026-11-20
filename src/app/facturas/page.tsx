@@ -8,7 +8,9 @@ import { INVOICE_STATUSES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Facturas" };
+export async function generateMetadata() {
+  return { title: (await getT())("Facturas") };
+}
 
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const t = await getT();
@@ -67,7 +69,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         <Stat label={t("Al corriente")} value={formatMoney(round2(receivable - overdue))} icon={CircleCheck} />
       </div>
       <div className="card overflow-hidden">
-        <FilterBar basePath="/facturas" q={q} status={status} statuses={[...INVOICE_STATUSES, "VENCIDA"]} counts={counts} placeholder="Buscar folio o cliente" />
+        <FilterBar basePath="/facturas" q={q} status={status} statuses={[...INVOICE_STATUSES, "VENCIDA"]} counts={counts} placeholder={t("Buscar folio o cliente")} />
         {invoices.length === 0 ? (
           <Empty
             icon={ReceiptText}

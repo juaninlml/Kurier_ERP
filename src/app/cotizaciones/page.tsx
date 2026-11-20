@@ -9,7 +9,9 @@ import { quoteParty } from "@/lib/quote-party";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Cotizaciones" };
+export async function generateMetadata() {
+  return { title: (await getT())("Cotizaciones") };
+}
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const t = await getT();
@@ -39,7 +41,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         }
       />
       <div className="card overflow-hidden">
-        <FilterBar basePath="/cotizaciones" q={q} status={status} statuses={QUOTE_STATUSES} counts={counts} placeholder="Buscar folio, prospecto o cliente" />
+        <FilterBar basePath="/cotizaciones" q={q} status={status} statuses={QUOTE_STATUSES} counts={counts} placeholder={t("Buscar folio, prospecto o cliente")} />
         {quotes.length === 0 ? (
           <Empty
             icon={FileText}

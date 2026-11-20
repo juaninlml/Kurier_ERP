@@ -6,6 +6,7 @@ import { Form } from "@/components/Form";
 import { getT } from "@/lib/i18n/server";
 import { DrivePanel } from "@/components/DrivePanel";
 import { BrandsPanel } from "@/components/BrandsPanel";
+import { Tr } from "@/components/Tr";
 
 export const dynamic = "force-dynamic";
 // "Subir pendientes" genera y sube varios PDFs en una sola llamada.
@@ -29,14 +30,14 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
             <div className="grid h-36 place-items-center rounded-lg border border-dashed border-border bg-muted p-3">
               {hasLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/logo?v=${s.updatedAt.getTime()}`} alt="Logo" className="max-h-full max-w-full object-contain" />
+                <img src={`/api/logo?v=${s.updatedAt.getTime()}`} alt={t("Logo")} className="max-h-full max-w-full object-contain" />
               ) : (
                 <span className="text-center text-xs text-muted-foreground">
-                  Sin logo.
+                  <Tr>Sin logo.</Tr>
                   <br />
-                  Sube un PNG o JPG
+                  <Tr>Sube un PNG o JPG</Tr>
                   <br />
-                  (fondo transparente recomendado)
+                  <Tr>(fondo transparente recomendado)</Tr>
                 </span>
               )}
             </div>
@@ -59,7 +60,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
                 <input name="tradeName" defaultValue={s.tradeName} className="input" />
               </Field>
               <Field label={t("Leyenda bajo el nombre")} className="md:col-span-3">
-                <input name="tagline" defaultValue={s.tagline} className="input" placeholder="MICROHUB CDMX · 3PL" />
+                <input name="tagline" defaultValue={s.tagline} className="input" placeholder={t("MICROHUB CDMX · 3PL")} />
               </Field>
             </div>
           </div>

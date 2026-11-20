@@ -13,20 +13,24 @@ import { FIXED_CATEGORIES, FREQUENCIES, monthlyCost, toMonthly } from "@/lib/pay
 import { formatMoney, round2 } from "@/lib/money";
 import type { FixedExpense } from "@prisma/client";
 import { getT } from "@/lib/i18n/server";
+import { Tr } from "@/components/Tr";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Gastos fijos y punto de equilibrio" };
+export async function generateMetadata() {
+  return { title: (await getT())("Gastos fijos y punto de equilibrio") };
+}
 
-function ExpenseFields({ e }: { e?: FixedExpense }) {
+async function ExpenseFields({ e }: { e?: FixedExpense }) {
+  const t = await getT();
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
       <Field label="Concepto *">
-        <input name="name" required defaultValue={e?.name} className="input" placeholder="Renta de bodega" />
+        <input name="name" required defaultValue={e?.name} className="input" placeholder={t("Renta de bodega")} />
       </Field>
       <Field label="Categoría">
         <select name="category" defaultValue={e?.category ?? "Renta"} className="input">
           {FIXED_CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>{t(c)}</option>
           ))}
         </select>
       </Field>
@@ -37,13 +41,13 @@ function ExpenseFields({ e }: { e?: FixedExpense }) {
         <select name="frequency" defaultValue={e?.frequency ?? "MENSUAL"} className="input">
           {Object.entries(FREQUENCIES).map(([k, f]) => (
             <option key={k} value={k}>
-              {f.label}
+              <Tr>{f.label}</Tr>
             </option>
           ))}
         </select>
       </Field>
       <Field label="Notas" className="sm:col-span-2 lg:col-span-4">
-        <input name="notes" defaultValue={e?.notes} className="input" placeholder="Opcional" />
+        <input name="notes" defaultValue={e?.notes} className="input" placeholder={t("Opcional")} />
       </Field>
     </div>
   );
@@ -70,12 +74,12 @@ export default async function FixedExpensesPage() {
       <PageHeader
         title={t("Gastos fijos y punto de equilibrio")}
         subtitle={t("Registra los gastos recurrentes de la operación y calcula cuántas órdenes diarias se necesitan para cubrirlos.")}
-        back={{ href: "/contabilidad", label: "Contabilidad" }}
+        back={{ href: "/contabilidad", label: t("Contabilidad") }}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label={t("Gastos fijos al mes")} value={formatMoney(total)} hint={`${active.length} gasto(s) activos`} icon={Wallet} />
-        <Stat label={t("Nómina mensual")} value={formatMoney(payrollMonthly)} hint={`${employees.length} empleado(s) · con aguinaldo y prima`} icon={Users} href="/nomina" />
+        <Stat label={t("Gastos fijos al mes")} value={formatMoney(total)} hint={t("{v0} gasto(s) activos", { v0: active.length })} icon={Wallet} />
+        <Stat label={t("Nómina mensual")} value={formatMoney(payrollMonthly)} hint={t("{v0} empleado(s) · con aguinaldo y prima", { v0: employees.length })} icon={Users} href="/nomina" />
         <Stat label={t("Gastos sin nómina")} value={formatMoney(fixedOther)} hint={t("Renta, servicios, insumos…")} icon={Building2} />
       </div>
 
@@ -114,7 +118,7 @@ export default async function FixedExpensesPage() {
                           <Badge variant="secondary">{e.category}</Badge>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {formatMoney(e.amount)} {FREQUENCIES[e.frequency as keyof typeof FREQUENCIES]?.label.toLowerCase()}
+                          {formatMoney(e.amount)} <Tr>{FREQUENCIES[e.frequency as keyof typeof FREQUENCIES]?.label.toLowerCase() ?? ""}</Tr>
                           {e.notes && ` · ${e.notes}`}
                         </div>
                       </div>
@@ -131,11 +135,11 @@ export default async function FixedExpensesPage() {
                           <label className="flex items-center gap-2 text-sm">
                             <input type="checkbox" name="active" defaultChecked={e.active} /> {t("Activo")}
                           </label>
-                          <SubmitButton>Guardar</SubmitButton>
+                          <SubmitButton><Tr>Guardar</Tr></SubmitButton>
                         </div>
                       </Form>
                       <Form action={deleteFixedExpense.bind(null, e.id)} className="mt-2">
-                        <ConfirmButton message={`¿Eliminar el gasto “${e.name}”?`} className="btn-danger h-8 text-xs">
+                        <ConfirmButton message={t("¿Eliminar el gasto “{v0}”?", { v0: e.name })} className="btn-danger h-8 text-xs">
                           <Trash2 className="size-3.5" /> {t("Eliminar")}
                         </ConfirmButton>
                       </Form>
@@ -170,7 +174,7 @@ export default async function FixedExpensesPage() {
                 .map(([cat, amt]) => (
                   <li key={cat}>
                     <div className="flex justify-between text-sm">
-                      <span>{cat}</span>
+                      <span><Tr>{cat}</Tr></span>
                       <span className="font-medium tabular-nums">{formatMoney(amt)}</span>
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -182,11 +186,11 @@ export default async function FixedExpensesPage() {
           )}
           {payrollMonthly > 0 && (
             <p className="border-t px-5 py-3 text-xs text-muted-foreground">
-              La nómina se toma de los{" "}
+              <Tr>La nómina se toma de los</Tr>{" "}
               <Link href="/nomina" className="text-primary hover:underline">
-                empleados activos
+                <Tr>empleados activos</Tr>
               </Link>
-              ; no la captures también como gasto fijo.
+              <Tr>; no la captures también como gasto fijo.</Tr>
             </p>
           )}
         </Panel>

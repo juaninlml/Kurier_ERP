@@ -11,7 +11,9 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Mi perfil" };
+export async function generateMetadata() {
+  return { title: (await getT())("Mi perfil") };
+}
 
 const ROLE: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
 
@@ -67,8 +69,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </Field>
             <Field label={t("Idioma")}>
               <select name="locale" defaultValue={lang} className="input">
-                <option value="es">Español</option>
-                <option value="en">English</option>
+                <option value="es">{t("Español")}</option>
+                <option value="en">{t("English")}</option>
               </select>
             </Field>
           </div>

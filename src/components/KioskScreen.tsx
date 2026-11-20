@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { CircleAlert, CircleCheck, Delete, LogIn, LogOut, Utensils, UtensilsCrossed } from "lucide-react";
 import { kioskChangeType, kioskHeartbeat, kioskPunch, type KioskResult } from "@/app/actions/attendance";
 import { cn } from "@/lib/utils";
+import { Tr } from "@/components/Tr";
+import { useT } from "@/components/I18nProvider";
 
 const ICON = { ENTRADA: LogIn, SALIDA_COMIDA: Utensils, REGRESO_COMIDA: UtensilsCrossed, SALIDA: LogOut } as const;
 const TONE = {
@@ -15,6 +17,7 @@ const TONE = {
 
 /** Pantalla del kiosco: el empleado solo escribe el código de 6 dígitos de su app. */
 export function KioskScreen({ company, device, tz }: { company: string; device: string; tz: string }) {
+  const t = useT();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<KioskResult | null>(null);
   // El reloj se muestra hasta montar en el navegador (evita diferencias con el render del servidor)
@@ -88,7 +91,7 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
           <div className="grid size-9 place-items-center rounded-lg bg-sidebar-primary font-bold text-sidebar-primary-foreground">K</div>
           <div className="leading-tight">
             <div className="font-semibold">{company}</div>
-            <div className="text-[11px] text-sidebar-foreground/60">Registro de asistencia · {device}</div>
+            <div className="text-[11px] text-sidebar-foreground/60"><Tr>Registro de asistencia ·</Tr> {device}</div>
           </div>
         </div>
       </header>
@@ -100,8 +103,8 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
           <div className="flex w-full max-w-md flex-col items-center">
             <div className="text-6xl font-semibold tracking-tight tabular-nums sm:text-7xl">{time}</div>
             <div className="mt-1 text-lg text-sidebar-foreground/70 capitalize">{date}</div>
-            <p className="mt-8 text-center text-base text-sidebar-foreground/80">Escribe el código de 6 dígitos de tu app autenticadora</p>
-            <div className="mt-4 flex gap-2" aria-live="polite" aria-label={`${code.length} de 6 dígitos`}>
+            <p className="mt-8 text-center text-base text-sidebar-foreground/80"><Tr>Escribe el código de 6 dígitos de tu app autenticadora</Tr></p>
+            <div className="mt-4 flex gap-2" aria-live="polite" aria-label={t("{v0} de 6 dígitos", { v0: code.length })}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
@@ -121,16 +124,16 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
                 </Key>
               ))}
               <Key onClick={() => setCodeBoth("")} disabled={pending} className="text-base text-sidebar-foreground/70">
-                Borrar
+                <Tr>Borrar</Tr>
               </Key>
               <Key onClick={() => press("0")} disabled={pending}>
                 0
               </Key>
-              <Key onClick={() => setCodeBoth(codeRef.current.slice(0, -1))} disabled={pending} aria-label="Borrar un dígito">
+              <Key onClick={() => setCodeBoth(codeRef.current.slice(0, -1))} disabled={pending} aria-label={t("Borrar un dígito")}>
                 <Delete className="size-7" />
               </Key>
             </div>
-            {pending && <p className="mt-4 text-sm text-sidebar-foreground/70">Verificando…</p>}
+            {pending && <p className="mt-4 text-sm text-sidebar-foreground/70"><Tr>Verificando…</Tr></p>}
           </div>
         )}
       </main>
@@ -151,13 +154,14 @@ function Key({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLB
 }
 
 function ResultCard({ result, onChange }: { result: KioskResult; onChange: (type: string) => void }) {
+  const t = useT();
   if (!result.ok) {
     return (
       <div className="w-full max-w-md rounded-3xl bg-card p-8 text-center text-card-foreground shadow-2xl">
         <div className="mx-auto grid size-16 place-items-center rounded-full bg-amber-100 text-amber-700">
           <CircleAlert className="size-9" />
         </div>
-        <p className="mt-4 text-lg font-medium">{result.error}</p>
+        <p className="mt-4 text-lg font-medium"><Tr>{result.error}</Tr></p>
       </div>
     );
   }
@@ -167,8 +171,8 @@ function ResultCard({ result, onChange }: { result: KioskResult; onChange: (type
       <div className={cn("flex items-center gap-3 px-6 py-5 text-white", TONE[result.type])}>
         <Icon className="size-9" />
         <div>
-          <div className="text-2xl font-semibold">{result.label}</div>
-          <div className="text-sm opacity-90">Registrada a las {result.time}</div>
+          <div className="text-2xl font-semibold"><Tr>{result.label}</Tr></div>
+          <div className="text-sm opacity-90"><Tr>Registrada a las</Tr> {result.time}</div>
         </div>
         <CircleCheck className="ml-auto size-9 opacity-90" />
       </div>
@@ -178,11 +182,11 @@ function ResultCard({ result, onChange }: { result: KioskResult; onChange: (type
         <p className={cn("mt-4 text-base", result.lateMin > 0 && result.type === "ENTRADA" && result.message.includes("tarde") ? "font-medium text-rose-700" : "")}>{result.message}</p>
         {result.alternatives.length > 0 && (
           <div className="mt-5 border-t pt-4">
-            <div className="text-xs text-muted-foreground">¿No era {result.label.toLowerCase()}? Cambiar a:</div>
+            <div className="text-xs text-muted-foreground"><Tr>¿No era</Tr> {t(result.label).toLowerCase()}<Tr>? Cambiar a:</Tr></div>
             <div className="mt-2 flex flex-wrap gap-2">
               {result.alternatives.map((a) => (
                 <button key={a.type} type="button" onClick={() => onChange(a.type)} className="btn-secondary h-10">
-                  {a.label}
+                  <Tr>{a.label}</Tr>
                 </button>
               ))}
             </div>

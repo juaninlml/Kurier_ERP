@@ -11,10 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { benefits, seniority } from "@/lib/payroll";
 import { vacationTakenMap } from "@/lib/payroll-data";
 import { formatDate, formatMoney, toInputDate } from "@/lib/money";
+import { Tr } from "@/components/Tr";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PayrollRunPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = await getT();
   const id = Number((await params).id);
   const run = await prisma.payrollRun.findUnique({
     where: { id },
@@ -57,17 +60,17 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   return (
     <div>
       <PageHeader
-        title={`Nómina del ${formatDate(run.periodStart)} al ${formatDate(run.periodEnd)}`}
-        back={{ href: "/nomina", label: "Nómina" }}
+        title={t("Nómina del {v0} al {v1}", { v0: formatDate(run.periodStart), v1: formatDate(run.periodEnd) })}
+        back={{ href: "/nomina", label: t("Nómina") }}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={paid ? "border-transparent bg-emerald-50 text-emerald-700" : "border-transparent bg-amber-50 text-amber-800"}>
-              {paid ? "Pagada" : "Borrador"}
+              {paid ? t("Pagada") : t("Borrador")}
             </Badge>
-            {run.lines.length} empleado(s) · Pago {formatDate(run.payDate)} · Total {formatMoney(run.total)}
+            {run.lines.length} <Tr>empleado(s) · Pago</Tr> {formatDate(run.payDate)} <Tr>· Total</Tr> {formatMoney(run.total)}
             {paid && run.transactionId && (
               <Link href={`/contabilidad/movimientos/${run.transactionId}`} className="text-primary hover:underline">
-                Ver egreso en contabilidad
+                <Tr>Ver egreso en contabilidad</Tr>
               </Link>
             )}
           </span>
@@ -75,23 +78,23 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         actions={
           paid ? (
             <Form action={reopenPayrollRun.bind(null, run.id)}>
-              <ConfirmButton message="¿Regresar la nómina a borrador? Se eliminará el egreso registrado en contabilidad." className="btn-secondary">
-                <RotateCcw className="size-4" /> Regresar a borrador
+              <ConfirmButton message={t("¿Regresar la nómina a borrador? Se eliminará el egreso registrado en contabilidad.")} className="btn-secondary">
+                <RotateCcw className="size-4" /> <Tr>Regresar a borrador</Tr>
               </ConfirmButton>
             </Form>
           ) : (
             <>
               <Form action={deletePayrollRun.bind(null, run.id)}>
-                <ConfirmButton message="¿Eliminar esta nómina?" className="btn-danger">
-                  <Trash2 className="size-4" /> Eliminar
+                <ConfirmButton message={t("¿Eliminar esta nómina?")} className="btn-danger">
+                  <Trash2 className="size-4" /> <Tr>Eliminar</Tr>
                 </ConfirmButton>
               </Form>
               <Form action={payPayrollRun.bind(null, run.id)}>
                 <ConfirmButton
-                  message={`¿Marcar como pagada? Se registrará un egreso de ${formatMoney(run.total)} en contabilidad (categoría Nómina). Guarda antes los cambios pendientes.`}
+                  message={t("¿Marcar como pagada? Se registrará un egreso de {v0} en contabilidad (categoría Nómina). Guarda antes los cambios pendientes.", { v0: formatMoney(run.total) })}
                   className="btn-kurier"
                 >
-                  <BadgeCheck className="size-4" /> Marcar como pagada
+                  <BadgeCheck className="size-4" /> <Tr>Marcar como pagada</Tr>
                 </ConfirmButton>
               </Form>
             </>
