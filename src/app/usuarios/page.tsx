@@ -115,7 +115,8 @@ export default async function UsersPage() {
               <ul className="divide-y">
                 {invitations.map((i) => {
                   const [label, cls] = statusOf(i);
-                  const pending = label === "Pendiente";
+                  // Por estado, no por la etiqueta (traducida en inglés dice "Pending")
+                  const pending = !i.usedAt && !i.revokedAt && i.expiresAt >= now;
                   const link = `${origin}/invitacion/${i.token}`;
                   return (
                     <li key={i.id} className="space-y-2 px-5 py-3">

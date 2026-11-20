@@ -12,5 +12,5 @@ const { auth } = NextAuth(authConfig);
 export const proxy = auth;
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|branding/|api/wms/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|branding/|kiosco-sw.js|api/wms/).*)"],
 };

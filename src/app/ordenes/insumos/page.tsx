@@ -389,7 +389,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
                         </td>
                       ))}
                       <td className="border-l text-right font-semibold text-foreground tabular-nums">{formatMoney(total)}</td>
-                      <td className="pr-5 text-right">{label === "Venta" && mineMoney.sale ? t("Margen {v0}", { v0: formatMoney(mineMoney.sale - mineMoney.cost) }) : ""}</td>
+                      <td className="pr-5 text-right">{label === t("Venta") && mineMoney.sale ? t("Margen {v0}", { v0: formatMoney(mineMoney.sale - mineMoney.cost) }) : ""}</td>
                     </tr>
                   ))}
                 </tbody>

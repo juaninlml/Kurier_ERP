@@ -312,6 +312,30 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                   ))}
                 </ul>
               )}
+              <details className="group border-t px-5 py-3 text-sm">
+                <summary className="cursor-pointer font-medium text-primary"><Tr>Instalar el kiosco y bloquear la tablet</Tr></summary>
+                <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+                  <div>
+                    <p className="font-semibold text-foreground">Android (Chrome)</p>
+                    <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                      <li><Tr>Abre /kiosco en Chrome y autoriza la tablet.</Tr></li>
+                      <li><Tr>Toca «Instalar app del kiosco» (o menú ⋮ → Instalar app). Ábrela desde el ícono: se ve en pantalla completa, sin barra del navegador.</Tr></li>
+                      <li><Tr>Ajustes → Seguridad → Fijar app (o «Fijación de pantalla»): actívalo y pide el PIN para dejar de fijar.</Tr></li>
+                      <li><Tr>Abre el kiosco, toca el botón de apps recientes, el ícono de la app y «Fijar». Para salir se necesita el PIN.</Tr></li>
+                    </ol>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">iPad (Safari)</p>
+                    <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                      <li><Tr>Abre /kiosco en Safari → Compartir → «Agregar a pantalla de inicio».</Tr></li>
+                      <li><Tr>Abre el kiosco desde el ícono y autoriza la tablet ahí (la app instalada no comparte la sesión de Safari).</Tr></li>
+                      <li><Tr>Ajustes → Accesibilidad → Acceso guiado: actívalo con un código.</Tr></li>
+                      <li><Tr>En el kiosco, presiona 3 veces el botón lateral (o de inicio) → Iniciar. Para salir: 3 veces más y el código.</Tr></li>
+                    </ol>
+                  </div>
+                  <p><Tr>El kiosco mantiene la pantalla encendida y bloquea el gesto de atrás, el zoom y el menú de mantener presionado. Deja la tablet conectada al cargador.</Tr></p>
+                </div>
+              </details>
             </Panel>
 
             <Panel title="Reglas de asistencia">

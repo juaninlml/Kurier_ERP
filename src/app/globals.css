@@ -454,3 +454,15 @@ html.dark {
     animation: none;
   }
 }
+
+/* Kiosco de asistencia: sin jalar para recargar, sin zoom con doble toque ni menú de mantener presionado */
+html.kiosk-mode,
+html.kiosk-mode body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.kiosk-mode body {
+  background: var(--sidebar);
+}
