@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/current-user";
 import { AppSidebar, MobileNav } from "@/components/Sidebar";
 import { I18nProvider } from "@/components/I18nProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,10 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [session, lang] = await Promise.all([auth(), getLang()]);
-  const id = Number(session?.user?.id);
-  const user = id ? await prisma.user.findUnique({ where: { id }, select: { name: true, email: true, image: true, role: true, active: true } }) : null;
-  const signedIn = !!user?.active;
+  // Sesión, usuario e idioma en paralelo; la página reutiliza el mismo usuario (cache por petición)
+  const [me, lang] = await Promise.all([getSessionUser(), getLang()]);
+  // Solo los campos que muestra la barra lateral: nunca mandar al navegador el secreto del autenticador
+  const user = me ? { name: me.name, email: me.email, image: me.image, role: me.role } : null;
+  const signedIn = !!user;
 
   return (
     <html lang={lang} className={cn("font-sans", geist.variable)}>

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
-import { safe } from "@/lib/safe-action";
+import { safe, safePublic } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireAdmin, ROLES } from "@/lib/current-user";
 import { ownerEmail, signIn, signOut } from "@/auth";
@@ -170,11 +170,11 @@ async function updateUserImpl(id: number, fd: FormData) {
   revalidatePath("/usuarios");
 }
 
-export const login = safe(loginImpl);
-export const setInvitationIdentity = safe(setInvitationIdentityImpl);
-export const confirmEnrollment = safe(confirmEnrollmentImpl);
-export const startOwnerSetup = safe(startOwnerSetupImpl);
-export const setLanguage = safe(setLanguageImpl);
+export const login = safePublic(loginImpl);
+export const setInvitationIdentity = safePublic(setInvitationIdentityImpl);
+export const confirmEnrollment = safePublic(confirmEnrollmentImpl);
+export const startOwnerSetup = safePublic(startOwnerSetupImpl);
+export const setLanguage = safePublic(setLanguageImpl);
 export const updateProfile = safe(updateProfileImpl);
 export const createInvitation = safe(createInvitationImpl);
 export const createResetLink = safe(createResetLinkImpl);

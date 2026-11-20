@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { safe } from "@/lib/safe-action";
+import { assertSignedIn, safe } from "@/lib/safe-action";
 import { DATE_RE } from "@/lib/orders";
 import { numv, str } from "./helpers";
 
@@ -22,6 +22,11 @@ const cellsSchema = z
  * Regresa { ok } o { error } para que la tabla muestre el estado sin recargar.
  */
 export async function saveOrderCells(date: string, cells: { clientId: number; waveId: number; quantity: number }[]): Promise<{ ok: true } | { error: string }> {
+  try {
+    await assertSignedIn();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
   if (!DATE_RE.test(date)) return { error: "Fecha inválida." };
   const parsed = cellsSchema.safeParse(cells);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -44,8 +49,19 @@ export async function saveOrderCells(date: string, cells: { clientId: number; wa
 
 /** Tarifa por paquete del servicio logístico de un cliente (0 = usar su tarifa negociada). */
 export async function saveOrderRate(clientId: number, rate: number): Promise<{ ok: true } | { error: string }> {
+  try {
+    await assertSignedIn();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  if (!Number.isInteger(clientId) || clientId <= 0) return { error: "Cliente inválido." };
   if (!Number.isFinite(rate) || rate < 0) return { error: "La tarifa debe ser un número mayor o igual a 0." };
-  await prisma.client.update({ where: { id: clientId }, data: { orderRate: Math.round(rate * 100) / 100 } });
+  try {
+    await prisma.client.update({ where: { id: clientId }, data: { orderRate: Math.round(rate * 100) / 100 } });
+  } catch (e) {
+    console.error(e);
+    return { error: "No se pudo guardar la tarifa. Recarga la página e intenta de nuevo." };
+  }
   revalidatePath("/ordenes");
   return { ok: true };
 }

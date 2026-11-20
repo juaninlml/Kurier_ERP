@@ -10,8 +10,10 @@ const nextConfig: NextConfig = {
   // - el logo de respaldo (public/branding)
   // - las fuentes estándar de pdfkit (Helvetica, etc.), que pdfkit carga con imports internos
   //   `#standard-fonts/*`; sin ellas el PDF falla con "Cannot find module …/Helvetica.cjs"
+  // Se incluyen en TODAS las rutas: además de /api/pdf, el archivo en Google Drive genera PDFs desde
+  // las acciones de facturas, cotizaciones, nómina y desde Configuración ("Subir pendientes").
   outputFileTracingIncludes: {
-    "/api/pdf/**": ["./public/branding/**", "./node_modules/pdfkit/js/standard-fonts/**", "./node_modules/pdfkit/js/data/**"],
+    "/**": ["./public/branding/**", "./node_modules/pdfkit/js/standard-fonts/**", "./node_modules/pdfkit/js/data/**"],
   },
 };
 

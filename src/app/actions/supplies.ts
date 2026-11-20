@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { safe } from "@/lib/safe-action";
+import { assertSignedIn, safe } from "@/lib/safe-action";
 import { DATE_RE } from "@/lib/orders";
 import { numv, str } from "./helpers";
 
@@ -24,6 +24,11 @@ const refresh = () => {
 
 /** Guarda celdas de la hoja de insumos (autoguardado). Una cantidad 0 borra la celda. */
 export async function saveSupplyCells(date: string, cells: { clientId: number; colId: number; quantity: number }[]): Promise<{ ok: true } | { error: string }> {
+  try {
+    await assertSignedIn();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
   if (!DATE_RE.test(date)) return { error: "Fecha inválida." };
   const parsed = cellsSchema.safeParse(cells);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };

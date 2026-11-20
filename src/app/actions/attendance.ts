@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authorizeTotp } from "@/auth";
-import { safe } from "@/lib/safe-action";
+import { safe, safePublic } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/current-user";
 import { decryptSecret, encryptSecret, newSecret, verifyCode } from "@/lib/totp";
@@ -309,8 +309,8 @@ async function runAutoCloseImpl() {
 }
 
 export const createKioskDevice = safe(createKioskDeviceImpl);
-export const activateKiosk = safe(activateKioskImpl);
-export const pairKiosk = safe(pairKioskImpl);
+export const activateKiosk = safePublic(activateKioskImpl);
+export const pairKiosk = safePublic(pairKioskImpl);
 export const deactivateKioskDevice = safe(async (id: number) => setKioskDeviceActiveImpl(id, false));
 export const startEmployeeKiosk = safe(startEmployeeKioskImpl);
 export const confirmEmployeeKiosk = safe(confirmEmployeeKioskImpl);

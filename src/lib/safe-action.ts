@@ -1,4 +1,5 @@
 import { unstable_rethrow } from "next/navigation";
+import { getSessionUser } from "./current-user";
 
 export type ActionResult = { error: string } | void;
 
@@ -15,17 +16,36 @@ function toMessage(e: unknown): string {
   return err?.message || "Ocurrió un error inesperado.";
 }
 
-/**
- * Envuelve una server action: si falla, regresa `{ error }` en lugar de lanzar,
- * para que el formulario muestre el mensaje. Las redirecciones de Next.js se respetan.
- */
-export function safe<A extends unknown[]>(fn: (...args: A) => Promise<unknown>) {
+const SESSION_EXPIRED = "Tu sesión terminó. Vuelve a iniciar sesión.";
+
+/** Lanza si no hay una sesión activa. Úsalo en las acciones que no pasan por `safe` (autoguardado de tablas). */
+export async function assertSignedIn() {
+  if (!(await getSessionUser())) throw new Error(SESSION_EXPIRED);
+}
+
+function wrap<A extends unknown[]>(fn: (...args: A) => Promise<unknown>, requireSession: boolean) {
   return async (...args: A): Promise<ActionResult> => {
     try {
+      // Las server actions se pueden invocar desde cualquier ruta (incluso /login, que es pública),
+      // así que la sesión se valida aquí y no solo en el middleware.
+      if (requireSession && !(await getSessionUser())) return { error: SESSION_EXPIRED };
       await fn(...args);
     } catch (e) {
       unstable_rethrow(e);
       return { error: toMessage(e) };
     }
   };
+}
+
+/**
+ * Envuelve una server action: exige sesión activa y, si falla, regresa `{ error }` en lugar de lanzar,
+ * para que el formulario muestre el mensaje. Las redirecciones de Next.js se respetan.
+ */
+export function safe<A extends unknown[]>(fn: (...args: A) => Promise<unknown>) {
+  return wrap(fn, true);
+}
+
+/** Igual que `safe`, pero sin exigir sesión: solo para login, invitaciones, idioma y autorización de tablets. */
+export function safePublic<A extends unknown[]>(fn: (...args: A) => Promise<unknown>) {
+  return wrap(fn, false);
 }

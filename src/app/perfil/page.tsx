@@ -32,7 +32,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       )}
 
       <Panel className="mb-6" bodyClassName="flex flex-wrap items-center gap-4 p-5">
-        <Avatar user={user} className="size-16 text-lg" />
+        <Avatar user={{ name: user.name, email: user.email, image: user.image }} className="size-16 text-lg" />
         <div className="min-w-0 flex-1">
           <div className="text-lg font-semibold">{user.name || user.email}</div>
           <div className="text-sm text-muted-foreground">{user.email}</div>

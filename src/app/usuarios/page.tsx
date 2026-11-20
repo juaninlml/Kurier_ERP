@@ -47,7 +47,7 @@ export default async function UsersPage() {
                 <li key={u.id} className={u.active ? "" : "opacity-60"}>
                   <details className="group">
                     <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-3 hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
-                      <Avatar user={u} />
+                      <Avatar user={{ name: u.name, email: u.email, image: u.image }} />
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium">
                           {u.name || u.email} {u.id === me.id && <span className="text-xs font-normal text-muted-foreground">({t("tú")})</span>}
