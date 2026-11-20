@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { CircleAlert, CircleCheck, Delete, LogIn, LogOut, Utensils, UtensilsCrossed } from "lucide-react";
+import { KidoBrand } from "./KidoLogo";
 import { kioskChangeType, kioskHeartbeat, kioskPunch, type KioskResult } from "@/app/actions/attendance";
 import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
@@ -90,13 +91,13 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-sidebar text-sidebar-foreground select-none">
       <header className="flex shrink-0 items-center justify-between px-6 py-4 text-sm landscape:py-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="grid size-9 place-items-center rounded-lg bg-sidebar-primary font-bold text-sidebar-primary-foreground">K</div>
-          <div className="leading-tight">
-            <div className="font-semibold">{company}</div>
-            <div className="text-[11px] text-sidebar-foreground/60"><Tr>Registro de asistencia ·</Tr> {device}</div>
-          </div>
-        </div>
+        <KidoBrand
+          sub={
+            <>
+              {company} · <Tr>Registro de asistencia ·</Tr> {device}
+            </>
+          }
+        />
       </header>
 
       {/* Vertical: todo en columna. Horizontal (ej. Galaxy Tab A 11): reloj y código a la izquierda, teclado a la derecha */}

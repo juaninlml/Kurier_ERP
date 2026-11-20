@@ -2,6 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
+import { KidoBrand } from "./KidoLogo";
 import { useEffect, useState, useTransition } from "react";
 import {
   BarChart3,
@@ -97,12 +98,14 @@ function useIsActive() {
 function Brand() {
   const t = useT();
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-2">
-      <div className="grid size-9 place-items-center rounded-lg bg-sidebar-primary text-base font-bold text-sidebar-primary-foreground shadow-sm">K</div>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold"><Tr>Kurier ERP</Tr></div>
-        <div className="text-[11px] text-sidebar-foreground/60">{t("Fulfillment · CDMX")}</div>
-      </div>
+    <Link href="/" className="block px-2" aria-label={t("Kurier ERP")}>
+      <KidoBrand
+        sub={
+          <>
+            <span className="font-semibold tracking-[0.14em] text-sidebar-foreground/80">ERP</span> · {t("Fulfillment · CDMX")}
+          </>
+        }
+      />
     </Link>
   );
 }
