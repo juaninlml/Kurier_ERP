@@ -368,6 +368,7 @@ model Employee {
   payrollLines       PayrollLine[]
   punches            Punch[]
   overtimeAuths      OvertimeAuth[]
+  incidents          Incident[]
 }
 
 /// Catálogo de puestos: cada puesto pertenece a un departamento dentro de un área (ej. Almacén › Picking › Auxiliar picking).
@@ -420,6 +421,9 @@ model PayrollLine {
   otherIncome     Float      @default(0)
   deductions      Float      @default(0) // préstamos, anticipos, faltantes…
   deductionNote   String     @default("") // motivo del descuento
+  leaveDays       Float      @default(0) // permisos sin goce de sueldo (se descuentan, pero no son faltas injustificadas)
+  absenceNote     String     @default("") // detalle de faltas y permisos de la semana (sale en el recibo)
+  notice          String     @default("") // aviso en el recibo (ej. descanso por retardos la próxima semana)
   notes           String     @default("")
   gross           Float      @default(0)
   net             Float      @default(0)
@@ -499,6 +503,31 @@ model Punch {
   createdAt   DateTime     @default(now())
 
   @@index([employeeId, workDate])
+}
+
+/// Incidencia de un empleado (fechas AAAA-MM-DD, solo cuentan sus días laborables).
+/// type: FALTA (injustificada) | PERMISO (falta justificada, con o sin goce) | VACACIONES | DESCANSO_RETARDOS (3 retardos en el mes).
+/// status: PENDIENTE | AUTORIZADA | RECHAZADA. source: MANUAL | KIOSCO (falta detectada sin checada) | AUTO (regla de retardos).
+model Incident {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       String
+  startDate  String
+  endDate    String
+  days       Float     @default(1)
+  withPay    Boolean   @default(false)
+  status     String    @default("AUTORIZADA")
+  reason     String    @default("")
+  source     String    @default("MANUAL")
+  monthKey   String    @default("") // AAAA-MM del acumulado de retardos
+  lateDates  String    @default("") // fechas de los retardos que generaron el descanso (separadas por coma)
+  decidedAt  DateTime?
+  decidedBy  String    @default("") // quién autorizó o rechazó
+  createdBy  String    @default("")
+  createdAt  DateTime  @default(now())
+
+  @@index([employeeId, startDate])
 }
 
 /// Horas extra autorizadas para un día: el empleado puede quedarse hasta `until` (HH:MM).

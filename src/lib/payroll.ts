@@ -9,7 +9,8 @@ import { requestLang } from "./request-lang";
  * - Aguinaldo (política de Kurier, arriba del mínimo de ley de 15 días): 15 días el primer año, +1 día por
  *   año de antigüedad hasta el 5º año y +2 días por año después, con tope de 30 días. Corte al 20 de diciembre:
  *   es proporcional a lo trabajado del 1 de enero al 20 de diciembre y, si los días proporcionales llegan a
- *   ,6 o más, se sube al día siguiente; si no, se pagan los días con sus decimales.
+ *   ,6 o más, se sube al día siguiente; si no, se pagan los días con sus decimales. Las faltas injustificadas
+ *   (incluido el descanso por 3 retardos) no cuentan como días trabajados.
  * - Semana: se pagan 6 días; el 7º es de descanso y no se paga (por ahora).
  */
 export const AGUINALDO_BASE_DAYS = 15;
@@ -80,7 +81,13 @@ export function seniorityLabel(s: { years: number; months: number; days: number 
  * Prestaciones de un empleado a una fecha.
  * `vacationTaken`: días de vacaciones ya tomados en el periodo vacacional actual (desde el último aniversario).
  */
-export function benefits(e: { startDate: Date; dailySalary: number; weeklySalary?: number; workDays?: number }, vacationTaken = 0, at = new Date()) {
+export function benefits(
+  e: { startDate: Date; dailySalary: number; weeklySalary?: number; workDays?: number },
+  vacationTaken = 0,
+  at = new Date(),
+  /** Faltas injustificadas del año (incluye los descansos por retardos): se restan de los días del aguinaldo. */
+  unjustified = 0,
+) {
   const s = seniority(e.startDate, at);
   const daily = e.dailySalary;
   // Vacaciones ganadas en el último aniversario (para disfrutar durante este periodo)
@@ -100,8 +107,9 @@ export function benefits(e: { startDate: Date; dailySalary: number; weeklySalary
   // Se cuentan días calendario completos (sin importar la hora guardada en la fecha)
   const dayNo = (d: Date) => Math.floor(d.getTime() / DAY);
   const worked = (until: Date) => Math.min(aguinaldoPeriod, Math.max(0, dayNo(until) - dayNo(from) + 1));
-  const workedToDate = worked(at < cutoff ? at : cutoff);
-  const workedAtCutoff = worked(cutoff);
+  const absent = Math.max(0, unjustified);
+  const workedToDate = Math.max(0, worked(at < cutoff ? at : cutoff) - absent);
+  const workedAtCutoff = Math.max(0, worked(cutoff) - absent);
   // Días de aguinaldo según la antigüedad cumplida a la fecha de corte
   const aguinaldoDays = aguinaldoDaysFor(seniority(e.startDate, cutoff).years);
   const aguinaldoRawDays = round2((aguinaldoDays * workedAtCutoff) / aguinaldoPeriod);
@@ -125,6 +133,8 @@ export function benefits(e: { startDate: Date; dailySalary: number; weeklySalary
     aguinaldoPayDays,
     aguinaldoCutoff: cutoff,
     aguinaldoDaysToDate: round2((aguinaldoDays * workedToDate) / aguinaldoPeriod),
+    /** Faltas injustificadas descontadas de los días del aguinaldo. */
+    aguinaldoAbsences: absent,
     weeklySalary: round2(weeklyOf(e)),
     // semanal × 52 semanas ÷ 12 meses
     monthlySalary: round2((weeklyOf(e) * 52) / 12),
@@ -171,6 +181,7 @@ export const weeklyOf = (e: { weeklySalary?: number; dailySalary: number; workDa
  * Importes de un renglón de nómina.
  * - Sueldo = semanal × días pagados ÷ días laborables (= salario diario × días).
  * - Faltas injustificadas: se descuentan a salario diario.
+ * - Permisos sin goce: también se descuentan a salario diario, pero no cuentan como faltas injustificadas.
  * - Las vacaciones se pagan dentro de los días; aparte se suma la prima vacacional (25%).
  */
 export function payrollLine(l: {
@@ -179,6 +190,8 @@ export function payrollLine(l: {
   hoursPerDay?: number;
   days: number;
   absences: number;
+  /** Permisos sin goce de sueldo. */
+  leaveDays?: number;
   vacationDays: number;
   overtime: number;
   bonus: number;
@@ -189,15 +202,17 @@ export function payrollLine(l: {
   const r = salaryRates(l.weeklySalary, l.workDays, l.hoursPerDay);
   const base = round2((l.weeklySalary * l.days) / r.workDays);
   const absenceDeduction = round2((l.weeklySalary * Math.min(l.absences, l.days)) / r.workDays);
+  const leaveDeduction = round2((l.weeklySalary * Math.min(l.leaveDays ?? 0, Math.max(0, l.days - l.absences))) / r.workDays);
   const vacationPremium = round2(l.vacationDays * r.daily * VACATION_PREMIUM);
   const gross = round2(base + vacationPremium + l.overtime + l.bonus + l.aguinaldo + l.otherIncome);
-  const totalDeductions = round2(absenceDeduction + l.deductions);
+  const totalDeductions = round2(absenceDeduction + leaveDeduction + l.deductions);
   return {
     daily: round2(r.daily),
     hourly: round2(r.hourly),
     workDays: r.workDays,
     base,
     absenceDeduction,
+    leaveDeduction,
     vacationPremium,
     gross,
     totalDeductions,

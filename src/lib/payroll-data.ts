@@ -1,27 +1,50 @@
 import { prisma } from "./db";
-import { benefits, seniority } from "./payroll";
+import { aguinaldoCutoff, benefits, seniority } from "./payroll";
+import { workdaysIn } from "./incidents";
 
-/** Días de vacaciones tomados por empleado desde su último aniversario (según las nóminas registradas). */
-export async function vacationTakenMap(employees: { id: number; startDate: Date }[], at = new Date()) {
+/**
+ * Días de vacaciones tomados por empleado desde su último aniversario: los capturados en nóminas, más las
+ * vacaciones autorizadas en días que todavía no entran en ninguna nómina (programadas).
+ */
+export async function vacationTakenMap(employees: { id: number; startDate: Date; workDays: number }[], at = new Date()) {
   if (!employees.length) return new Map<number, number>();
-  const lines = await prisma.payrollLine.findMany({
-    where: { employeeId: { in: employees.map((e) => e.id) }, vacationDays: { gt: 0 } },
-    select: { employeeId: true, vacationDays: true, run: { select: { periodStart: true } } },
-  });
+  const ids = employees.map((e) => e.id);
+  const [lines, vacations] = await Promise.all([
+    prisma.payrollLine.findMany({ where: { employeeId: { in: ids } }, select: { employeeId: true, vacationDays: true, run: { select: { periodStart: true, periodEnd: true } } } }),
+    prisma.incident.findMany({ where: { employeeId: { in: ids }, type: "VACACIONES", status: "AUTORIZADA" } }),
+  ]);
   const map = new Map<number, number>();
   for (const e of employees) {
     const since = seniority(e.startDate, at).lastAnniversary;
-    map.set(
-      e.id,
-      lines.filter((l) => l.employeeId === e.id && l.run.periodStart >= since).reduce((a, l) => a + l.vacationDays, 0),
-    );
+    const mine = lines.filter((l) => l.employeeId === e.id);
+    const paid = mine.filter((l) => l.run.periodStart >= since).reduce((a, l) => a + l.vacationDays, 0);
+    // Lo que ya cubre una nómina se cuenta ahí; lo posterior a la última nómina, desde la incidencia
+    const lastPaid = mine.reduce((m, l) => (l.run.periodEnd.toISOString().slice(0, 10) > m ? l.run.periodEnd.toISOString().slice(0, 10) : m), "");
+    const sinceStr = since.toISOString().slice(0, 10);
+    const scheduled = vacations
+      .filter((v) => v.employeeId === e.id)
+      .reduce((a, v) => a + workdaysIn(v.startDate, v.endDate, e).filter((d) => d > lastPaid && d >= sinceStr).length, 0);
+    map.set(e.id, paid + scheduled);
   }
   return map;
 }
 
-export async function employeeBenefits<T extends { id: number; startDate: Date; dailySalary: number }>(employees: T[]) {
-  const taken = await vacationTakenMap(employees);
-  return employees.map((e) => ({ employee: e, b: benefits(e, taken.get(e.id) ?? 0) }));
+/** Faltas injustificadas del año (nóminas del 1 de enero al corte del aguinaldo): se restan de los días del aguinaldo. */
+export async function unjustifiedMap(employeeIds: number[], year = new Date().getUTCFullYear()) {
+  const map = new Map<number, number>();
+  if (!employeeIds.length) return map;
+  const rows = await prisma.payrollLine.groupBy({
+    by: ["employeeId"],
+    where: { employeeId: { in: employeeIds }, absences: { gt: 0 }, run: { periodStart: { gte: new Date(Date.UTC(year, 0, 1)), lte: aguinaldoCutoff(year) } } },
+    _sum: { absences: true },
+  });
+  for (const r of rows) map.set(r.employeeId, r._sum.absences ?? 0);
+  return map;
+}
+
+export async function employeeBenefits<T extends { id: number; startDate: Date; dailySalary: number; workDays: number }>(employees: T[]) {
+  const [taken, absent] = await Promise.all([vacationTakenMap(employees), unjustifiedMap(employees.map((e) => e.id))]);
+  return employees.map((e) => ({ employee: e, b: benefits(e, taken.get(e.id) ?? 0, new Date(), absent.get(e.id) ?? 0) }));
 }
 
 /** Catálogo de puestos en orden (área › departamento › puesto). */

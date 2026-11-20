@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FileText, Gift } from "lucide-react";
+import { AlarmClock, CalendarX2, FileText, Gift } from "lucide-react";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { overtimePay, payrollLine } from "@/lib/payroll";
@@ -24,7 +24,13 @@ export type EditorLine = {
   hoursPerDay: number;
   days: number;
   absences: number;
+  /** Permisos sin goce de sueldo (se descuentan, pero no son faltas injustificadas). */
+  leaveDays: number;
   vacationDays: number;
+  /** Detalle de faltas, permisos y vacaciones de la semana (de las incidencias). */
+  absenceNote: string;
+  /** Aviso del recibo (ej. descanso por retardos la próxima semana). */
+  notice: string;
   /** Horas extra; el importe se calcula (horas × salario por hora × tarifa de horas extra). */
   overtimeHours: number;
   bonus: number;
@@ -40,7 +46,7 @@ export type EditorLine = {
   aguinaldoDue: number;
 };
 
-type NumKey = "days" | "absences" | "vacationDays" | "overtimeHours" | "bonus" | "aguinaldo" | "otherIncome" | "deductions";
+type NumKey = "days" | "absences" | "leaveDays" | "vacationDays" | "overtimeHours" | "bonus" | "aguinaldo" | "otherIncome" | "deductions";
 
 export function PayrollEditor({
   action,
@@ -86,11 +92,12 @@ export function PayrollEditor({
   const groups = groupByOrg(calc, (c) => c.l, catalog);
   const net = (cs: typeof calc) => cs.reduce((a, c) => a + c.t.net, 0);
   const payload = lines.map(
-    ({ id, workDays, days, absences, vacationDays, overtimeHours, bonus, bonusNote, aguinaldo, otherIncome, deductions, deductionNote, notes }) => ({
+    ({ id, workDays, days, absences, leaveDays, vacationDays, overtimeHours, bonus, bonusNote, aguinaldo, otherIncome, deductions, deductionNote, notes }) => ({
       id,
       workDays,
       days,
       absences,
+      leaveDays,
       vacationDays,
       overtimeHours,
       bonus,
@@ -133,7 +140,7 @@ export function PayrollEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-3xl text-xs text-muted-foreground">
           <Tr>
-            Salario diario = semanal ÷ días laborables (5 o 6) · por hora = diario ÷ horas de la jornada. Las faltas injustificadas se descuentan a salario
+            Salario diario = semanal ÷ días laborables (5 o 6) · por hora = diario ÷ horas de la jornada. Las faltas injustificadas y los permisos sin goce se descuentan a salario
             diario. Las vacaciones se pagan dentro de los días y aparte se suma la prima vacacional del 25%.
           </Tr>
         </p>
@@ -251,6 +258,9 @@ export function PayrollEditor({
                         {num(l, "absences", "Faltas injustif.", {
                           hint: t.absenceDeduction ? `−${formatMoney(t.absenceDeduction)}` : undefined,
                         })}
+                        {num(l, "leaveDays", "Permisos sin goce", {
+                          hint: t.leaveDeduction ? `−${formatMoney(t.leaveDeduction)}` : undefined,
+                        })}
                         {num(l, "vacationDays", "Vacaciones", {
                           warn: l.vacationDays > l.vacationAvailable,
                           hint: t.vacationPremium ? `prima ${formatMoney(t.vacationPremium)}` : undefined,
@@ -265,12 +275,12 @@ export function PayrollEditor({
                             : tr("Horas; el importe se calcula"),
                         })}
                         {num(l, "aguinaldo", "Aguinaldo", { money: true })}
-                        {num(l, "deductions", "Préstamo / otros", {
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[140px_140px_repeat(3,minmax(0,1fr))]">
+                        {num(l, "otherIncome", "Otras percepciones", {
                           money: true,
                         })}
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[140px_repeat(3,minmax(0,1fr))]">
-                        {num(l, "otherIncome", "Otras percepciones", {
+                        {num(l, "deductions", "Préstamo / otros", {
                           money: true,
                         })}
                         {(
@@ -299,6 +309,20 @@ export function PayrollEditor({
                           </label>
                         ))}
                       </div>
+                      {(l.absenceNote || l.notice) && (
+                        <div className="space-y-1.5 text-xs">
+                          {l.absenceNote && (
+                            <p className="flex items-start gap-1.5 text-muted-foreground">
+                              <CalendarX2 className="mt-0.5 size-3.5 shrink-0" /> {l.absenceNote}
+                            </p>
+                          )}
+                          {l.notice && (
+                            <p className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                              <AlarmClock className="mt-0.5 size-3.5 shrink-0" /> {l.notice}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <dl className="space-y-1 rounded-lg bg-muted/40 p-3 text-sm">
@@ -330,6 +354,15 @@ export function PayrollEditor({
                             v1: formatMoney(t.daily),
                           })}
                           v={-t.absenceDeduction}
+                        />
+                      )}
+                      {t.leaveDeduction > 0 && (
+                        <Row
+                          k={tr("Permisos sin goce ({v0} × {v1})", {
+                            v0: formatNumber(l.leaveDays),
+                            v1: formatMoney(t.daily),
+                          })}
+                          v={-t.leaveDeduction}
                         />
                       )}
                       {l.deductions > 0 && <Row k={tr("Préstamo / otros")} v={-l.deductions} />}

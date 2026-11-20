@@ -125,3 +125,46 @@ export async function renderOrdersSummary(clientId: number, from: string, to: st
     buffer: await renderToBuffer(<OrdersSummaryPdf s={s} data={data} />),
   };
 }
+
+/** Formato de una incidencia (vacaciones, permiso, falta o descanso por retardos). */
+export async function renderIncident(id: number) {
+  const { seniority, vacationDaysFor, VACATION_PREMIUM } = await import("@/lib/payroll");
+  const { vacationTakenMap } = await import("@/lib/payroll-data");
+  const { addDaysStr, isWorkday } = await import("@/lib/attendance");
+  const { incidentFolio } = await import("@/lib/incidents");
+  const [s, i] = await Promise.all([getSettings(), prisma.incident.findUnique({ where: { id }, include: { employee: true } })]);
+  if (!i) return null;
+  const e = i.employee;
+  const at = new Date(`${i.startDate}T12:00:00Z`);
+  const sen = seniority(e.startDate, at);
+  // Siempre en español (los formatos no se traducen)
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const senLabel =
+    [sen.years ? plural(sen.years, "año", "años") : "", sen.months ? plural(sen.months, "mes", "meses") : "", !sen.years && !sen.months ? plural(sen.days, "día", "días") : ""]
+      .filter(Boolean)
+      .join(", ");
+  let vacation;
+  if (i.type === "VACACIONES") {
+    const total = (await vacationTakenMap([e], at)).get(e.id) ?? 0;
+    const entitled = vacationDaysFor(sen.years);
+    // Las autorizadas ya están en el total (por nómina o programadas); las pendientes no
+    const takenBefore = Math.max(0, i.status === "AUTORIZADA" ? total - i.days : total);
+    let back = addDaysStr(i.endDate, 1);
+    while (!isWorkday(back, e)) back = addDaysStr(back, 1);
+    vacation = {
+      seniority: senLabel,
+      periodFrom: sen.lastAnniversary,
+      periodTo: new Date(sen.nextAnniversary.getTime() - 86400000),
+      entitled,
+      takenBefore,
+      balance: Math.round((entitled - takenBefore - i.days) * 100) / 100,
+      premium: Math.round(i.days * e.dailySalary * VACATION_PREMIUM * 100) / 100,
+      returnDate: back,
+    };
+  }
+  const { IncidentPdf } = await import("./incidents");
+  return {
+    filename: `${incidentFolio(i)}_${slug(e.name)}.pdf`,
+    buffer: await renderToBuffer(<IncidentPdf s={s} i={i} e={e} seniority={senLabel} vacation={vacation} />),
+  };
+}

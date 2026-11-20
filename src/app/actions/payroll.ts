@@ -9,6 +9,8 @@ import { redirect } from "next/navigation";
 import { fromInputDate, round2, formatDateEs } from "@/lib/money";
 import { FREQUENCIES, payrollLine, weeklyOf, overtimePay } from "@/lib/payroll";
 import { attendanceForPeriod } from "@/lib/attendance";
+import { syncPayrollIncidents } from "@/lib/incidents";
+import { getCurrentUser } from "@/lib/current-user";
 import { numv, str } from "./helpers";
 
 // ───────────── Gastos fijos ─────────────
@@ -199,6 +201,9 @@ async function createPayrollRunImpl(fd: FormData) {
   const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
   // Asistencia del kiosco: faltas y horas extra autorizadas del periodo (solo empleados que ya checan)
   const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const me = await getCurrentUser();
+  // Incidencias: faltas (kiosco y registradas), permisos, vacaciones autorizadas y descansos por retardos
+  const incidents = await syncPayrollIncidents(employees, iso(periodStart), iso(periodEnd), me.name || me.email);
   const [attendance, cfg] = await Promise.all([
     attendanceForPeriod(employees.map((e) => e.id), iso(periodStart), iso(periodEnd)),
     prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } }),
@@ -211,13 +216,18 @@ async function createPayrollRunImpl(fd: FormData) {
     const tracked = !!att?.tracked;
     const overtimeHours = tracked ? Math.round((att!.overtimeMin / 60) * 100) / 100 : 0;
     const overtime = overtimePay(overtimeHours, weeklySalary, workDays, e.hoursPerDay, cfg?.overtimeRate ?? 2);
+    const inc = incidents.get(e.id);
+    const absences = Math.min(days, inc?.absences ?? 0);
     const input = {
       weeklySalary,
       workDays,
       hoursPerDay: e.hoursPerDay,
       days,
-      absences: tracked ? Math.min(days, att!.absences) : 0,
-      vacationDays: 0,
+      absences,
+      leaveDays: Math.min(days - absences, inc?.leaveDays ?? 0),
+      vacationDays: Math.min(days, inc?.vacationDays ?? 0),
+      absenceNote: inc?.absenceNote ?? "",
+      notice: inc?.notice ?? "",
       overtimeHours,
       overtime,
       notes: tracked
@@ -243,6 +253,7 @@ const lineSchema = z.object({
   workDays: z.union([z.literal(5), z.literal(6)]),
   days: z.number().min(0).max(31),
   absences: z.number().min(0),
+  leaveDays: z.number().min(0).default(0),
   vacationDays: z.number().min(0),
   overtimeHours: z.number().min(0).max(168),
   bonus: z.number().min(0),
@@ -265,7 +276,7 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
   const updates = parsed.data.map((l) => {
     const cur = byId.get(l.id);
     if (!cur) throw new Error("Renglón de nómina inválido.");
-    if (l.absences > l.days) throw new Error("Las faltas no pueden ser más que los días a pagar.");
+    if (l.absences + l.leaveDays > l.days) throw new Error("Las faltas y permisos sin goce no pueden ser más que los días a pagar.");
     if (l.days > l.workDays) throw new Error(`Los días a pagar no pueden ser más que la jornada de ${l.workDays} días.`);
     if (l.bonus > 0 && !l.bonusNote.trim()) throw new Error("Escribe el motivo de cada bono.");
     const weeklySalary = cur.weeklySalary || cur.dailySalary * cur.workDays;
@@ -284,6 +295,36 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
       data: { total: round2(total), notes: str(fd, "notes"), payDate: fromInputDate(str(fd, "payDate")), brandId },
     }),
   ]);
+  revalidatePath(`/nomina/semanas/${id}`);
+  revalidatePath("/nomina");
+}
+
+/**
+ * Vuelve a leer las incidencias de la semana (faltas, permisos, vacaciones y descansos por retardos) en una nómina
+ * en borrador. Solo cambia faltas, permisos sin goce, vacaciones y sus notas; lo demás se respeta.
+ */
+async function refreshPayrollIncidentsImpl(id: number) {
+  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: { include: { employee: true } } } });
+  if (run.status === "PAGADA") throw new Error("La nómina ya está pagada. Regrésala a borrador para actualizarla.");
+  const me = await getCurrentUser();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const incidents = await syncPayrollIncidents(run.lines.map((l) => l.employee), iso(run.periodStart), iso(run.periodEnd), me.name || me.email);
+  let total = 0;
+  const updates = run.lines.map((l) => {
+    const inc = incidents.get(l.employeeId);
+    const absences = Math.min(l.days, inc?.absences ?? 0);
+    const data = {
+      absences,
+      leaveDays: Math.min(l.days - absences, inc?.leaveDays ?? 0),
+      vacationDays: Math.min(l.days, inc?.vacationDays ?? 0),
+      absenceNote: inc?.absenceNote ?? "",
+      notice: inc?.notice ?? "",
+    };
+    const t = payrollLine({ ...l, ...data, weeklySalary: l.weeklySalary || l.dailySalary * l.workDays });
+    total += t.net;
+    return prisma.payrollLine.update({ where: { id: l.id }, data: { ...data, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net } });
+  });
+  await prisma.$transaction([...updates, prisma.payrollRun.update({ where: { id }, data: { total: round2(total) } })]);
   revalidatePath(`/nomina/semanas/${id}`);
   revalidatePath("/nomina");
 }
@@ -347,5 +388,6 @@ export const deleteJobPosition = safe(deleteJobPositionImpl);
 export const createPayrollRun = safe(createPayrollRunImpl);
 export const savePayrollRun = safe(savePayrollRunImpl);
 export const payPayrollRun = safe(payPayrollRunImpl);
+export const refreshPayrollIncidents = safe(refreshPayrollIncidentsImpl);
 export const reopenPayrollRun = safe(reopenPayrollRunImpl);
 export const deletePayrollRun = safe(deletePayrollRunImpl);

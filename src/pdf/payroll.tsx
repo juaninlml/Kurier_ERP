@@ -26,9 +26,20 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
   const t = payrollLine({ ...l, weeklySalary: weekly });
   const company = s.legalName || s.tradeName;
   const e = l.employee;
+  // Detalle de incidencias: las faltas van bajo su deducción; permisos y vacaciones, bajo la de permisos o el sueldo
+  const parts = l.absenceNote.split(" · ").filter(Boolean);
+  const unjustNote = parts.find((p) => p.startsWith("Faltas injustificadas:"))?.replace("Faltas injustificadas: ", "");
+  const otherNote = parts.find((p) => p.startsWith("Permiso sin goce:"))?.replace("Permiso sin goce: ", "");
+  const vacDates = parts.find((p) => p.startsWith("Vacaciones:"))?.replace("Vacaciones: ", "");
+  const sueldoNote = [
+    l.vacationDays ? `Incluye ${formatNumber(l.vacationDays)} día(s) de vacaciones${vacDates ? ` (${vacDates})` : ""}` : "",
+    ...parts.filter((p) => p.startsWith("Permiso con goce:")),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const earnings: [string, number, string?][] = [
-    [`Sueldo (${formatNumber(l.days)} día${l.days === 1 ? "" : "s"} × ${formatMoney(t.daily)})`, t.base, l.vacationDays ? `Incluye ${formatNumber(l.vacationDays)} día(s) de vacaciones` : undefined],
+    [`Sueldo (${formatNumber(l.days)} día${l.days === 1 ? "" : "s"} × ${formatMoney(t.daily)})`, t.base, sueldoNote || undefined],
     ...(t.vacationPremium ? ([["Prima vacacional (25%)", t.vacationPremium]] as [string, number][]) : []),
     ...(l.bonus ? ([["Bono semanal", l.bonus, l.bonusNote]] as [string, number, string][]) : []),
     ...(l.overtime ? ([[l.overtimeHours ? `Horas extra (${formatNumber(l.overtimeHours)} h)` : "Horas extra", l.overtime]] as [string, number][]) : []),
@@ -36,7 +47,10 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
     ...(l.otherIncome ? ([["Otras percepciones", l.otherIncome]] as [string, number][]) : []),
   ];
   const deductions: [string, number, string?][] = [
-    ...(t.absenceDeduction ? ([[`Faltas injustificadas (${formatNumber(l.absences)} × ${formatMoney(t.daily)})`, t.absenceDeduction]] as [string, number][]) : []),
+    ...(t.absenceDeduction
+      ? ([[`Faltas injustificadas (${formatNumber(l.absences)} × ${formatMoney(t.daily)})`, t.absenceDeduction, unjustNote]] as [string, number, string?][])
+      : []),
+    ...(t.leaveDeduction ? ([[`Permisos sin goce (${formatNumber(l.leaveDays)} × ${formatMoney(t.daily)})`, t.leaveDeduction, otherNote]] as [string, number, string?][]) : []),
     ...(l.deductions ? ([["Préstamo / otros descuentos", l.deductions, l.deductionNote]] as [string, number, string][]) : []),
   ];
 
@@ -88,7 +102,7 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
           <Pair k="Periodo" v={`${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)}`} bold />
           <Pair k="Fecha de pago" v={formatDateEs(run.payDate)} />
           <Pair k="Jornada" v={`${l.workDays} días · ${formatNumber(l.hoursPerDay)} h`} />
-          <Pair k="Días pagados" v={`${formatNumber(Math.max(0, l.days - l.absences))} de ${l.workDays}`} />
+          <Pair k="Días pagados" v={`${formatNumber(Math.max(0, l.days - l.absences - l.leaveDays))} de ${l.workDays}`} />
         </View>
       </View>
 
@@ -136,6 +150,14 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
         </View>
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: c.orange }}>{formatMoney(t.net)}</Text>
       </View>
+      {l.notice ? (
+        <View style={{ marginTop: 4, backgroundColor: c.peach, borderLeftWidth: 2, borderLeftColor: c.orange, paddingVertical: 3, paddingHorizontal: 5 }}>
+          <Text style={{ fontSize: 7.3, lineHeight: 1.3 }}>
+            <Text style={{ fontFamily: "Helvetica-Bold", color: c.orange }}>AVISO: </Text>
+            {l.notice}
+          </Text>
+        </View>
+      ) : null}
       {l.notes ? <Text style={{ fontSize: 7.5, color: GRAY, marginTop: 3 }}>Comentarios: {l.notes}</Text> : null}
 
       {/* Firma */}

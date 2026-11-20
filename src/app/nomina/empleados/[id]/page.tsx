@@ -8,7 +8,8 @@ import { EmployeeKiosk } from "@/components/EmployeeKiosk";
 import { PdfLink } from "@/components/list";
 import { PageHeader, Panel, Stat, Empty } from "@/components/kit";
 import { Badge } from "@/components/ui/badge";
-import { vacationTakenMap } from "@/lib/payroll-data";
+import { unjustifiedMap, vacationTakenMap } from "@/lib/payroll-data";
+import { EmployeeIncidents } from "@/components/EmployeeIncidents";
 import { aguinaldoDaysFor, benefits, monthlyCost, salaryRates, seniorityLabel, vacationDaysFor } from "@/lib/payroll";
 import { formatDate, formatMoney, formatNumber } from "@/lib/money";
 import { Tr } from "@/components/Tr";
@@ -24,8 +25,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
     include: { payrollLines: { include: { run: true }, orderBy: { run: { periodStart: "desc" } }, take: 20 } },
   });
   if (!e) notFound();
-  const taken = (await vacationTakenMap([e])).get(e.id) ?? 0;
-  const b = benefits(e, taken);
+  const [takenMap, absentMap] = await Promise.all([vacationTakenMap([e]), unjustifiedMap([e.id])]);
+  const taken = takenMap.get(e.id) ?? 0;
+  const absent = absentMap.get(e.id) ?? 0;
+  const b = benefits(e, taken, new Date(), absent);
   const rates = salaryRates(b.weeklySalary, e.workDays, e.hoursPerDay);
   const s = b.seniority;
   const year = new Date().getFullYear();
@@ -52,7 +55,15 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           hint={s.years >= 1 ? t("{v0} del periodo · {v1} tomados", { v0: b.vacationEntitled, v1: formatNumber(b.vacationTaken) }) : `Al cumplir 1 año tendrá 12 días`}
           icon={Palmtree}
         />
-        <Stat label={t("Aguinaldo {v0} a hoy", { v0: year })} value={formatMoney(b.aguinaldoToDate)} hint={t("{v0} días · al corte 20/dic: {v1} ({v2} días)", { v0: formatNumber(b.aguinaldoDaysToDate), v1: formatMoney(b.aguinaldoYear), v2: formatNumber(b.aguinaldoPayDays) })} icon={Gift} />
+        <Stat
+          label={t("Aguinaldo {v0} a hoy", { v0: year })}
+          value={formatMoney(b.aguinaldoToDate)}
+          hint={
+            t("{v0} días · al corte 20/dic: {v1} ({v2} días)", { v0: formatNumber(b.aguinaldoDaysToDate), v1: formatMoney(b.aguinaldoYear), v2: formatNumber(b.aguinaldoPayDays) }) +
+            (absent ? ` · ${t("−{v0} faltas injustificadas", { v0: formatNumber(absent) })}` : "")
+          }
+          icon={Gift}
+        />
         <Stat label="Costo mensual" value={formatMoney(monthlyCost(e))} hint="Sueldo + aguinaldo y prima prorrateados" icon={Timer} />
       </div>
 
@@ -69,6 +80,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
               [t("Vacaciones acumuladas hacia el próximo aniversario"), t("{v0} de {v1} días", { v0: formatNumber(b.vacationAccrued), v1: b.nextEntitlement })],
               [t("Prima vacacional (25%)"), t("{v0} por día · {v1} por los días disponibles", { v0: formatMoney(b.vacationPremiumPerDay), v1: formatMoney(b.vacationPremiumAvailable) })],
               [t("Aguinaldo {v0} ({v1} días por antigüedad)", { v0: new Date().getFullYear(), v1: b.aguinaldoDays }), t("{v0} a hoy · {v1} al corte del 20 de diciembre", { v0: formatMoney(b.aguinaldoToDate), v1: formatMoney(b.aguinaldoYear) })],
+              ...(absent
+                ? [[t("Faltas injustificadas descontadas del aguinaldo"), t("{v0} día(s) no cuentan como trabajados (incluye descansos por retardos)", { v0: formatNumber(absent) })]]
+                : []),
               [
                 t("Días de aguinaldo a pagar"),
                 b.aguinaldoRawDays === b.aguinaldoPayDays
@@ -118,8 +132,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                         {l.run.status !== "PAGADA" && <span className="ml-2 text-xs text-amber-700"><Tr>borrador</Tr></span>}
                       </td>
                       <td className="text-right tabular-nums">
-                        {formatNumber(l.days - l.absences)}
+                        {formatNumber(l.days - l.absences - l.leaveDays)}
                         {l.absences > 0 && <span className="text-xs text-rose-600"> ({formatNumber(l.absences)} <Tr>faltas)</Tr></span>}
+                        {l.leaveDays > 0 && <span className="text-xs text-sky-700"> ({formatNumber(l.leaveDays)} <Tr>sin goce)</Tr></span>}
                       </td>
                       <td className="text-right tabular-nums">{l.vacationDays ? formatNumber(l.vacationDays) : "—"}</td>
                       <td className="text-right font-medium tabular-nums">{formatMoney(l.net)}</td>
@@ -133,6 +148,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             </div>
           )}
         </Panel>
+      </div>
+
+      <div className="mb-6">
+        <EmployeeIncidents e={e} unjustifiedYear={absent} />
       </div>
 
       <div className="mb-6">

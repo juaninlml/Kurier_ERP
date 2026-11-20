@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/current-user";
 import { decryptSecret, encryptSecret, newSecret, verifyCode } from "@/lib/totp";
 import { autoCloseShifts, localParts, nextAction, PUNCH_LABEL, PUNCH_TYPES, toMin, validAlternatives, zonedTime, type PunchType } from "@/lib/attendance";
+import { LATES_PER_REST, monthLates } from "@/lib/incidents";
 import { numv, str } from "./helpers";
 
 const KIOSK_COOKIE = "kurier_kiosk";
@@ -109,8 +110,16 @@ export async function kioskPunch(code: string): Promise<KioskResult> {
 
   const punch = await prisma.punch.create({ data: { employeeId: e.id, type, at: now, workDate: today, source: "KIOSCO", deviceId: device.id } });
   const lateMin = type === "ENTRADA" ? Math.max(0, Math.round(nowMin - toMin(e.scheduleStart))) : 0;
+  // Retardos acumulados del mes: cada 3 = un día de descanso sin goce la semana siguiente
+  let lateNote = "";
+  if (type === "ENTRADA" && lateMin > tolerance) {
+    const n = (await monthLates(e.id, today.slice(0, 7), today)).length;
+    const k = ((n - 1) % LATES_PER_REST) + 1;
+    if (n > 0)
+      lateNote = k === LATES_PER_REST ? ` Retardo ${k} de ${LATES_PER_REST} del mes: te toca un día de descanso sin goce la próxima semana.` : ` Retardo ${k} de ${LATES_PER_REST} del mes.`;
+  }
   const messages: Record<PunchType, string> = {
-    ENTRADA: lateMin > tolerance ? `Llegaste ${lateMin} min tarde (entrada ${e.scheduleStart}).` : "¡Buen día!",
+    ENTRADA: lateMin > tolerance ? `Llegaste ${lateMin} min tarde (entrada ${e.scheduleStart}).${lateNote}` : "¡Buen día!",
     SALIDA_COMIDA: `Provecho. Regreso antes de las ${e.mealEnd}.`,
     REGRESO_COMIDA: "Bienvenido de regreso.",
     SALIDA: "¡Hasta mañana!",

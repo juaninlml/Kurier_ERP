@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, RotateCcw, Trash2 } from "lucide-react";
+import { BadgeCheck, CalendarSync, RotateCcw, Trash2 } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { deletePayrollRun, payPayrollRun, reopenPayrollRun, savePayrollRun } from "@/app/actions/payroll";
+import { deletePayrollRun, payPayrollRun, refreshPayrollIncidents, reopenPayrollRun, savePayrollRun } from "@/app/actions/payroll";
 import { PageHeader } from "@/components/kit";
 import { Form } from "@/components/Form";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -10,7 +10,7 @@ import { PayrollEditor } from "@/components/PayrollEditor";
 import { Badge } from "@/components/ui/badge";
 import { benefits, overtimeHoursFrom, seniority } from "@/lib/payroll";
 import { brandOptions } from "@/lib/brands";
-import { jobCatalog, vacationTakenMap } from "@/lib/payroll-data";
+import { jobCatalog, unjustifiedMap, vacationTakenMap } from "@/lib/payroll-data";
 import { formatDate, formatMoney, toInputDate } from "@/lib/money";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
@@ -34,12 +34,12 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const payer = brands.find((b) => b.id === (run.brandId ?? 0))?.name.replace(/ \(principal\)$/, "") ?? "";
   const paid = run.status === "PAGADA";
   const employees = run.lines.map((l) => l.employee);
-  const taken = await vacationTakenMap(employees, run.payDate);
+  const [taken, absent] = await Promise.all([vacationTakenMap(employees, run.payDate), unjustifiedMap(employees.map((e) => e.id), run.payDate.getUTCFullYear())]);
 
   const lines = run.lines.map((l) => {
     // Vacaciones disponibles sin contar lo capturado en esta misma nómina
     const inPeriod = run.periodStart >= seniority(l.employee.startDate, run.payDate).lastAnniversary;
-    const b = benefits(l.employee, (taken.get(l.employeeId) ?? 0) - (inPeriod ? l.vacationDays : 0), run.payDate);
+    const b = benefits(l.employee, (taken.get(l.employeeId) ?? 0) - (inPeriod ? l.vacationDays : 0), run.payDate, absent.get(l.employeeId) ?? 0);
     return {
       id: l.id,
       employeeId: l.employeeId,
@@ -52,7 +52,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       hoursPerDay: l.hoursPerDay,
       days: l.days,
       absences: l.absences,
+      leaveDays: l.leaveDays,
       vacationDays: l.vacationDays,
+      absenceNote: l.absenceNote,
+      notice: l.notice,
       // Nóminas anteriores solo tenían el importe: se convierte a horas con la tarifa actual
       overtimeHours: l.overtimeHours || overtimeHoursFrom(l.overtime, l.weeklySalary || l.dailySalary * l.workDays, l.workDays, l.hoursPerDay, overtimeRate),
       bonus: l.bonus,
@@ -100,6 +103,14 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             </Form>
           ) : (
             <>
+              <Form action={refreshPayrollIncidents.bind(null, run.id)}>
+                <ConfirmButton
+                  message={t("¿Actualizar faltas, permisos, vacaciones y descansos por retardos con las incidencias registradas? Guarda antes los cambios pendientes.")}
+                  className="btn-secondary"
+                >
+                  <CalendarSync className="size-4" /> <Tr>Actualizar incidencias</Tr>
+                </ConfirmButton>
+              </Form>
               <Form action={deletePayrollRun.bind(null, run.id)}>
                 <ConfirmButton message={t("¿Eliminar esta nómina?")} className="btn-danger">
                   <Trash2 className="size-4" /> <Tr>Eliminar</Tr>
@@ -117,7 +128,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           )
         }
       />
-      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} overtimeRate={overtimeRate} brands={brands} brandId={run.brandId ?? 0} catalog={catalog} />
+      {/* key: al actualizar incidencias (o guardar) el editor se vuelve a montar con los datos nuevos */}
+      <PayrollEditor key={run.updatedAt.getTime()} action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} overtimeRate={overtimeRate} brands={brands} brandId={run.brandId ?? 0} catalog={catalog} />
     </div>
   );
 }

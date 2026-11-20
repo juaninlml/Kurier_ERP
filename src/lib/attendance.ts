@@ -173,7 +173,7 @@ export async function autoCloseShifts(now = new Date()) {
   return closed;
 }
 
-/** Asistencia de un periodo para la nómina: días trabajados, faltas y minutos de horas extra autorizadas. */
+/** Asistencia de un periodo para la nómina: días trabajados, faltas, retardos (con sus fechas) y minutos de horas extra autorizadas. */
 export async function attendanceForPeriod(employeeIds: number[], from: string, to: string) {
   const s = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { timezone: true, lateToleranceMin: true } });
   const tz = s?.timezone || "America/Mexico_City";
@@ -184,10 +184,10 @@ export async function attendanceForPeriod(employeeIds: number[], from: string, t
     prisma.punch.findMany({ where: { employeeId: { in: employeeIds }, deleted: false, workDate: { gte: from, lte: to } }, orderBy: { at: "asc" } }),
     prisma.overtimeAuth.findMany({ where: { employeeId: { in: employeeIds }, workDate: { gte: from, lte: to } } }),
   ]);
-  const out = new Map<number, { tracked: boolean; present: number; absences: number; lates: number; overtimeMin: number }>();
+  const out = new Map<number, { tracked: boolean; present: number; absences: number; lates: number; overtimeMin: number; faltaDates: string[]; lateDates: string[] }>();
   for (const e of employees) {
     const mine = punches.filter((p) => p.employeeId === e.id);
-    const r = { tracked: !!e.kioskSecret && mine.length > 0, present: 0, absences: 0, lates: 0, overtimeMin: 0 };
+    const r = { tracked: !!e.kioskSecret && mine.length > 0, present: 0, absences: 0, lates: 0, overtimeMin: 0, faltaDates: [] as string[], lateDates: [] as string[] };
     for (let d = from; d <= to; d = addDaysStr(d, 1)) {
       const sum = daySummary(
         mine.filter((p) => p.workDate === d),
@@ -195,8 +195,14 @@ export async function attendanceForPeriod(employeeIds: number[], from: string, t
         { dateStr: d, todayStr: today, nowMin, tz, toleranceMin: s?.lateToleranceMin ?? 10, otUntil: auths.find((a) => a.employeeId === e.id && a.workDate === d)?.until, startDate: e.startDate },
       );
       if (sum.entrada) r.present++;
-      if (sum.status === "FALTA") r.absences++;
-      if (sum.late) r.lates++;
+      if (sum.status === "FALTA") {
+        r.absences++;
+        r.faltaDates.push(d);
+      }
+      if (sum.late) {
+        r.lates++;
+        r.lateDates.push(d);
+      }
       r.overtimeMin += sum.overtimeMin;
     }
     out.set(e.id, r);
