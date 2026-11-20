@@ -8,7 +8,8 @@ import { Form } from "@/components/Form";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { PayrollEditor } from "@/components/PayrollEditor";
 import { Badge } from "@/components/ui/badge";
-import { benefits, seniority } from "@/lib/payroll";
+import { benefits, overtimeHoursFrom, seniority } from "@/lib/payroll";
+import { brandOptions } from "@/lib/brands";
 import { vacationTakenMap } from "@/lib/payroll-data";
 import { formatDate, formatMoney, toInputDate } from "@/lib/money";
 import { Tr } from "@/components/Tr";
@@ -24,6 +25,9 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
     include: { lines: { include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
   });
   if (!run) notFound();
+  const [brands, cfg] = await Promise.all([brandOptions(), prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } })]);
+  const overtimeRate = cfg?.overtimeRate ?? 2;
+  const payer = brands.find((b) => b.id === (run.brandId ?? 0))?.name.replace(/ (principal)$/, "") ?? "";
   const paid = run.status === "PAGADA";
   const employees = run.lines.map((l) => l.employee);
   const taken = await vacationTakenMap(employees, run.payDate);
@@ -43,7 +47,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       days: l.days,
       absences: l.absences,
       vacationDays: l.vacationDays,
-      overtime: l.overtime,
+      // Nóminas anteriores solo tenían el importe: se convierte a horas con la tarifa actual
+      overtimeHours: l.overtimeHours || overtimeHoursFrom(l.overtime, l.weeklySalary || l.dailySalary * l.workDays, l.workDays, l.hoursPerDay, overtimeRate),
       bonus: l.bonus,
       bonusNote: l.bonusNote,
       aguinaldo: l.aguinaldo,
@@ -68,6 +73,11 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
               {paid ? t("Pagada") : t("Borrador")}
             </Badge>
             {run.lines.length} <Tr>empleado(s) · Pago</Tr> {formatDate(run.payDate)} <Tr>· Total</Tr> {formatMoney(run.total)}
+            {payer && (
+              <span>
+                · <Tr>Paga</Tr> <span className="font-medium text-foreground">{payer}</span>
+              </span>
+            )}
             {paid && run.transactionId && (
               <Link href={`/contabilidad/movimientos/${run.transactionId}`} className="text-primary hover:underline">
                 <Tr>Ver egreso en contabilidad</Tr>
@@ -101,7 +111,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           )
         }
       />
-      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} />
+      <PayrollEditor action={savePayrollRun.bind(null, run.id)} runId={run.id} lines={lines} payDate={toInputDate(run.payDate)} notes={run.notes} readOnly={paid} overtimeRate={overtimeRate} brands={brands} brandId={run.brandId ?? 0} />
     </div>
   );
 }

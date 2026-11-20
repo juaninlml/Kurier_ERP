@@ -13,6 +13,7 @@ import { formatDate, formatMoney, formatNumber, round2, toInputDate } from "@/li
 import { getT } from "@/lib/i18n/server";
 import { Tr } from "@/components/Tr";
 import { requestLocale } from "@/lib/request-lang";
+import { brandOptions } from "@/lib/brands";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -30,10 +31,14 @@ function lastWeek(now = new Date()) {
 
 export default async function PayrollPage() {
   const t = await getT();
-  const [employees, runs] = await Promise.all([
+  const [employees, runs, brands, lastRun] = await Promise.all([
     prisma.employee.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     prisma.payrollRun.findMany({ orderBy: { periodStart: "desc" }, take: 30, include: { _count: { select: { lines: true } } } }),
+    brandOptions(),
+    // La nueva nómina la paga la misma marca que la última (ej. LOE Fulfillment)
+    prisma.payrollRun.findFirst({ orderBy: { createdAt: "desc" }, select: { brandId: true } }),
   ]);
+  const defaultBrand = brands.some((b) => b.id === lastRun?.brandId) ? lastRun!.brandId! : 0;
   const active = employees.filter((e) => e.active);
   const rows = await employeeBenefits(employees);
   const weekly = round2(active.reduce((a, e) => a + weeklyOf(e) + e.weeklyBonus, 0));
@@ -162,6 +167,15 @@ export default async function PayrollPage() {
                   <input type="date" name="periodEnd" required defaultValue={toInputDate(end)} className="input" />
                 </Field>
               </div>
+              <Field label={t("Marca que paga")}>
+                <select name="brandId" defaultValue={defaultBrand} className="input">
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label={t("Fecha de pago")}>
                 <input type="date" name="payDate" defaultValue={toInputDate(new Date(end.getTime() + 5 * 86400000))} className="input" />
               </Field>

@@ -6,8 +6,8 @@ import { queueArchive } from "@/lib/archive";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { fromInputDate, round2, formatDate } from "@/lib/money";
-import { FREQUENCIES, payrollLine, weeklyOf } from "@/lib/payroll";
+import { fromInputDate, round2, formatDateEs } from "@/lib/money";
+import { FREQUENCIES, payrollLine, weeklyOf, overtimePay } from "@/lib/payroll";
 import { attendanceForPeriod } from "@/lib/attendance";
 import { numv, str } from "./helpers";
 
@@ -126,11 +126,21 @@ async function updateEmployeeImpl(id: number, fd: FormData) {
 
 // ───────────── Nómina semanal ─────────────
 
+/** Marca que paga la nómina: 0 o vacío = la principal; si no existe o está inactiva, error. */
+async function payrollBrand(fd: FormData): Promise<number | null> {
+  const id = Math.round(numv(fd, "brandId", 0));
+  if (!id) return null;
+  const b = await prisma.brand.findUnique({ where: { id }, select: { active: true } });
+  if (!b?.active) throw new Error("Elige una marca activa para la nómina.");
+  return id;
+}
+
 /** Crea la nómina del periodo con todos los empleados activos (sus días laborables y su bono fijo). */
 async function createPayrollRunImpl(fd: FormData) {
   const periodStart = fromInputDate(str(fd, "periodStart"));
   const periodEnd = fromInputDate(str(fd, "periodEnd"));
   const payDate = fromInputDate(str(fd, "payDate") || str(fd, "periodEnd"));
+  const brandId = await payrollBrand(fd);
   if (periodEnd < periodStart) throw new Error("La fecha final del periodo es anterior a la inicial.");
   const employees = await prisma.employee.findMany({ where: { active: true, startDate: { lte: periodEnd } }, orderBy: { name: "asc" } });
   if (!employees.length) throw new Error("No hay empleados activos para este periodo.");
@@ -148,8 +158,8 @@ async function createPayrollRunImpl(fd: FormData) {
     const days = Math.min(workDays, calendarDays);
     const att = attendance.get(e.id);
     const tracked = !!att?.tracked;
-    const hourly = weeklySalary / workDays / (e.hoursPerDay || 8);
-    const overtime = tracked ? round2((att!.overtimeMin / 60) * hourly * (cfg?.overtimeRate ?? 2)) : 0;
+    const overtimeHours = tracked ? Math.round((att!.overtimeMin / 60) * 100) / 100 : 0;
+    const overtime = overtimePay(overtimeHours, weeklySalary, workDays, e.hoursPerDay, cfg?.overtimeRate ?? 2);
     const input = {
       weeklySalary,
       workDays,
@@ -157,6 +167,7 @@ async function createPayrollRunImpl(fd: FormData) {
       days,
       absences: tracked ? Math.min(days, att!.absences) : 0,
       vacationDays: 0,
+      overtimeHours,
       overtime,
       notes: tracked
         ? `Asistencia: ${att!.present} día(s), ${att!.absences} falta(s), ${att!.lates} retardo(s)${att!.overtimeMin ? `, ${(att!.overtimeMin / 60).toFixed(2)} h extra` : ""}`
@@ -170,7 +181,7 @@ async function createPayrollRunImpl(fd: FormData) {
     return { ...input, dailySalary: weeklySalary / workDays, employeeId: e.id, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net };
   });
   const run = await prisma.payrollRun.create({
-    data: { periodStart, periodEnd, payDate, total: round2(lines.reduce((a, l) => a + l.net, 0)), lines: { create: lines } },
+    data: { periodStart, periodEnd, payDate, brandId, total: round2(lines.reduce((a, l) => a + l.net, 0)), lines: { create: lines } },
   });
   revalidatePath("/nomina");
   redirect(`/nomina/semanas/${run.id}`);
@@ -182,7 +193,7 @@ const lineSchema = z.object({
   days: z.number().min(0).max(31),
   absences: z.number().min(0),
   vacationDays: z.number().min(0),
-  overtime: z.number().min(0),
+  overtimeHours: z.number().min(0).max(168),
   bonus: z.number().min(0),
   bonusNote: z.string().default(""),
   aguinaldo: z.number().min(0),
@@ -195,6 +206,7 @@ const lineSchema = z.object({
 async function savePayrollRunImpl(id: number, fd: FormData) {
   const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: true } });
   if (run.status === "PAGADA") throw new Error("La nómina ya está pagada. Regrésala a borrador para editarla.");
+  const [brandId, cfg] = await Promise.all([payrollBrand(fd), prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } })]);
   const parsed = z.array(lineSchema).safeParse(JSON.parse(str(fd, "lines") || "[]"));
   if (!parsed.success) throw new Error(`Revisa los importes: ${parsed.error.issues[0]?.message ?? "datos inválidos"}.`);
   const byId = new Map(run.lines.map((l) => [l.id, l]));
@@ -206,18 +218,19 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
     if (l.days > l.workDays) throw new Error(`Los días a pagar no pueden ser más que la jornada de ${l.workDays} días.`);
     if (l.bonus > 0 && !l.bonusNote.trim()) throw new Error("Escribe el motivo de cada bono.");
     const weeklySalary = cur.weeklySalary || cur.dailySalary * cur.workDays;
-    const t = payrollLine({ ...l, weeklySalary, hoursPerDay: cur.hoursPerDay });
+    const overtime = overtimePay(l.overtimeHours, weeklySalary, l.workDays, cur.hoursPerDay, cfg?.overtimeRate ?? 2);
+    const t = payrollLine({ ...l, overtime, weeklySalary, hoursPerDay: cur.hoursPerDay });
     total += t.net;
     return prisma.payrollLine.update({
       where: { id: l.id },
-      data: { ...l, weeklySalary, dailySalary: weeklySalary / l.workDays, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net },
+      data: { ...l, overtime, weeklySalary, dailySalary: weeklySalary / l.workDays, vacationPremium: t.vacationPremium, gross: t.gross, net: t.net },
     });
   });
   await prisma.$transaction([
     ...updates,
     prisma.payrollRun.update({
       where: { id },
-      data: { total: round2(total), notes: str(fd, "notes"), payDate: fromInputDate(str(fd, "payDate")) },
+      data: { total: round2(total), notes: str(fd, "notes"), payDate: fromInputDate(str(fd, "payDate")), brandId },
     }),
   ]);
   revalidatePath(`/nomina/semanas/${id}`);
@@ -226,15 +239,16 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
 
 /** Marca la nómina como pagada y registra el egreso en contabilidad. */
 async function payPayrollRunImpl(id: number) {
-  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: true } });
+  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: true, brand: { select: { tradeName: true } } } });
   if (run.status === "PAGADA") return;
+  const payer = run.brand?.tradeName ?? (await prisma.companySettings.findUnique({ where: { id: 1 }, select: { tradeName: true } }))?.tradeName ?? "";
   if (run.total <= 0) throw new Error("La nómina no tiene importe a pagar.");
   await prisma.$transaction(async (tx) => {
     const t = await tx.transaction.create({
       data: {
         type: "EGRESO",
         category: "Nómina",
-        description: `Nómina del ${formatDate(run.periodStart)} al ${formatDate(run.periodEnd)} (${run.lines.length} empleado(s))`,
+        description: `Nómina del ${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)} (${run.lines.length} empleado(s))${payer ? ` · paga ${payer}` : ""}`,
         amount: run.total,
         tax: 0,
         date: run.payDate,

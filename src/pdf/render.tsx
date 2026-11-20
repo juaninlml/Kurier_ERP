@@ -89,14 +89,16 @@ function slug(t: string) {
 
 /** Recibos de nómina de una semana (o de un solo empleado con `lineId`). */
 export async function renderPayrollReceipts(runId: number, lineId?: number) {
-  const [s, run] = await Promise.all([
+  const [base, run] = await Promise.all([
     getSettings(),
     prisma.payrollRun.findUnique({
       where: { id: runId },
-      include: { lines: { where: lineId ? { id: lineId } : undefined, include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
+      include: { brand: true, lines: { where: lineId ? { id: lineId } : undefined, include: { employee: true }, orderBy: { employee: { name: "asc" } } } },
     }),
   ]);
   if (!run || run.lines.length === 0) return null;
+  // Los recibos salen con los datos y el logo de la marca que paga la nómina
+  const s = applyBrand(base, run.brand);
   const { PayrollReceiptsPdf } = await import("./payroll");
   const tag = run.periodStart.toISOString().slice(0, 10);
   const who = lineId ? `_${slug(run.lines[0].employee.name)}` : "";

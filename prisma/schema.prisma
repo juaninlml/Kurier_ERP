@@ -377,6 +377,8 @@ model PayrollRun {
   notes         String        @default("")
   total         Float         @default(0)
   transactionId Int?          @unique
+  brandId       Int? // marca que paga la nómina (vacío = la principal)
+  brand         Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
   lines         PayrollLine[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -396,7 +398,8 @@ model PayrollLine {
   absences        Float      @default(0) // faltas injustificadas (se descuentan a salario diario)
   vacationDays    Float      @default(0) // días de vacaciones tomados (pagados dentro de los días + prima vacacional)
   vacationPremium Float      @default(0)
-  overtime        Float      @default(0) // importe de horas extra
+  overtimeHours   Float      @default(0) // horas extra trabajadas
+  overtime        Float      @default(0) // importe de horas extra = horas × salario por hora × tarifa de horas extra
   bonus           Float      @default(0)
   bonusNote       String     @default("") // motivo del bono
   aguinaldo       Float      @default(0)
@@ -599,4 +602,5 @@ model Brand {
   clients       Client[]
   quotes        Quote[]
   invoices      Invoice[]
+  payrolls      PayrollRun[]
 }

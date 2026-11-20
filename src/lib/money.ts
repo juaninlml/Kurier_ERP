@@ -8,16 +8,23 @@ export const formatMoney = (n: number) => mxn.format(n || 0);
 const num = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
 export const formatNumber = (n: number) => num.format(n || 0);
 
-export const formatDate = (d: Date | string) =>
-  new Date(d).toLocaleDateString(requestLocale(), { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+/*
+ * Fechas. En pantalla salen en el idioma del usuario (requestLocale). Los PDFs y los textos que se guardan
+ * (movimientos de contabilidad, conceptos) usan las versiones *Es: siempre en español.
+ */
+export const formatDate = (d: Date | string, locale = requestLocale()) =>
+  new Date(d).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+export const formatDateEs = (d: Date | string) => formatDate(d, "es-MX");
 
 /** 22/08/2026 */
-export const formatDateNum = (d: Date | string) =>
-  new Date(d).toLocaleDateString(requestLocale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+export const formatDateNum = (d: Date | string, locale = requestLocale()) =>
+  new Date(d).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+export const formatDateNumEs = (d: Date | string) => formatDateNum(d, "es-MX");
 
 /** 10 de noviembre de 2026 */
-export const formatDateLong = (d: Date | string) =>
-  new Date(d).toLocaleDateString(requestLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+export const formatDateLong = (d: Date | string, locale = requestLocale()) =>
+  new Date(d).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+export const formatDateLongEs = (d: Date | string) => formatDateLong(d, "es-MX");
 
 /** yyyy-mm-dd para inputs type=date (en UTC para evitar corrimientos de zona). */
 export const toInputDate = (d: Date | string) => new Date(d).toISOString().slice(0, 10);

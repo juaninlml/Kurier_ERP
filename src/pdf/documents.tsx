@@ -4,7 +4,7 @@ import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, Quo
 import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, Callout, InfoTable, base, palette, tint, GRAY } from "./brand";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
-import { formatDate, formatDateLong, formatDateNum, formatMoney, formatNumber, amountInWords, round2 } from "@/lib/money";
+import { formatDateEs, formatDateLongEs, formatDateNumEs, formatMoney, formatNumber, amountInWords, round2 } from "@/lib/money";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
@@ -80,12 +80,12 @@ export function QuotePdf({
   const perOrder = parsePerOrder(quote.perOrder);
   const volumes = parseVolumes(quote.scenarios);
   const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
-  const subtitle = [party.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLong(quote.issueDate)].filter(Boolean).join(" · ");
+  const subtitle = [party.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLongEs(quote.issueDate)].filter(Boolean).join(" · ");
 
   return (
     <PdfDoc title={`Cotización ${quote.folio} — ${party.name}`}>
       <BrandedPage s={s} footerLabel={`Cotización de Fulfillment · ${party.name}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
-        <DocTitle s={s} title="Cotización de Fulfillment" subtitle={subtitle} extra={`Folio ${quote.folio} · Vigente hasta el ${formatDateLong(quote.validUntil)}`} />
+        <DocTitle s={s} title="Cotización de Fulfillment" subtitle={subtitle} extra={`Folio ${quote.folio} · Vigente hasta el ${formatDateLongEs(quote.validUntil)}`} />
 
         <SectionTab s={s} full>
           Perfil de la operación cotizada
@@ -224,8 +224,8 @@ export function InvoicePdf({
   const balance = round2(invoice.total - invoice.paidTotal);
   const data: [string, string][] = [
     ["Folio", `${invoice.folio} (folio interno de referencia)`],
-    ["Fecha de emisión", formatDateNum(invoice.issueDate)],
-    ["Fecha de vencimiento", formatDateNum(invoice.dueDate)],
+    ["Fecha de emisión", formatDateNumEs(invoice.issueDate)],
+    ["Fecha de vencimiento", formatDateNumEs(invoice.dueDate)],
     ["Cliente", invoice.client.legalName || invoice.client.name],
     ["RFC", invoice.client.rfc || "—"],
   ];
@@ -293,7 +293,7 @@ export function InvoicePdf({
             {invoice.payments.map((p) => (
               <View key={p.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" }}>
                 <Text>
-                  {formatDateNum(p.date)} · {p.method}
+                  {formatDateNumEs(p.date)} · {p.method}
                   {p.reference ? ` · Ref. ${p.reference}` : ""}
                 </Text>
                 <Text style={base.bold}>{formatMoney(p.amount)}</Text>
@@ -332,7 +332,7 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
   return (
     <PdfDoc title={`Estado de cuenta ${data.client.name}`}>
       <BrandedPage s={s} footerLabel={`Estado de cuenta · ${data.client.name}`}>
-        <DocTitle s={s} title="Estado de cuenta" subtitle={`${data.client.name} · Fecha de corte: ${formatDateLong(now)} · ${PRICES_NOTE}`} />
+        <DocTitle s={s} title="Estado de cuenta" subtitle={`${data.client.name} · Fecha de corte: ${formatDateLongEs(now)} · ${PRICES_NOTE}`} />
 
         <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
           {[
@@ -363,7 +363,7 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
           rows={data.invoices.map((inv) => {
             const bal = round2(inv.total - inv.paidTotal);
             const late = bal > 0 && inv.dueDate < now;
-            return [inv.folio, formatDateNum(inv.issueDate), formatDateNum(inv.dueDate), late ? "Vencida" : STATUS_LABELS[inv.status], formatMoney(inv.total), formatMoney(inv.paidTotal), formatMoney(bal)];
+            return [inv.folio, formatDateNumEs(inv.issueDate), formatDateNumEs(inv.dueDate), late ? "Vencida" : STATUS_LABELS[inv.status], formatMoney(inv.total), formatMoney(inv.paidTotal), formatMoney(bal)];
           })}
         />
         {data.invoices.length === 0 && <Note>Sin facturas registradas.</Note>}
@@ -412,7 +412,7 @@ export function ReportPdf({
   return (
     <PdfDoc title="Reporte financiero">
       <BrandedPage s={s} footerLabel="Reporte financiero">
-        <DocTitle s={s} title="Reporte financiero" subtitle={`Del ${formatDateLong(from)} al ${formatDateLong(to)} · ${stmt.count} movimientos · Montos con IVA salvo indicación`} />
+        <DocTitle s={s} title="Reporte financiero" subtitle={`Del ${formatDateLongEs(from)} al ${formatDateLongEs(to)} · ${stmt.count} movimientos · Montos con IVA salvo indicación`} />
 
         <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
           {[
@@ -477,7 +477,7 @@ export function ReportPdf({
                 { title: "Saldo", width: "18%", align: "right" },
               ]}
               styles={["label", "normal", "normal", "strong"]}
-              rows={ar.rows.slice(0, 60).map((r) => [r.folio, r.client.name, r.daysOverdue > 0 ? `${r.daysOverdue} días vencida` : `Vence ${formatDate(r.dueDate)}`, formatMoney(r.balance)])}
+              rows={ar.rows.slice(0, 60).map((r) => [r.folio, r.client.name, r.daysOverdue > 0 ? `${r.daysOverdue} días vencida` : `Vence ${formatDateEs(r.dueDate)}`, formatMoney(r.balance)])}
             />
           </View>
         )}

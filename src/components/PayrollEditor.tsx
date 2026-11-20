@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FileText, Gift } from "lucide-react";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
-import { payrollLine } from "@/lib/payroll";
+import { overtimePay, payrollLine } from "@/lib/payroll";
 import { formatMoney, formatNumber } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
@@ -22,7 +22,8 @@ export type EditorLine = {
   days: number;
   absences: number;
   vacationDays: number;
-  overtime: number;
+  /** Horas extra; el importe se calcula (horas × salario por hora × tarifa de horas extra). */
+  overtimeHours: number;
   bonus: number;
   bonusNote: string;
   aguinaldo: number;
@@ -36,7 +37,7 @@ export type EditorLine = {
   aguinaldoDue: number;
 };
 
-type NumKey = "days" | "absences" | "vacationDays" | "overtime" | "bonus" | "aguinaldo" | "otherIncome" | "deductions";
+type NumKey = "days" | "absences" | "vacationDays" | "overtimeHours" | "bonus" | "aguinaldo" | "otherIncome" | "deductions";
 
 export function PayrollEditor({
   action,
@@ -45,6 +46,9 @@ export function PayrollEditor({
   payDate,
   notes,
   readOnly,
+  overtimeRate,
+  brands,
+  brandId,
 }: {
   action: (fd: FormData) => Promise<unknown>;
   runId: number;
@@ -52,22 +56,29 @@ export function PayrollEditor({
   payDate: string;
   notes: string;
   readOnly: boolean;
+  /** Tarifa de horas extra (Asistencias → Reglas): 2 = al doble del salario por hora. */
+  overtimeRate: number;
+  /** Marcas que pueden pagar la nómina (id 0 = la principal). */
+  brands: { id: number; name: string }[];
+  brandId: number;
 }) {
   const t = useT();
   const tr = t;
   const [lines, setLines] = useState(initial);
   const update = (id: number, patch: Partial<EditorLine>) => setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-  const calc = lines.map((l) => ({ l, t: payrollLine(l) }));
+  // El importe de horas extra se calcula de las horas (el servidor vuelve a calcularlo al guardar)
+  const otPay = (l: EditorLine) => overtimePay(l.overtimeHours, l.weeklySalary, l.workDays, l.hoursPerDay, overtimeRate);
+  const calc = lines.map((l) => ({ l, ot: otPay(l), t: payrollLine({ ...l, overtime: otPay(l) }) }));
   const total = calc.reduce((a, c) => a + c.t.net, 0);
   const gross = calc.reduce((a, c) => a + c.t.gross, 0);
   const deductions = calc.reduce((a, c) => a + c.t.totalDeductions, 0);
-  const payload = lines.map(({ id, workDays, days, absences, vacationDays, overtime, bonus, bonusNote, aguinaldo, otherIncome, deductions, deductionNote, notes }) => ({
+  const payload = lines.map(({ id, workDays, days, absences, vacationDays, overtimeHours, bonus, bonusNote, aguinaldo, otherIncome, deductions, deductionNote, notes }) => ({
     id,
     workDays,
     days,
     absences,
     vacationDays,
-    overtime,
+    overtimeHours,
     bonus,
     bonusNote,
     aguinaldo,
@@ -86,7 +97,7 @@ export function PayrollEditor({
         <input
           type="number"
           min="0"
-          step={opts.money ? "0.01" : "0.5"}
+          step={opts.money ? "0.01" : key === "overtimeHours" ? "any" : "0.5"}
           className={cn("input h-8 text-right tabular-nums", opts.warn && "border-amber-500")}
           value={l[key]}
           onChange={(e) => update(l.id, { [key]: Number(e.target.value) || 0 } as Partial<EditorLine>)}
@@ -122,7 +133,7 @@ export function PayrollEditor({
         </div>
       </div>
 
-      {calc.map(({ l, t }) => (
+      {calc.map(({ l, ot, t }) => (
         <section key={l.id} className="card overflow-hidden">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
             <div className="min-w-0">
@@ -178,7 +189,9 @@ export function PayrollEditor({
                 {num(l, "absences", "Faltas injustif.", { hint: t.absenceDeduction ? `−${formatMoney(t.absenceDeduction)}` : undefined })}
                 {num(l, "vacationDays", "Vacaciones", { warn: l.vacationDays > l.vacationAvailable, hint: t.vacationPremium ? `prima ${formatMoney(t.vacationPremium)}` : undefined })}
                 {num(l, "bonus", "Bono semanal", { money: true })}
-                {num(l, "overtime", "Horas extra ($)", { money: true })}
+                {num(l, "overtimeHours", "Horas extra", {
+                  hint: ot ? tr("= {v0} (×{v1} por hora)", { v0: formatMoney(ot), v1: formatNumber(overtimeRate) }) : tr("Horas; el importe se calcula"),
+                })}
                 {num(l, "aguinaldo", "Aguinaldo", { money: true })}
                 {num(l, "deductions", "Préstamo / otros", { money: true })}
               </div>
@@ -217,7 +230,7 @@ export function PayrollEditor({
               </div>
               {t.vacationPremium > 0 && <Row k={tr("Prima vacacional")} v={t.vacationPremium} />}
               {l.bonus > 0 && <Row k={tr("Bono")} v={l.bonus} />}
-              {l.overtime > 0 && <Row k={tr("Horas extra")} v={l.overtime} />}
+              {ot > 0 && <Row k={tr("Horas extra ({v0} h)", { v0: formatNumber(l.overtimeHours) })} v={ot} />}
               {l.aguinaldo > 0 && <Row k={tr("Aguinaldo")} v={l.aguinaldo} />}
               {l.otherIncome > 0 && <Row k={tr("Otras percepciones")} v={l.otherIncome} />}
               {t.absenceDeduction > 0 && <Row k={tr("Faltas ({v0} × {v1})", { v0: formatNumber(l.absences), v1: formatMoney(t.daily) })} v={-t.absenceDeduction} />}
@@ -232,7 +245,17 @@ export function PayrollEditor({
       ))}
 
       <div className="card flex flex-wrap items-end justify-between gap-4 px-5 py-4">
-        <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_180px_minmax(0,1fr)]">
+          <label className="block">
+            <span className="label"><Tr>Marca que paga</Tr></span>
+            <select name="brandId" defaultValue={brandId} disabled={readOnly} className="input">
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block">
             <span className="label"><Tr>Fecha de pago</Tr></span>
             <input type="date" name="payDate" defaultValue={payDate} disabled={readOnly} className="input" />

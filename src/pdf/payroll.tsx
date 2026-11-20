@@ -3,7 +3,7 @@ import { Page, View, Text, Image } from "@react-pdf/renderer";
 import type { CompanySettings, Employee, PayrollLine, PayrollRun } from "@prisma/client";
 import { PdfDoc, palette, loadLogo, GRAY, INK } from "./brand";
 import { payrollLine } from "@/lib/payroll";
-import { amountInWords, formatDate, formatMoney, formatNumber } from "@/lib/money";
+import { amountInWords, formatDateEs, formatMoney, formatNumber } from "@/lib/money";
 
 type Line = PayrollLine & { employee: Employee };
 
@@ -31,7 +31,7 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
     [`Sueldo (${formatNumber(l.days)} día${l.days === 1 ? "" : "s"} × ${formatMoney(t.daily)})`, t.base, l.vacationDays ? `Incluye ${formatNumber(l.vacationDays)} día(s) de vacaciones` : undefined],
     ...(t.vacationPremium ? ([["Prima vacacional (25%)", t.vacationPremium]] as [string, number][]) : []),
     ...(l.bonus ? ([["Bono semanal", l.bonus, l.bonusNote]] as [string, number, string][]) : []),
-    ...(l.overtime ? ([["Horas extra", l.overtime]] as [string, number][]) : []),
+    ...(l.overtime ? ([[l.overtimeHours ? `Horas extra (${formatNumber(l.overtimeHours)} h)` : "Horas extra", l.overtime]] as [string, number][]) : []),
     ...(l.aguinaldo ? ([["Aguinaldo", l.aguinaldo]] as [string, number][]) : []),
     ...(l.otherIncome ? ([["Otras percepciones", l.otherIncome]] as [string, number][]) : []),
   ];
@@ -80,12 +80,12 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
         <View style={{ flex: 1.3 }}>
           <Pair k="Empleado" v={e.name} bold />
           <Pair k="Puesto / área" v={[e.position, e.area].filter(Boolean).join(" · ") || "—"} />
-          <Pair k="Fecha de ingreso" v={formatDate(e.startDate)} />
+          <Pair k="Fecha de ingreso" v={formatDateEs(e.startDate)} />
           {e.curp || e.rfc ? <Pair k={e.curp ? "CURP" : "RFC"} v={e.curp || e.rfc} /> : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Pair k="Periodo" v={`${formatDate(run.periodStart)} al ${formatDate(run.periodEnd)}`} bold />
-          <Pair k="Fecha de pago" v={formatDate(run.payDate)} />
+          <Pair k="Periodo" v={`${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)}`} bold />
+          <Pair k="Fecha de pago" v={formatDateEs(run.payDate)} />
           <Pair k="Jornada" v={`${l.workDays} días · ${formatNumber(l.hoursPerDay)} h`} />
           <Pair k="Días pagados" v={`${formatNumber(Math.max(0, l.days - l.absences))} de ${l.workDays}`} />
         </View>
@@ -158,7 +158,7 @@ export function PayrollReceiptsPdf({ s, run, lines }: { s: CompanySettings; run:
   const pages: Line[][] = [];
   for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2));
   return (
-    <PdfDoc title={`Recibos de nómina ${formatDate(run.periodStart)} al ${formatDate(run.periodEnd)}`}>
+    <PdfDoc title={`Recibos de nómina ${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)}`}>
       {pages.map((pair, i) => (
         <Page key={i} size="LETTER" style={{ paddingHorizontal: 40, paddingVertical: 26, fontFamily: "Helvetica", color: INK }}>
           <Receipt s={s} run={run} l={pair[0]} />

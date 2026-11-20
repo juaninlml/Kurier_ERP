@@ -148,6 +148,21 @@ export function salaryRates(weekly: number, workDays: number, hoursPerDay = 8) {
   return { weekly: round2(weekly), workDays: days, daily, hourly: daily / (hoursPerDay > 0 ? hoursPerDay : 8) };
 }
 
+/**
+ * Importe de horas extra: horas × salario por hora × tarifa de horas extra (Asistencias → Reglas; 2 = al doble).
+ * Salario por hora = semanal ÷ días laborables ÷ horas de la jornada.
+ */
+export function overtimePay(hours: number, weekly: number, workDays: number, hoursPerDay: number, rate: number) {
+  if (!(hours > 0)) return 0;
+  return round2(hours * salaryRates(weekly, workDays, hoursPerDay).hourly * (rate > 0 ? rate : 2));
+}
+
+/** Horas equivalentes a un importe de horas extra (nóminas capturadas antes, cuando se escribía el importe). */
+export function overtimeHoursFrom(amount: number, weekly: number, workDays: number, hoursPerDay: number, rate: number) {
+  const perHour = salaryRates(weekly, workDays, hoursPerDay).hourly * (rate > 0 ? rate : 2);
+  return amount > 0 && perHour > 0 ? Math.round((amount / perHour) * 100) / 100 : 0;
+}
+
 /** Semanal de un empleado (registros anteriores solo tenían salario diario × 6). */
 export const weeklyOf = (e: { weeklySalary?: number; dailySalary: number; workDays?: number }) =>
   e.weeklySalary && e.weeklySalary > 0 ? e.weeklySalary : e.dailySalary * (e.workDays ?? PAID_DAYS_PER_WEEK);
