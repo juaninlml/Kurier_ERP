@@ -53,11 +53,14 @@ export function BrandedPage({
   footerLabel,
   watermark,
   children,
+  lang = "es",
 }: {
   s: CompanySettings;
   footerLabel: string;
   watermark?: string;
   children: React.ReactNode;
+  /** Idioma del pie de página ("Página 1 de 2" / "Page 1 of 2"). */
+  lang?: "es" | "en";
 }) {
   const c = palette(s);
   const logo = loadLogo(s);
@@ -91,7 +94,7 @@ export function BrandedPage({
 
       {watermark && (
         <View fixed style={{ position: "absolute", top: 360, left: 0, right: 0, alignItems: "center" }}>
-          <Text style={{ fontSize: 90, color: watermark === "PAGADA" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
+          <Text style={{ fontSize: 90, color: watermark === "PAGADA" || watermark === "PAID" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
             {watermark}
           </Text>
         </View>
@@ -103,7 +106,7 @@ export function BrandedPage({
       <View fixed style={{ position: "absolute", bottom: 22, left: 46, right: 46 }}>
         <View style={{ borderTopWidth: 0.5, borderTopColor: "#e2e8f0", paddingTop: 6, flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={{ fontSize: 7.5, color: GRAY }}>{`${s.tradeName} · ${footerLabel}`}</Text>
-          <Text style={{ fontSize: 7.5, color: GRAY }} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+          <Text style={{ fontSize: 7.5, color: GRAY }} render={({ pageNumber, totalPages }) => (lang === "en" ? `Page ${pageNumber} of ${totalPages}` : `Página ${pageNumber} de ${totalPages}`)} />
         </View>
       </View>
     </Page>
@@ -208,13 +211,13 @@ export function Table({
 }
 
 /** Tabla Concepto | Detalle. */
-export function DataTable({ s, rows }: { s: CompanySettings; rows: [string, string][] }) {
+export function DataTable({ s, rows, headers = ["Concepto", "Detalle"] }: { s: CompanySettings; rows: [string, string][]; headers?: [string, string] }) {
   return (
     <Table
       s={s}
       cols={[
-        { title: "Concepto", width: "28%" },
-        { title: "Detalle", width: "72%" },
+        { title: headers[0], width: "28%" },
+        { title: headers[1], width: "72%" },
       ]}
       rows={rows}
       styles={["label", "normal"]}

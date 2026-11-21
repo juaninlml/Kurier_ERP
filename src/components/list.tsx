@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileDown, Search } from "lucide-react";
+import { Download, FileDown, Search } from "lucide-react";
 import { STATUS_LABELS } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
@@ -63,19 +63,20 @@ export async function FilterBar({
 }
 
 /** Botón de ícono para abrir el PDF de un documento. */
-export async function PdfLink({ href, label = "Ver PDF" }: { href: string; label?: string }) {
+export async function PdfLink({ href, label, download }: { href: string; label?: string; /** Descarga el archivo en lugar de abrirlo. */ download?: boolean }) {
   const t = await getT();
-  label = t(label);
+  label = t(label ?? (download ? "Descargar PDF" : "Ver PDF"));
+  const Icon = download ? Download : FileDown;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <a
-          href={href}
-          target="_blank"
+          href={download ? `${href}${href.includes("?") ? "&" : "?"}download` : href}
+          target={download ? undefined : "_blank"}
           aria-label={label}
           className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <FileDown className="size-4" />
+          <Icon className="size-4" />
         </a>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

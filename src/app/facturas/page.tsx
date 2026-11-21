@@ -3,7 +3,9 @@ import { AlarmClock, CircleCheck, FileUp, Plus, ReceiptText, Wallet } from "luci
 import { prisma } from "@/lib/db";
 import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
-import { formatDate, formatMoney, round2 } from "@/lib/money";
+import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
+import { addPayment } from "@/app/actions/invoices";
+import { InvoicePayButton } from "@/components/InvoicePayButton";
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 
@@ -95,8 +97,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                   <th>{t("Estatus")}</th>
                   <th className="text-right">{t("Total")}</th>
                   <th className="text-right">{t("Saldo")}</th>
-                  <th className="w-12">
-                    <span className="sr-only">{t("PDF")}</span>
+                  <th className="w-28">
+                    <span className="sr-only">{t("Acciones")}</span>
                   </th>
                 </tr>
               </thead>
@@ -120,7 +122,15 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                       <td className="text-right tabular-nums">{formatMoney(inv.total)}</td>
                       <td className="text-right font-medium tabular-nums">{balance > 0 ? formatMoney(balance) : <span className="text-muted-foreground">—</span>}</td>
                       <td className="py-1 text-right">
-                        <PdfLink href={`/api/pdf/factura/${inv.id}`} />
+                        <div className="flex items-center justify-end">
+                          <PdfLink href={`/api/pdf/factura/${inv.id}`} />
+                          <PdfLink href={`/api/pdf/factura/${inv.id}`} download />
+                          {balance > 0 ? (
+                            <InvoicePayButton action={addPayment.bind(null, inv.id)} folio={inv.folio} client={inv.client.name} balance={balance} today={toInputDate(new Date())} />
+                          ) : (
+                            <span className="inline-block size-8" aria-hidden="true" />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

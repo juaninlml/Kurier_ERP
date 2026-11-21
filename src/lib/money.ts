@@ -81,3 +81,32 @@ export function amountInWords(amount: number): string {
   const de = pesos > 0 && pesos % 1_000_000 === 0 ? " DE" : "";
   return `${words}${de} ${pesos === 1 ? "PESO" : "PESOS"} ${String(centavos).padStart(2, "0")}/100 M.N.`;
 }
+
+const EN_ONES = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+const EN_TENS = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+function enUnder1000(n: number): string {
+  const h = Math.floor(n / 100);
+  const r = n % 100;
+  const rest = r < 20 ? EN_ONES[r] : `${EN_TENS[Math.floor(r / 10)]}${r % 10 ? `-${EN_ONES[r % 10]}` : ""}`;
+  return [h ? `${EN_ONES[h]} HUNDRED` : "", rest].filter(Boolean).join(" ");
+}
+function enWords(n: number): string {
+  if (n === 0) return "ZERO";
+  const parts: string[] = [];
+  for (const [size, name] of [[1_000_000_000, "BILLION"], [1_000_000, "MILLION"], [1000, "THOUSAND"]] as const) {
+    if (n >= size) {
+      parts.push(`${enUnder1000(Math.floor(n / size))} ${name}`);
+      n %= size;
+    }
+  }
+  if (n) parts.push(enUnder1000(n));
+  return parts.join(" ");
+}
+
+/** Importe con letra en inglés: "FIFTY-EIGHT THOUSAND ... PESOS 76/100 MXN". */
+export function amountInWordsEn(amount: number): string {
+  const total = round2(Math.abs(amount));
+  const pesos = Math.floor(total);
+  const cents = Math.round((total - pesos) * 100);
+  return `${enWords(pesos)} ${pesos === 1 ? "PESO" : "PESOS"} ${String(cents).padStart(2, "0")}/100 MXN`;
+}

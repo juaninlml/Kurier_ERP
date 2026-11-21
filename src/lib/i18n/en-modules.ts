@@ -1098,4 +1098,11 @@ export const enModules: Record<string, string> = {
   "La nómina ya está aprobada. Regrésala a borrador para editarla.": "The payroll is already approved. Return it to draft to edit it.",
   "La nómina ya está aprobada. Regrésala a borrador para actualizarla.": "The payroll is already approved. Return it to draft to update it.",
   "Copiar CLABE": "Copy CLABE",
+  "Registrar pago de {v0}": "Record payment for {v0}",
+  "Cerrar": "Close",
+  "Paquete": "Package",
+  "paquete": "package",
+  "Pieza": "Piece",
+  "pieza": "piece",
+  "Este documento es un **formato interno de facturación / estado de cuenta** de Kurier Fulfillment y no sustituye el CFDI fiscal, que se timbra a través de nuestro proveedor autorizado (PAC) conforme al SAT una vez confirmados los datos fiscales del cliente. La guía de envío se factura al costo, sin ningún indirecto agregado por Kurier Fulfillment. Todos los precios de este formato se expresan sin IVA; al total facturado se agrega el 16% correspondiente.": "This document is an **internal billing / account statement format** of Kurier Fulfillment and does not replace the official CFDI tax invoice, which is issued through our authorized provider (PAC) in accordance with the SAT once the client's tax details are confirmed. Shipping labels are billed at cost, with no markup added by Kurier Fulfillment. All prices in this format exclude VAT; the applicable 16% is added to the invoiced total.",
 };

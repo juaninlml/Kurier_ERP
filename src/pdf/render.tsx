@@ -25,7 +25,8 @@ export async function renderQuote(id: number) {
   };
 }
 
-export async function renderInvoice(id: number) {
+/** Factura en PDF. `lang` = idioma del usuario que la pide (la copia de Drive siempre en español). */
+export async function renderInvoice(id: number, lang: "es" | "en" = "es") {
   const [base, invoice] = await Promise.all([
     getSettings(),
     prisma.invoice.findUnique({
@@ -35,7 +36,10 @@ export async function renderInvoice(id: number) {
   ]);
   if (!invoice) return null;
   const s = applyBrand(base, invoice.brand);
-  return { filename: `Factura_${invoice.folio}_${slug(invoice.client.name)}.pdf`, buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} />) };
+  return {
+    filename: `${lang === "en" ? "Invoice" : "Factura"}_${invoice.folio}_${slug(invoice.client.name)}.pdf`,
+    buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} lang={lang} />),
+  };
 }
 
 export async function renderStatement(clientId: number) {

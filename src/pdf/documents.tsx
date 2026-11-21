@@ -4,7 +4,8 @@ import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, Quo
 import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, Callout, InfoTable, base, palette, tint, GRAY } from "./brand";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
-import { formatDateEs, formatDateLongEs, formatDateNumEs, formatMoney, formatNumber, amountInWords, round2 } from "@/lib/money";
+import { formatDateEs, formatDateLongEs, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
+import { translator } from "@/lib/i18n";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
@@ -22,11 +23,13 @@ function Totals({
   rows,
   totalLabel,
   total,
+  lang = "es",
 }: {
   s: CompanySettings;
   rows: { label: string; value: string }[];
   totalLabel: string;
   total: number;
+  lang?: "es" | "en";
 }) {
   const c = palette(s);
   return (
@@ -42,7 +45,7 @@ function Totals({
         <Text style={{ width: 160, textAlign: "right", fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 12.5 }}>{totalLabel}</Text>
         <Text style={{ width: 110, textAlign: "right", fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 15 }}>{formatMoney(total)}</Text>
       </View>
-      <Text style={{ textAlign: "right", fontSize: 7.5, color: GRAY, marginTop: 4, paddingRight: 8 }}>{amountInWords(total)}</Text>
+      <Text style={{ textAlign: "right", fontSize: 7.5, color: GRAY, marginTop: 4, paddingRight: 8 }}>{lang === "en" ? amountInWordsEn(total) : amountInWords(total)}</Text>
     </View>
   );
 }
@@ -214,87 +217,142 @@ export function QuotePdf({
 
 // ───────────────────────────── Factura ─────────────────────────────
 
+/** Textos fijos del formato de factura (el contenido capturado se respeta; algunos conceptos comunes se traducen). */
+const INVOICE_L = {
+  es: {
+    doc: "Factura", subtitle: `Formato de facturación · ${PRICES_NOTE}`, footer: "Formato de Factura",
+    folio: "Folio", folioNote: "folio interno de referencia", issue: "Fecha de emisión", due: "Fecha de vencimiento", client: "Cliente", rfc: "RFC",
+    period: "Periodo facturado", volume: "Volumen del periodo", storage: "Almacenamiento", terms: "Condiciones de pago", quote: "Cotización de referencia",
+    billing: "Datos de facturación", detail: "Detalle de servicios facturados", concept: "Concepto", qty: "Cantidad", unitPrice: "Precio unitario", amount: "Importe",
+    atCost: "Variable (al costo)", subtotal: "Subtotal sin IVA", discount: "Descuento", tax: "IVA", paid: "Pagado", balance: "Saldo pendiente", total: "Total a pagar",
+    payments: "Pagos recibidos", ref: "Ref.", payData: "Datos para pago", bank: "Banco", account: "Cuenta", clabe: "CLABE", beneficiary: "Beneficiario", reference: "Referencia",
+    cancelled: "CANCELADA", paidMark: "PAGADA",
+  },
+  en: {
+    doc: "Invoice", subtitle: "Billing format · All prices exclude VAT, in Mexican pesos (MXN)", footer: "Invoice format",
+    folio: "Invoice no.", folioNote: "internal reference number", issue: "Issue date", due: "Due date", client: "Client", rfc: "Tax ID (RFC)",
+    period: "Billing period", volume: "Period volume", storage: "Storage", terms: "Payment terms", quote: "Reference quote",
+    billing: "Billing details", detail: "Services billed", concept: "Description", qty: "Quantity", unitPrice: "Unit price", amount: "Amount",
+    atCost: "Variable (at cost)", subtotal: "Subtotal before VAT", discount: "Discount", tax: "VAT", paid: "Paid", balance: "Balance due", total: "Total due",
+    payments: "Payments received", ref: "Ref.", payData: "Payment details", bank: "Bank", account: "Account", clabe: "CLABE", beneficiary: "Beneficiary", reference: "Reference",
+    cancelled: "CANCELLED", paidMark: "PAID",
+  },
+} as const;
+
+const EN_MONTHS: Record<string, string> = {
+  enero: "January", febrero: "February", marzo: "March", abril: "April", mayo: "May", junio: "June",
+  julio: "July", agosto: "August", septiembre: "September", octubre: "October", noviembre: "November", diciembre: "December",
+};
+/** Traduce textos comunes que genera el ERP (conceptos, periodos, volumen); lo demás se deja como se capturó. */
+function toEnglish(text: string, t: (s: string) => string) {
+  if (!text) return text;
+  const direct = t(text);
+  if (direct !== text) return direct;
+  return text
+    .replace(/^Material de empaque: /, "Packing material: ")
+    .replace(/(\d+) al (\d+) de (\w+) de (\d{4})/g, (_, a, b, m, y) => `${EN_MONTHS[m.toLowerCase()] ?? m} ${a}–${b}, ${y}`)
+    .replace(/(\d+) de (\w+) al (\d+) de (\w+) de (\d{4})/g, (_, a, m1, b, m2, y) => `${EN_MONTHS[m1.toLowerCase()] ?? m1} ${a} – ${EN_MONTHS[m2.toLowerCase()] ?? m2} ${b}, ${y}`)
+    .replace(/ — ciclo semanal/, " — weekly cycle")
+    .replace(/ — ciclo mensual/, " — monthly cycle")
+    .replace(/(\d+) paquetes en (\d+) día\(s\) operado\(s\)/, "$1 packages over $2 operating day(s)")
+    .replace(/Paquetes procesados del /, "Packages processed ")
+    .replace(/^Medidas (.+) cm$/, "Size $1 cm")
+    .replace(/^Pago contra recepción de factura a (\d+) días naturales\.?$/, "Payment due within $1 calendar days of receipt of invoice.")
+    .replace(/^Pago contra recepción de factura\.?$/, "Payment due upon receipt of invoice.");
+}
+
+/** Plural simple en inglés para unidades ("package" → "packages"); las que ya terminan en s o llevan "/" se dejan. */
+const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
+
 export function InvoicePdf({
   s,
   invoice,
+  lang = "es",
 }: {
   s: CompanySettings;
   invoice: Invoice & { client: Client; items: InvoiceItem[]; payments: Payment[]; quote: Quote | null };
+  /** Idioma del formato: los textos fijos y los conceptos comunes se traducen. */
+  lang?: "es" | "en";
 }) {
+  const L = INVOICE_L[lang];
+  const en = lang === "en";
+  const tr = translator(lang);
+  const x = (text: string) => (en ? toEnglish(text, tr) : text);
+  const date = (d: Date) => (en ? formatDateNum(d, "en-US") : formatDateNumEs(d));
   const balance = round2(invoice.total - invoice.paidTotal);
   const data: [string, string][] = [
-    ["Folio", `${invoice.folio} (folio interno de referencia)`],
-    ["Fecha de emisión", formatDateNumEs(invoice.issueDate)],
-    ["Fecha de vencimiento", formatDateNumEs(invoice.dueDate)],
-    ["Cliente", invoice.client.legalName || invoice.client.name],
-    ["RFC", invoice.client.rfc || "—"],
+    [L.folio, `${invoice.folio} (${L.folioNote})`],
+    [L.issue, date(invoice.issueDate)],
+    [L.due, date(invoice.dueDate)],
+    [L.client, invoice.client.legalName || invoice.client.name],
+    [L.rfc, invoice.client.rfc || "—"],
   ];
-  if (invoice.period) data.push(["Periodo facturado", invoice.period]);
-  if (invoice.volume) data.push(["Volumen del periodo", invoice.volume]);
-  if (invoice.storage) data.push(["Almacenamiento", invoice.storage]);
-  if (invoice.terms) data.push(["Condiciones de pago", invoice.terms]);
-  if (invoice.quote) data.push(["Cotización de referencia", invoice.quote.folio]);
+  if (invoice.period) data.push([L.period, x(invoice.period)]);
+  if (invoice.volume) data.push([L.volume, x(invoice.volume)]);
+  if (invoice.storage) data.push([L.storage, x(invoice.storage)]);
+  if (invoice.terms) data.push([L.terms, x(invoice.terms)]);
+  if (invoice.quote) data.push([L.quote, invoice.quote.folio]);
 
-  const totalsRows = [{ label: "Subtotal sin IVA", value: formatMoney(invoice.subtotal) }];
-  if (invoice.discount > 0) totalsRows.push({ label: "Descuento", value: `-${formatMoney(invoice.discount)}` });
-  totalsRows.push({ label: taxLabel(invoice.items), value: formatMoney(invoice.tax) });
+  const rates = [...new Set(invoice.items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
+  const totalsRows: { label: string; value: string }[] = [{ label: L.subtotal, value: formatMoney(invoice.subtotal) }];
+  if (invoice.discount > 0) totalsRows.push({ label: L.discount, value: `-${formatMoney(invoice.discount)}` });
+  totalsRows.push({ label: rates.length === 1 ? `${L.tax} ${formatNumber(rates[0])}%` : L.tax, value: formatMoney(invoice.tax) });
 
   const bank = [
-    s.bankName && `Banco: ${s.bankName}`,
-    s.bankAccount && `Cuenta: ${s.bankAccount}`,
-    s.clabe && `CLABE: ${s.clabe}`,
-    s.legalName && `Beneficiario: ${s.legalName}`,
+    s.bankName && `${L.bank}: ${s.bankName}`,
+    s.bankAccount && `${L.account}: ${s.bankAccount}`,
+    s.clabe && `${L.clabe}: ${s.clabe}`,
+    s.legalName && `${L.beneficiary}: ${s.legalName}`,
   ].filter(Boolean) as string[];
   const c = palette(s);
 
   return (
-    <PdfDoc title={`Factura ${invoice.folio} — ${invoice.client.name}`}>
+    <PdfDoc title={`${L.doc} ${invoice.folio} — ${invoice.client.name}`}>
       <BrandedPage
         s={s}
-        footerLabel="Formato de Factura"
-        watermark={invoice.status === "CANCELADA" ? "CANCELADA" : invoice.status === "PAGADA" ? "PAGADA" : undefined}
+        lang={lang}
+        footerLabel={L.footer}
+        watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}
       >
-        <DocTitle s={s} title="Factura" subtitle={`Formato de facturación · ${PRICES_NOTE}`} />
+        <DocTitle s={s} title={L.doc} subtitle={L.subtitle} />
 
-        <SectionTab s={s}>Datos de facturación</SectionTab>
-        <DataTable s={s} rows={data} />
+        <SectionTab s={s}>{L.billing}</SectionTab>
+        <DataTable s={s} rows={data} headers={en ? ["Item", "Details"] : undefined} />
 
-        <SectionTab s={s}>Detalle de servicios facturados</SectionTab>
+        <SectionTab s={s}>{L.detail}</SectionTab>
         <Table
           s={s}
           cols={[
-            { title: "Concepto", width: "48%" },
-            { title: "Cantidad", width: "15%", align: "center" },
-            { title: "Precio unitario", width: "19%", align: "right" },
-            { title: "Importe", width: "18%", align: "right" },
+            { title: L.concept, width: "48%" },
+            { title: L.qty, width: "15%", align: "center" },
+            { title: L.unitPrice, width: "19%", align: "right" },
+            { title: L.amount, width: "18%", align: "right" },
           ]}
           rows={invoice.items.map((i) => [
-            i.description,
-            qtyLabel(i.quantity, i.unit),
-            i.priceText || (i.atCost ? "Variable (al costo)" : `${formatMoney(i.unitPrice)}${i.discountPct ? ` (-${formatNumber(i.discountPct)}%)` : ""}`),
+            x(i.description),
+            en ? `${formatNumber(i.quantity)} ${pluralEn(x(i.unit).toLowerCase(), i.quantity)}` : qtyLabel(i.quantity, i.unit),
+            (i.priceText && x(i.priceText)) || (i.atCost ? L.atCost : `${formatMoney(i.unitPrice)}${i.discountPct ? ` (-${formatNumber(i.discountPct)}%)` : ""}`),
             formatMoney(i.amount),
           ])}
         />
-        <Note>{invoice.notes}</Note>
+        <Note>{x(invoice.notes)}</Note>
 
         <Totals
           s={s}
-          rows={[
-            ...totalsRows,
-            ...(invoice.paidTotal > 0 ? [{ label: "Pagado", value: formatMoney(invoice.paidTotal) }] : []),
-          ]}
-          totalLabel={invoice.paidTotal > 0 ? "Saldo pendiente" : "Total a pagar"}
+          lang={lang}
+          rows={[...totalsRows, ...(invoice.paidTotal > 0 ? [{ label: L.paid, value: formatMoney(invoice.paidTotal) }] : [])]}
+          totalLabel={invoice.paidTotal > 0 ? L.balance : L.total}
           total={invoice.paidTotal > 0 ? balance : invoice.total}
         />
 
         {invoice.payments.length > 0 && (
           <View wrap={false} style={{ marginTop: 14 }}>
-            <Text style={[base.sectionTitle, { color: c.blue }]}>Pagos recibidos</Text>
+            <Text style={[base.sectionTitle, { color: c.blue }]}>{L.payments}</Text>
             {invoice.payments.map((p) => (
               <View key={p.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" }}>
                 <Text>
-                  {formatDateNumEs(p.date)} · {p.method}
-                  {p.reference ? ` · Ref. ${p.reference}` : ""}
+                  {date(p.date)} · {x(p.method)}
+                  {p.reference ? ` · ${L.ref} ${p.reference}` : ""}
                 </Text>
                 <Text style={base.bold}>{formatMoney(p.amount)}</Text>
               </View>
@@ -304,15 +362,17 @@ export function InvoicePdf({
 
         {bank.length > 0 && (
           <View wrap={false} style={[base.box, { marginTop: 14, borderWidth: 1, borderColor: c.line }]}>
-            <Text style={[base.sectionTitle, { color: c.blue }]}>Datos para pago</Text>
+            <Text style={[base.sectionTitle, { color: c.blue }]}>{L.payData}</Text>
             {bank.map((b) => (
               <Text key={b}>{b}</Text>
             ))}
-            <Text style={[base.muted, { marginTop: 3 }]}>Referencia: {invoice.folio}</Text>
+            <Text style={[base.muted, { marginTop: 3 }]}>
+              {L.reference}: {invoice.folio}
+            </Text>
           </View>
         )}
 
-        <NoticeBox s={s} text={s.invoiceDisclaimer} />
+        <NoticeBox s={s} text={x(s.invoiceDisclaimer)} />
       </BrandedPage>
     </PdfDoc>
   );
