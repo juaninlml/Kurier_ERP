@@ -1056,4 +1056,6 @@ export const enModules: Record<string, string> = {
   "Capturado al migrar: no entra a la nómina": "Entered during migration: not in payroll",
   "El registro histórico es solo para fechas que ya pasaron (hasta ayer).": "Historical records are only for past dates (up to yesterday).",
   "{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.": "{v0} supply item(s) without a sale price: enter the price or remove them if included in the service.",
+  "No hay insumos capturados para este cliente en la semana (Órdenes → Insumos de empaque).": "No packing supplies captured for this client this week (Orders → Packing supplies).",
+  "Esta semana sus paquetes se registraron como «Sin insumo»: no hay material de empaque que cobrar.": "This week their packages were recorded as “No supply”: there are no packing materials to bill.",
 };

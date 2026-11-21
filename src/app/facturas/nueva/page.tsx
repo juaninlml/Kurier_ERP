@@ -86,7 +86,13 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
             v1: formatMoney(sum.rate.rate),
             v2: t(sum.rate.label).toLowerCase(),
             v3: supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: supplyLines.length, v1: formatMoney(supplySale) }) : "",
-          }) + (unpriced ? ` ${t("{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.", { v0: unpriced })}` : "")
+          }) +
+          (unpriced ? ` ${t("{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.", { v0: unpriced })}` : "") +
+          (supplyLines.length
+            ? ""
+            : sup.list.some((m) => m.noSupply)
+              ? ` ${t("Esta semana sus paquetes se registraron como «Sin insumo»: no hay material de empaque que cobrar.")}`
+              : ` ${t("No hay insumos capturados para este cliente en la semana (Órdenes → Insumos de empaque).")}`)
         : t("Desde Órdenes diarias: {v0} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.", { v0: sum.total });
       back = { href: `/ordenes?fecha=${week.from}`, label: t("Órdenes diarias") };
     }
