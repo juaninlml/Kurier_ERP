@@ -7,10 +7,10 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromInputDate, round2, formatDateEs } from "@/lib/money";
-import { FREQUENCIES, payrollLine, weeklyOf, overtimePay } from "@/lib/payroll";
+import { FREQUENCIES, payrollLine, weeklyOf, overtimePay, payMethodOf } from "@/lib/payroll";
 import { attendanceForPeriod } from "@/lib/attendance";
 import { syncPayrollIncidents } from "@/lib/incidents";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentUser, requireAdmin } from "@/lib/current-user";
 import { numv, str } from "./helpers";
 
 // ───────────── Gastos fijos ─────────────
@@ -267,7 +267,7 @@ const lineSchema = z.object({
 
 async function savePayrollRunImpl(id: number, fd: FormData) {
   const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: true } });
-  if (run.status === "PAGADA") throw new Error("La nómina ya está pagada. Regrésala a borrador para editarla.");
+  if (run.status !== "BORRADOR") throw new Error("La nómina ya está aprobada. Regrésala a borrador para editarla.");
   const [brandId, cfg] = await Promise.all([payrollBrand(fd), prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } })]);
   const parsed = z.array(lineSchema).safeParse(JSON.parse(str(fd, "lines") || "[]"));
   if (!parsed.success) throw new Error(`Revisa los importes: ${parsed.error.issues[0]?.message ?? "datos inválidos"}.`);
@@ -305,7 +305,7 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
  */
 async function refreshPayrollIncidentsImpl(id: number) {
   const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: { include: { employee: true } } } });
-  if (run.status === "PAGADA") throw new Error("La nómina ya está pagada. Regrésala a borrador para actualizarla.");
+  if (run.status !== "BORRADOR") throw new Error("La nómina ya está aprobada. Regrésala a borrador para actualizarla.");
   const me = await getCurrentUser();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const incidents = await syncPayrollIncidents(run.lines.map((l) => l.employee), iso(run.periodStart), iso(run.periodEnd), me.name || me.email);
@@ -329,12 +329,30 @@ async function refreshPayrollIncidentsImpl(id: number) {
   revalidatePath("/nomina");
 }
 
-/** Marca la nómina como pagada y registra el egreso en contabilidad. */
-async function payPayrollRunImpl(id: number) {
-  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: true, brand: { select: { tradeName: true } } } });
+const refreshRun = (id: number) => {
+  revalidatePath(`/nomina/semanas/${id}`);
+  revalidatePath("/nomina");
+  revalidatePath("/contabilidad");
+  revalidatePath("/");
+};
+
+/** Aprueba la nómina: ya no se edita y pasa a pagos (solo el neto de cada empleado). Solo administradores. */
+async function approvePayrollRunImpl(id: number) {
+  const me = await requireAdmin();
+  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id } });
+  if (run.status !== "BORRADOR") throw new Error("Solo se puede aprobar una nómina en borrador.");
+  if (run.total <= 0) throw new Error("La nómina no tiene importe a pagar.");
+  await prisma.payrollRun.update({ where: { id }, data: { status: "APROBADA", approvedAt: new Date(), approvedBy: me.name || me.email } });
+  refreshRun(id);
+}
+
+/** Registra el egreso en contabilidad y marca la nómina como pagada (cuando ya se pagó a todos). */
+async function finishPayroll(id: number) {
+  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id }, include: { lines: { include: { employee: { select: { clabe: true } } } }, brand: { select: { tradeName: true } } } });
   if (run.status === "PAGADA") return;
   const payer = run.brand?.tradeName ?? (await prisma.companySettings.findUnique({ where: { id: 1 }, select: { tradeName: true } }))?.tradeName ?? "";
-  if (run.total <= 0) throw new Error("La nómina no tiene importe a pagar.");
+  const methods = new Set(run.lines.filter((l) => l.net > 0).map((l) => payMethodOf(l, l.employee)));
+  const lastPaid = run.lines.reduce<Date | null>((m, l) => (l.paidAt && (!m || l.paidAt > m) ? l.paidAt : m), null);
   await prisma.$transaction(async (tx) => {
     const t = await tx.transaction.create({
       data: {
@@ -343,34 +361,61 @@ async function payPayrollRunImpl(id: number) {
         description: `Nómina del ${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)} (${run.lines.length} empleado(s))${payer ? ` · paga ${payer}` : ""}`,
         amount: run.total,
         tax: 0,
-        date: run.payDate,
-        method: "Transferencia",
+        date: lastPaid ?? run.payDate,
+        method: methods.size > 1 ? "Transferencia y efectivo" : methods.has("EFECTIVO") ? "Efectivo" : "Transferencia",
         reference: `NOM-${run.id}`,
       },
     });
     await tx.payrollRun.update({ where: { id }, data: { status: "PAGADA", transactionId: t.id } });
   });
   queueArchive(`nomina:${id}`);
-  revalidatePath(`/nomina/semanas/${id}`);
-  revalidatePath("/nomina");
-  revalidatePath("/contabilidad");
-  revalidatePath("/");
 }
 
+/** Marca (o desmarca) el pago de un empleado. Al quedar todos pagados, la nómina pasa a PAGADA. */
+async function setPayrollLinePaidImpl(lineId: number, paid: boolean) {
+  const me = await getCurrentUser();
+  const line = await prisma.payrollLine.findUniqueOrThrow({ where: { id: lineId }, include: { run: true } });
+  const run = line.run;
+  if (run.status === "BORRADOR") throw new Error("Primero hay que aprobar la nómina.");
+  await prisma.payrollLine.update({ where: { id: lineId }, data: paid ? { paidAt: new Date(), paidBy: me.name || me.email } : { paidAt: null, paidBy: "" } });
+  if (paid) {
+    // Los empleados con neto 0 no tienen nada que pagar
+    const pending = await prisma.payrollLine.count({ where: { runId: run.id, paidAt: null, net: { gt: 0 } } });
+    if (pending === 0) await finishPayroll(run.id);
+  } else if (run.status === "PAGADA") {
+    // Se desmarcó a alguien: vuelve a aprobada y se quita el egreso
+    await prisma.$transaction([
+      ...(run.transactionId ? [prisma.transaction.deleteMany({ where: { id: run.transactionId } })] : []),
+      prisma.payrollRun.update({ where: { id: run.id }, data: { status: "APROBADA", transactionId: null } }),
+    ]);
+  }
+  refreshRun(run.id);
+}
+
+/** Cambia el método de pago (transferencia o efectivo) de un empleado en una nómina aprobada. */
+async function setPayrollLineMethodImpl(lineId: number, method: string) {
+  if (method !== "TRANSFERENCIA" && method !== "EFECTIVO") throw new Error("Método de pago inválido.");
+  const line = await prisma.payrollLine.findUniqueOrThrow({ where: { id: lineId }, include: { run: true } });
+  if (line.paidAt) throw new Error("Ese pago ya está marcado; desmárcalo para cambiar el método.");
+  await prisma.payrollLine.update({ where: { id: lineId }, data: { payMethod: method } });
+  refreshRun(line.runId);
+}
+
+/** Regresa la nómina a borrador para editarla: quita las marcas de pago y, si estaba pagada, el egreso. */
 async function reopenPayrollRunImpl(id: number) {
+  await requireAdmin();
   const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id } });
   await prisma.$transaction([
     ...(run.transactionId ? [prisma.transaction.deleteMany({ where: { id: run.transactionId } })] : []),
-    prisma.payrollRun.update({ where: { id }, data: { status: "BORRADOR", transactionId: null } }),
+    prisma.payrollLine.updateMany({ where: { runId: id }, data: { paidAt: null, paidBy: "" } }),
+    prisma.payrollRun.update({ where: { id }, data: { status: "BORRADOR", transactionId: null, approvedAt: null, approvedBy: "" } }),
   ]);
-  revalidatePath(`/nomina/semanas/${id}`);
-  revalidatePath("/nomina");
-  revalidatePath("/contabilidad");
+  refreshRun(id);
 }
 
 async function deletePayrollRunImpl(id: number) {
   const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id } });
-  if (run.status === "PAGADA") throw new Error("Regresa la nómina a borrador antes de eliminarla.");
+  if (run.status !== "BORRADOR") throw new Error("Regresa la nómina a borrador antes de eliminarla.");
   await prisma.payrollRun.delete({ where: { id } });
   revalidatePath("/nomina");
   redirect("/nomina");
@@ -387,7 +432,9 @@ export const updateJobPosition = safe(updateJobPositionImpl);
 export const deleteJobPosition = safe(deleteJobPositionImpl);
 export const createPayrollRun = safe(createPayrollRunImpl);
 export const savePayrollRun = safe(savePayrollRunImpl);
-export const payPayrollRun = safe(payPayrollRunImpl);
+export const approvePayrollRun = safe(approvePayrollRunImpl);
+export const setPayrollLinePaid = safe(setPayrollLinePaidImpl);
+export const setPayrollLineMethod = safe(setPayrollLineMethodImpl);
 export const refreshPayrollIncidents = safe(refreshPayrollIncidentsImpl);
 export const reopenPayrollRun = safe(reopenPayrollRunImpl);
 export const deletePayrollRun = safe(deletePayrollRunImpl);

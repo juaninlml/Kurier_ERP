@@ -122,7 +122,7 @@ export default async function PayrollPage() {
                     timeZone: "UTC",
                   })
                   .replace(".", ""),
-                full: `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}${r.status === "PAGADA" ? "" : ` · ${t("Borrador")}`}`,
+                full: `${formatDate(r.periodStart)} – ${formatDate(r.periodEnd)}${r.status === "PAGADA" ? "" : ` · ${r.status === "APROBADA" ? t("Aprobada") : t("Borrador")}`}`,
                 values: { total: r.total },
               }))}
           />
@@ -273,10 +273,14 @@ export default async function PayrollPage() {
                         <Badge
                           variant="outline"
                           className={
-                            r.status === "PAGADA" ? "border-transparent bg-emerald-50 text-emerald-700" : "border-transparent bg-amber-50 text-amber-800"
+                            r.status === "PAGADA"
+                              ? "border-transparent bg-emerald-50 text-emerald-700"
+                              : r.status === "APROBADA"
+                                ? "border-transparent bg-sky-50 text-sky-800"
+                                : "border-transparent bg-amber-50 text-amber-800"
                           }
                         >
-                          {r.status === "PAGADA" ? t("Pagada") : t("Borrador")}
+                          {r.status === "PAGADA" ? t("Pagada") : r.status === "APROBADA" ? t("Aprobada") : t("Borrador")}
                         </Badge>
                       </div>
                     </Link>

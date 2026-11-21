@@ -129,7 +129,8 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                         <Link href={`/nomina/semanas/${l.runId}`} className="text-primary hover:underline">
                           {formatDate(l.run.periodStart)} – {formatDate(l.run.periodEnd)}
                         </Link>
-                        {l.run.status !== "PAGADA" && <span className="ml-2 text-xs text-amber-700"><Tr>borrador</Tr></span>}
+                        {l.run.status === "BORRADOR" && <span className="ml-2 text-xs text-amber-700"><Tr>borrador</Tr></span>}
+                        {l.run.status === "APROBADA" && <span className="ml-2 text-xs text-sky-700">{l.paidAt ? <Tr>pagado</Tr> : <Tr>por pagar</Tr>}</span>}
                       </td>
                       <td className="text-right tabular-nums">
                         {formatNumber(l.days - l.absences - l.leaveDays)}

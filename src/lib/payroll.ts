@@ -255,3 +255,7 @@ export function breakEven(p: {
   const billedPerOrder = round2(p.orderRate + p.shippingCost * (1 + p.shippingMarkup / 100) * (p.guideShare / 100));
   return { shippingMargin, marginPerOrder, systemIncome, toCover, ordersMonth, ordersDay, billedPerOrder, revenueMonth: Number.isFinite(ordersMonth) ? round2(ordersMonth * billedPerOrder + systemIncome) : 0 };
 }
+
+/** Método de pago de un renglón de nómina: el elegido o, por omisión, transferencia si el empleado tiene CLABE. */
+export const payMethodOf = (l: { payMethod: string }, e: { clabe: string }): "TRANSFERENCIA" | "EFECTIVO" =>
+  l.payMethod === "EFECTIVO" || l.payMethod === "TRANSFERENCIA" ? l.payMethod : e.clabe.trim() ? "TRANSFERENCIA" : "EFECTIVO";

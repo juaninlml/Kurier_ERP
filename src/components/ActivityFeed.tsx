@@ -44,7 +44,7 @@ export function ActivityFeed({ items, now }: { items: ActivityItem[]; now: numbe
         let detail = it.detail;
         if (it.kind === "nomina") {
           const [a, b] = it.detail.split("|");
-          label = it.title === "PAGADA" ? t("Nómina pagada") : t("Nómina en borrador");
+          label = it.title === "PAGADA" ? t("Nómina pagada") : it.title === "APROBADA" ? t("Nómina aprobada") : t("Nómina en borrador");
           title = `${day(a!)} – ${day(b!)}`;
           detail = "";
         }

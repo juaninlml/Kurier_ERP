@@ -382,13 +382,16 @@ model JobPosition {
   employees  Employee[]
 }
 
-/// Nómina de un periodo (semanal). status: BORRADOR | PAGADA. Al pagarse genera un EGRESO en contabilidad.
+/// Nómina de un periodo (semanal). status: BORRADOR → APROBADA (solo se pagan los netos, empleado por empleado) → PAGADA.
+/// Al quedar pagados todos los empleados pasa a PAGADA y genera un EGRESO en contabilidad.
 model PayrollRun {
   id            Int           @id @default(autoincrement())
   periodStart   DateTime
   periodEnd     DateTime
   payDate       DateTime
   status        String        @default("BORRADOR")
+  approvedAt    DateTime?
+  approvedBy    String        @default("")
   notes         String        @default("")
   total         Float         @default(0)
   transactionId Int?          @unique
@@ -424,6 +427,9 @@ model PayrollLine {
   leaveDays       Float      @default(0) // permisos sin goce de sueldo (se descuentan, pero no son faltas injustificadas)
   absenceNote     String     @default("") // detalle de faltas y permisos de la semana (sale en el recibo)
   notice          String     @default("") // aviso en el recibo (ej. descanso por retardos la próxima semana)
+  payMethod       String     @default("") // TRANSFERENCIA | EFECTIVO (vacío = transferencia si tiene CLABE, si no efectivo)
+  paidAt          DateTime? // cuándo se marcó como pagado este empleado
+  paidBy          String     @default("") // quién lo marcó
   notes           String     @default("")
   gross           Float      @default(0)
   net             Float      @default(0)
