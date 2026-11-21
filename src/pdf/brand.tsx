@@ -322,6 +322,29 @@ export function Callout({ s, text, tone = "blue" }: { s: CompanySettings; text: 
  * La primera columna va en negritas azules; las celdas con "$" se resaltan como tarifa.
  */
 export function InfoTable({ s, title, columns, rows, note, full }: { s: CompanySettings; title: string; columns: string; rows: string; note?: string; full?: boolean }) {
+  const parsed = parseInfoTable(columns, rows);
+  if (!parsed) return null;
+  const { cols, data, isRate } = parsed;
+  return (
+    <View>
+      <Table
+        s={s}
+        head={
+          <SectionTab s={s} full={full} bare>
+            {title}
+          </SectionTab>
+        }
+        cols={cols}
+        rows={data}
+        styles={["label", ...cols.slice(1).map((): CellStyle => (isRate ? "rate" : "normal"))]}
+      />
+      {note ? <Callout s={s} text={note} /> : null}
+    </View>
+  );
+}
+
+/** Interpreta una tabla informativa escrita como texto (ver InfoTable). */
+export function parseInfoTable(columns: string, rows: string) {
   const defs = columns
     .split("|")
     .map((c) => c.trim())
@@ -345,20 +368,5 @@ export function InfoTable({ s, title, columns, rows, note, full }: { s: CompanyS
     });
   if (!data.length) return null;
   const isRate = data.every((r) => r.slice(1).every((v) => !v || v.includes("$")));
-  return (
-    <View>
-      <Table
-        s={s}
-        head={
-          <SectionTab s={s} full={full} bare>
-            {title}
-          </SectionTab>
-        }
-        cols={cols}
-        rows={data}
-        styles={["label", ...cols.slice(1).map((): CellStyle => (isRate ? "rate" : "normal"))]}
-      />
-      {note ? <Callout s={s} text={note} /> : null}
-    </View>
-  );
+  return { cols, data, isRate };
 }
