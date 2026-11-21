@@ -127,6 +127,11 @@ export async function EmployeeIncidents({ e, unjustifiedYear }: { e: Employee; u
                       <Badge variant="outline" className={cn("border-transparent", statusCls)}>
                         {rest && i.status === "RECHAZADA" ? t("Perdonado") : t(statusLabel)}
                       </Badge>
+                      {i.source === "HISTORICO" && (
+                        <Badge variant="outline" className="ml-1 border-transparent bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" title={t("Capturado al migrar: no entra a la nómina")}>
+                          {t("Histórico")}
+                        </Badge>
+                      )}
                       {i.decidedBy && i.status !== "PENDIENTE" && <div className="mt-0.5 text-[11px] text-muted-foreground">{i.decidedBy}</div>}
                     </td>
                     <td>

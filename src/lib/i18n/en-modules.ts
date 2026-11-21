@@ -1047,4 +1047,12 @@ export const enModules: Record<string, string> = {
   "El descanso por retardos no se elimina: cancélalo para perdonarlo.": "The tardiness rest day can't be deleted: forgive it instead.",
   "Las faltas y permisos sin goce no pueden ser más que los días a pagar.": "Absences and unpaid leave can't exceed the days to pay.",
   "La nómina ya está pagada. Regrésala a borrador para actualizarla.": "The payroll is already paid. Return it to draft to update it.",
+  "Ya las tomó (registro histórico, no entra a la nómina)": "Already taken (historical record, not in payroll)",
+  "Registro histórico (no entra a la nómina)": "Historical record (not in payroll)",
+  "Se descuentan del saldo de vacaciones del periodo, sin sueldo ni prima en la nómina.": "Deducted from the period's vacation balance, with no pay or premium in payroll.",
+  "Solo queda en su historial y resta días del aguinaldo; no se descuenta en ninguna nómina.": "Only kept in their history and reduces Christmas bonus days; not deducted in any payroll.",
+  "Solo queda en su historial; no se descuenta en ninguna nómina.": "Only kept in their history; not deducted in any payroll.",
+  "Histórico": "Historical",
+  "Capturado al migrar: no entra a la nómina": "Entered during migration: not in payroll",
+  "El registro histórico es solo para fechas que ya pasaron (hasta ayer).": "Historical records are only for past dates (up to yesterday).",
 };

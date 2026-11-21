@@ -153,8 +153,10 @@ export async function syncPayrollIncidents(employees: Emp[], from: string, to: s
     const vac: string[] = [];
     const unpaid: string[] = [];
     const paid: string[] = [];
+    // Los registros históricos (migración) ya se pagaron fuera del ERP: no entran a la nómina
+    const payable = mine.filter((i) => i.source !== "HISTORICO");
     for (const d of workdaysIn(from, to, e)) {
-      const i = covering(mine, d);
+      const i = covering(payable, d);
       if (!i) continue;
       if (i.type === "VACACIONES") vac.push(d);
       else if (i.type === "PERMISO") (i.withPay ? paid : unpaid).push(d);

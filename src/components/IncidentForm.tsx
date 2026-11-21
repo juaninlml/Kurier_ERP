@@ -11,7 +11,12 @@ export function IncidentForm({ action, today }: { action: (fd: FormData) => Prom
   const t = useT();
   const [type, setType] = useState("VACACIONES");
   const [from, setFrom] = useState(today);
-  const request = type !== "FALTA";
+  const [to, setTo] = useState("");
+  // Fechas que ya pasaron: por omisión se capturan como registro histórico (migración de las hojas de datos)
+  const past = (to || from) < today;
+  const [historical, setHistorical] = useState(false);
+  const isHistoric = past && historical;
+  const request = type !== "FALTA" && !isHistoric;
 
   return (
     <Form action={action} resetOnSuccess className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_150px_150px_minmax(0,1.6fr)]">
@@ -25,11 +30,32 @@ export function IncidentForm({ action, today }: { action: (fd: FormData) => Prom
       </label>
       <label className="block">
         <span className="label">{t("Del")}</span>
-        <input type="date" name="startDate" required value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
+        <input
+          type="date"
+          name="startDate"
+          required
+          value={from}
+          onChange={(e) => {
+            setFrom(e.target.value);
+            setHistorical((to || e.target.value) < today);
+          }}
+          className="input"
+        />
       </label>
       <label className="block">
         <span className="label">{t("Al")}</span>
-        <input type="date" name="endDate" min={from} className="input" aria-describedby="incident-end-hint" />
+        <input
+          type="date"
+          name="endDate"
+          min={from}
+          value={to}
+          onChange={(e) => {
+            setTo(e.target.value);
+            setHistorical((e.target.value || from) < today);
+          }}
+          className="input"
+          aria-describedby="incident-end-hint"
+        />
         <span id="incident-end-hint" className="mt-1 block text-[11px] text-muted-foreground">
           {t("Vacío = un solo día")}
         </span>
@@ -49,13 +75,25 @@ export function IncidentForm({ action, today }: { action: (fd: FormData) => Prom
             <input type="checkbox" name="withPay" /> {t("Con goce de sueldo")}
           </label>
         )}
+        {past && (
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" name="historical" checked={historical} onChange={(e) => setHistorical(e.target.checked)} />{" "}
+            {type === "VACACIONES" ? t("Ya las tomó (registro histórico, no entra a la nómina)") : t("Registro histórico (no entra a la nómina)")}
+          </label>
+        )}
         {request && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="authorize" defaultChecked /> {t("Autorizar ahora")}
           </label>
         )}
         <span className="text-xs text-muted-foreground">
-          {type === "VACACIONES"
+          {isHistoric
+            ? type === "VACACIONES"
+              ? t("Se descuentan del saldo de vacaciones del periodo, sin sueldo ni prima en la nómina.")
+              : type === "FALTA"
+                ? t("Solo queda en su historial y resta días del aguinaldo; no se descuenta en ninguna nómina.")
+                : t("Solo queda en su historial; no se descuenta en ninguna nómina.")
+            : type === "VACACIONES"
             ? t("Se cuentan solo sus días laborables y se pagan con prima vacacional del 25% en la nómina de esa semana.")
             : type === "PERMISO"
               ? t("Sin goce: no se pagan esos días, pero no cuenta como falta injustificada ni afecta el aguinaldo.")

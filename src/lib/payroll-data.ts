@@ -23,7 +23,8 @@ export async function vacationTakenMap(employees: { id: number; startDate: Date;
     const sinceStr = since.toISOString().slice(0, 10);
     const scheduled = vacations
       .filter((v) => v.employeeId === e.id)
-      .reduce((a, v) => a + workdaysIn(v.startDate, v.endDate, e).filter((d) => d > lastPaid && d >= sinceStr).length, 0);
+      // Las históricas (migración) nunca estuvieron en una nómina: cuentan todas las del periodo
+      .reduce((a, v) => a + workdaysIn(v.startDate, v.endDate, e).filter((d) => (v.source === "HISTORICO" || d > lastPaid) && d >= sinceStr).length, 0);
     map.set(e.id, paid + scheduled);
   }
   return map;
@@ -39,6 +40,13 @@ export async function unjustifiedMap(employeeIds: number[], year = new Date().ge
     _sum: { absences: true },
   });
   for (const r of rows) map.set(r.employeeId, r._sum.absences ?? 0);
+  // Faltas injustificadas capturadas como registro histórico (no están en ninguna nómina)
+  const cutoff = aguinaldoCutoff(year).toISOString().slice(0, 10);
+  const historic = await prisma.incident.findMany({
+    where: { employeeId: { in: employeeIds }, source: "HISTORICO", type: { in: ["FALTA", "DESCANSO_RETARDOS"] }, status: "AUTORIZADA", startDate: { gte: `${year}-01-01`, lte: cutoff } },
+    select: { employeeId: true, days: true },
+  });
+  for (const h of historic) map.set(h.employeeId, (map.get(h.employeeId) ?? 0) + h.days);
   return map;
 }
 

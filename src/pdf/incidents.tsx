@@ -40,12 +40,14 @@ function Signatures({ names }: { names: [string, string][] }) {
 
 /** Formato de una incidencia: solicitud de vacaciones, permiso de ausencia, constancia de falta o aviso de descanso por retardos. */
 export function IncidentPdf({ s, i, e, seniority, vacation }: { s: CompanySettings; i: Incident; e: Employee; seniority: string; vacation?: VacationInfo }) {
-  const title = TITLE[i.type] ?? "Incidencia";
+  const title = i.source === "HISTORICO" && i.type === "VACACIONES" ? "Constancia de vacaciones" : (TITLE[i.type] ?? "Incidencia");
   const folio = incidentFolio(i);
   const dates = rangeLabel(i.startDate, i.endDate);
   const days = `${formatNumber(i.days)} día${i.days === 1 ? "" : "s"} laborable${i.days === 1 ? "" : "s"}`;
-  const status =
-    i.status === "AUTORIZADA"
+  const historic = i.source === "HISTORICO";
+  const status = historic
+    ? `**Registro histórico:** ${i.type === "VACACIONES" ? "vacaciones ya disfrutadas" : "incidencia de fechas anteriores"}, capturada el ${formatDateEs(i.createdAt)}${i.createdBy ? ` por ${i.createdBy}` : ""}. Se pagó fuera del ERP y no entra a la nómina.`
+    : i.status === "AUTORIZADA"
       ? `**Estatus: AUTORIZADA** el ${i.decidedAt ? formatDateEs(i.decidedAt) : "—"}${i.decidedBy ? ` por ${i.decidedBy}` : ""}.`
       : i.status === "RECHAZADA"
         ? `**Estatus: ${i.type === "DESCANSO_RETARDOS" ? "CANCELADO (perdonado)" : "NO AUTORIZADA"}** el ${i.decidedAt ? formatDateEs(i.decidedAt) : "—"}${i.decidedBy ? ` por ${i.decidedBy}` : ""}.`
@@ -65,10 +67,10 @@ export function IncidentPdf({ s, i, e, seniority, vacation }: { s: CompanySettin
     detail = [
       ["Días que corresponden", `${vacation.entitled} días del periodo ${formatDateEs(vacation.periodFrom)} al ${formatDateEs(vacation.periodTo)} (art. 76 LFT)`],
       ["Días disfrutados antes", `${formatNumber(vacation.takenBefore)} días`],
-      ["Días solicitados", i.startDate === i.endDate ? `${days}: ${longDate(i.startDate)}` : `${days}: del ${longDate(i.startDate)} al ${longDate(i.endDate)}`],
+      [historic ? "Días disfrutados" : "Días solicitados", i.startDate === i.endDate ? `${days}: ${longDate(i.startDate)}` : `${days}: del ${longDate(i.startDate)} al ${longDate(i.endDate)}`],
       ["Regresa a laborar", vacation.returnDate ? longDate(vacation.returnDate) : "—"],
-      ["Saldo después de esta solicitud", `${formatNumber(vacation.balance)} días`],
-      ["Prima vacacional (25%)", `${formatMoney(vacation.premium)} (art. 80 LFT)`],
+      [historic ? "Saldo después de estos días" : "Saldo después de esta solicitud", `${formatNumber(vacation.balance)} días`],
+      ["Prima vacacional (25%)", `${formatMoney(vacation.premium)} (art. 80 LFT)${historic ? ", pagada fuera del ERP" : ""}`],
       ...(i.reason ? ([["Observaciones", i.reason]] as [string, string][]) : []),
     ];
     note =

@@ -5,6 +5,7 @@ import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
 import { workdaysIn } from "@/lib/incidents";
+import { localParts } from "@/lib/attendance";
 import { benefits } from "@/lib/payroll";
 import { vacationTakenMap } from "@/lib/payroll-data";
 import { str } from "./helpers";
@@ -50,9 +51,17 @@ async function createIncidentImpl(employeeId: number, fd: FormData) {
     where: { employeeId, status: { not: "RECHAZADA" }, startDate: { lte: endDate }, endDate: { gte: startDate }, ...(type === "FALTA" ? {} : { type: { not: "FALTA" } }) },
   });
   if (overlap) throw new Error("Ya hay una incidencia registrada en esas fechas.");
+  // Registro histórico (migración): fechas que ya pasaron y se pagaron fuera del ERP. Quedan en el historial,
+  // descuentan del saldo de vacaciones (y las faltas, del aguinaldo), pero nunca entran a una nómina.
+  const historical = fd.get("historical") === "on";
+  if (historical) {
+    const cfg = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { timezone: true } });
+    const today = localParts(new Date(), cfg?.timezone || "America/Mexico_City").date;
+    if (endDate >= today) throw new Error("El registro histórico es solo para fechas que ya pasaron (hasta ayer).");
+  }
   // Las faltas quedan registradas; vacaciones y permisos se autorizan ahora o quedan pendientes
-  const authorize = type === "FALTA" || fd.get("authorize") === "on";
-  if (type === "VACACIONES" && authorize) await assertVacationBalance(e, days, startDate);
+  const authorize = historical || type === "FALTA" || fd.get("authorize") === "on";
+  if (type === "VACACIONES" && authorize && !historical) await assertVacationBalance(e, days, startDate);
   const by = await who();
   await prisma.incident.create({
     data: {
@@ -64,6 +73,7 @@ async function createIncidentImpl(employeeId: number, fd: FormData) {
       withPay: type === "PERMISO" && fd.get("withPay") === "on",
       status: authorize ? "AUTORIZADA" : "PENDIENTE",
       reason,
+      source: historical ? "HISTORICO" : "MANUAL",
       decidedAt: authorize ? new Date() : null,
       decidedBy: authorize ? by : "",
       createdBy: by,
