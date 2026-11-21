@@ -6,7 +6,7 @@ import { CleanPage, PartyBlock, InfoGrid, SectionLabel, CleanTable, TotalsBox, S
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
 import { formatDateEs, formatDateLongEs, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
-import { translator } from "@/lib/i18n";
+import { docText } from "@/lib/i18n/doc-text";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
@@ -224,28 +224,6 @@ const INVOICE_L = {
   },
 } as const;
 
-const EN_MONTHS: Record<string, string> = {
-  enero: "January", febrero: "February", marzo: "March", abril: "April", mayo: "May", junio: "June",
-  julio: "July", agosto: "August", septiembre: "September", octubre: "October", noviembre: "November", diciembre: "December",
-};
-/** Traduce textos comunes que genera el ERP (conceptos, periodos, volumen); lo demás se deja como se capturó. */
-function toEnglish(text: string, t: (s: string) => string) {
-  if (!text) return text;
-  const direct = t(text);
-  if (direct !== text) return direct;
-  return text
-    .replace(/^Material de empaque: /, "Packing material: ")
-    .replace(/(\d+) al (\d+) de (\w+) de (\d{4})/g, (_, a, b, m, y) => `${EN_MONTHS[m.toLowerCase()] ?? m} ${a}–${b}, ${y}`)
-    .replace(/(\d+) de (\w+) al (\d+) de (\w+) de (\d{4})/g, (_, a, m1, b, m2, y) => `${EN_MONTHS[m1.toLowerCase()] ?? m1} ${a} – ${EN_MONTHS[m2.toLowerCase()] ?? m2} ${b}, ${y}`)
-    .replace(/ — ciclo semanal/, " — weekly cycle")
-    .replace(/ — ciclo mensual/, " — monthly cycle")
-    .replace(/(\d+) paquetes en (\d+) día\(s\) operado\(s\)/, "$1 packages over $2 operating day(s)")
-    .replace(/Paquetes procesados del /, "Packages processed ")
-    .replace(/^Medidas (.+) cm$/, "Size $1 cm")
-    .replace(/^Pago contra recepción de factura a (\d+) días naturales\.?$/, "Payment due within $1 calendar days of receipt of invoice.")
-    .replace(/^Pago contra recepción de factura\.?$/, "Payment due upon receipt of invoice.");
-}
-
 /** Plural simple en inglés para unidades ("package" → "packages"); las que ya terminan en s o llevan "/" se dejan. */
 const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
 
@@ -261,8 +239,7 @@ export function InvoicePdf({
 }) {
   const L = INVOICE_L[lang];
   const en = lang === "en";
-  const tr = translator(lang);
-  const x = (text: string) => (en ? toEnglish(text, tr) : text);
+  const x = (text: string) => docText(text, lang);
   const date = (d: Date) => (en ? formatDateNum(d, "en-US") : formatDateNumEs(d));
   const balance = round2(invoice.total - invoice.paidTotal);
   const cl = invoice.client;
@@ -298,7 +275,7 @@ export function InvoicePdf({
             { label: L.period, value: x(invoice.period) },
             { label: L.quote, value: invoice.quote?.folio ?? "" },
             { label: L.volume, value: x(invoice.volume) },
-            { label: L.storage, value: x(invoice.storage) },
+            { label: L.storage, value: docText(invoice.storage, lang, "storage") },
           ]}
         />
 
