@@ -44,12 +44,26 @@ async function syncInvoice(tx: Prisma.TransactionClient, id: number) {
   await tx.invoice.update({ where: { id }, data: { paidTotal: paid, status } });
 }
 
+/** Folio capturado a mano (vacío = automático). */
+function folioInput(fd: FormData) {
+  const f = str(fd, "folio").replace(/\s+/g, " ");
+  if (f.length > 40) throw new Error("El folio no puede pasar de 40 caracteres.");
+  if (f && !/^[\p{L}\p{N}][\p{L}\p{N} ._\-/#]*$/u.test(f)) throw new Error("El folio solo puede llevar letras, números, espacios y . - _ / #");
+  return f;
+}
+
+async function assertFolioFree(db: Pick<Prisma.TransactionClient, "invoice">, folio: string, exceptId?: number) {
+  const dup = await db.invoice.findFirst({ where: { folio, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
+  if (dup) throw new Error(`Ya existe una factura con el folio ${folio}.`);
+}
+
 async function createInvoiceImpl(fd: FormData) {
   const h = header(fd);
   const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
   const quoteId = numv(fd, "quoteId") || null;
   const importId = numv(fd, "importId") || null;
-  const ordersWeek = /^d{4}-d{2}-d{2}$/.test(str(fd, "ordersWeek")) ? str(fd, "ordersWeek") : "";
+  const ordersWeek = /^\d{4}-\d{2}-\d{2}$/.test(str(fd, "ordersWeek")) ? str(fd, "ordersWeek") : "";
+  const custom = folioInput(fd);
   const inv = await prisma.$transaction(async (tx) => {
     if (ordersWeek) {
       const dup = await tx.invoice.findFirst({ where: { clientId: h.clientId, ordersWeek, status: { not: "CANCELADA" } } });
@@ -59,7 +73,9 @@ async function createInvoiceImpl(fd: FormData) {
       const imp = await tx.wmsImport.findUnique({ where: { id: importId } });
       if (imp?.status === "FACTURADO") throw new Error(`El estado de cobro ${imp.folio} ya se facturó.`);
     }
-    const folio = await nextFolio(tx, "invoice", await brandPrefix(h.brandId, "invoice"));
+    if (custom) await assertFolioFree(tx, custom);
+    // Folio capturado (serie propia del cliente) o el consecutivo automático
+    const folio = custom || (await nextFolio(tx, "invoice", await brandPrefix(h.brandId, "invoice")));
     const created = await tx.invoice.create({ data: { ...h, ...totals, folio, quoteId, ordersWeek, items: { create: items } } });
     if (quoteId) await tx.quote.update({ where: { id: quoteId }, data: { status: "FACTURADA" } });
     if (importId) await tx.wmsImport.update({ where: { id: importId }, data: { status: "FACTURADO", invoiceId: created.id } });
@@ -79,9 +95,11 @@ async function updateInvoiceImpl(id: number, fd: FormData) {
   if (current.status === "CANCELADA") throw new Error("No se puede editar una factura cancelada.");
   const h = header(fd);
   const { items, ...totals } = computeLines(parseItems(fd, "invoice"));
+  const folio = folioInput(fd) || current.folio;
+  if (folio !== current.folio) await assertFolioFree(prisma, folio, id);
   await prisma.$transaction([
     prisma.invoiceItem.deleteMany({ where: { invoiceId: id } }),
-    prisma.invoice.update({ where: { id }, data: { ...h, ...totals, items: { create: items } } }),
+    prisma.invoice.update({ where: { id }, data: { ...h, ...totals, folio, items: { create: items } } }),
   ]);
   revalidateAll(id);
   queueArchive(`factura:${id}`);

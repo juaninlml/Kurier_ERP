@@ -88,3 +88,37 @@ export function parseProfileJson(json: string): { label: string; value: string }
     return [];
   }
 }
+
+/** Siguiente folio de una serie: sube el último número conservando ceros y sufijo ("CUF-009" → "CUF-010"). */
+export function incrementFolio(folio: string) {
+  const m = folio.match(/^(.*?)(\d+)(\D*)$/);
+  if (!m) return "";
+  const n = String(Number(m[2]) + 1).padStart(m[2].length, "0");
+  return `${m[1]}${n}${m[3]}`;
+}
+
+/**
+ * Folio sugerido por cliente: si su última factura usa una serie propia (no la automática de la empresa
+ * o de una marca), se sugiere el siguiente número de esa serie. Sin serie propia: automático.
+ */
+export async function invoiceFolioSuggestions() {
+  const [settings, brands, invoices] = await Promise.all([
+    prisma.companySettings.findUnique({ where: { id: 1 }, select: { invoicePrefix: true } }),
+    prisma.brand.findMany({ select: { invoicePrefix: true } }),
+    prisma.invoice.findMany({ orderBy: [{ issueDate: "desc" }, { id: "desc" }], select: { clientId: true, folio: true } }),
+  ]);
+  const auto = new Set([settings?.invoicePrefix || "FAC", ...brands.map((b) => b.invoicePrefix)].filter(Boolean).map((p) => p.toUpperCase()));
+  const isAuto = (f: string) => {
+    const m = f.match(/^(.+)-\d{5}$/);
+    return !!m && auto.has(m[1].toUpperCase());
+  };
+  const out: Record<number, string> = {};
+  const used = new Set(invoices.map((i) => i.folio));
+  for (const inv of invoices) {
+    if (inv.clientId in out || isAuto(inv.folio)) continue;
+    let next = incrementFolio(inv.folio);
+    while (next && used.has(next)) next = incrementFolio(next);
+    if (next) out[inv.clientId] = next;
+  }
+  return out;
+}

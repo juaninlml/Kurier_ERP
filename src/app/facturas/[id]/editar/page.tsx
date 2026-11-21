@@ -34,6 +34,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         submitLabel={t("Guardar cambios")}
         defaults={{
           clientId: inv.clientId,
+          folio: inv.folio,
           brandId: inv.brandId ?? 0,
           issueDate: toInputDate(inv.issueDate),
           secondDate: toInputDate(inv.dueDate),

@@ -1058,4 +1058,10 @@ export const enModules: Record<string, string> = {
   "{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.": "{v0} supply item(s) without a sale price: enter the price or remove them if included in the service.",
   "No hay insumos capturados para este cliente en la semana (Órdenes → Insumos de empaque).": "No packing supplies captured for this client this week (Orders → Packing supplies).",
   "Esta semana sus paquetes se registraron como «Sin insumo»: no hay material de empaque que cobrar.": "This week their packages were recorded as “No supply”: there are no packing materials to bill.",
+  "Automático": "Automatic",
+  "Puedes cambiarlo; debe ser único.": "You can change it; it must be unique.",
+  "Siguiente de la serie de este cliente; puedes cambiarlo.": "Next in this client's series; you can change it.",
+  "Vacío = consecutivo automático. Escribe uno para usar la serie del cliente.": "Empty = automatic number. Type one to use the client's series.",
+  "El folio no puede pasar de 40 caracteres.": "The folio can't exceed 40 characters.",
+  "El folio solo puede llevar letras, números, espacios y . - _ / #": "The folio can only contain letters, numbers, spaces and . - _ / #",
 };

@@ -38,6 +38,8 @@ export type DocumentDefaults = {
   brandId?: number;
   /** Lunes de la semana de órdenes diarias que se factura (servicio logístico). */
   ordersWeek?: string;
+  /** Folio actual (al editar una factura). */
+  folio?: string;
   issueDate: string;
   secondDate: string;
   notes: string;
@@ -103,6 +105,7 @@ export function DocumentEditor({
   defaultTaxRate,
   submitLabel,
   brands = [],
+  folioByClient = {},
 }: {
   action: (formData: FormData) => Promise<unknown>;
   clients: ClientOpt[];
@@ -115,6 +118,8 @@ export function DocumentEditor({
   submitLabel: string;
   /** Marcas comerciales (la primera, id 0, es la principal). Con una sola no se muestra el selector. */
   brands?: BrandOpt[];
+  /** Facturas: siguiente folio de la serie propia de cada cliente (sin serie: automático). */
+  folioByClient?: Record<number, string>;
 }) {
   const t = useT();
   const isQuote = kind === "quote";
@@ -127,6 +132,9 @@ export function DocumentEditor({
   const effectiveClientId = forProspect ? undefined : clientId;
   const ownRates = (effectiveClientId && clientRates[effectiveClientId]) || [];
   const services = useMemo(() => [...ownRates, ...catalog], [ownRates, catalog]);
+  // Folio de factura: el actual al editar; al crear, el siguiente de la serie del cliente o vacío (automático)
+  const [folio, setFolio] = useState(defaults.folio ?? (defaults.clientId ? (folioByClient[defaults.clientId] ?? "") : ""));
+  const [folioTouched, setFolioTouched] = useState(!!defaults.folio);
   const [lines, setLines] = useState<LineInput[]>(defaults.items.length ? defaults.items : [emptyLine(defaultTaxRate)]);
   const [profile, setProfile] = useState<ProfileRow[]>(defaults.profile ?? []);
 
@@ -248,6 +256,7 @@ export function DocumentEditor({
               setClientId(id);
               // Cada cliente tiene su marca: al cambiar de cliente, cambia la marca que emite.
               setBrandId(brandOfClient(id));
+              if (!folioTouched) setFolio(id ? (folioByClient[id] ?? "") : "");
             }}>
             <option value="" disabled>
               {t("Selecciona un cliente…")}
@@ -259,6 +268,29 @@ export function DocumentEditor({
             ))}
           </select>
         </label>
+        )}
+        {!isQuote && (
+          <label className="block">
+            <span className="label"><Tr>Folio</Tr></span>
+            <input
+              name="folio"
+              value={folio}
+              maxLength={40}
+              onChange={(e) => {
+                setFolio(e.target.value);
+                setFolioTouched(true);
+              }}
+              placeholder={defaults.folio ? undefined : t("Automático")}
+              className="input font-mono"
+            />
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              {defaults.folio
+                ? t("Puedes cambiarlo; debe ser único.")
+                : clientId && folioByClient[clientId]
+                  ? t("Siguiente de la serie de este cliente; puedes cambiarlo.")
+                  : t("Vacío = consecutivo automático. Escribe uno para usar la serie del cliente.")}
+            </span>
+          </label>
         )}
         {brands.length > 1 && (
           <label className="block">

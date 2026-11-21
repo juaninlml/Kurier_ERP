@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createInvoice } from "@/app/actions/invoices";
 import { DocumentEditor, type DocumentDefaults } from "@/components/DocumentEditor";
 import { PageHeader } from "@/components/kit";
-import { editorData, itemsForEditor } from "@/lib/editor-data";
+import { editorData, invoiceFolioSuggestions, itemsForEditor } from "@/lib/editor-data";
 import { addDays, formatMoney, toInputDate } from "@/lib/money";
 import { prisma } from "@/lib/db";
 import { previewImport } from "@/lib/wms/imports";
@@ -20,7 +20,7 @@ export async function generateMetadata() {
 export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string; ordenes?: string; semana?: string }> }) {
   const t = await getT();
   const { clientId, quoteId, importId, ordenes, semana } = await searchParams;
-  const { clients, services, clientRates, settings, brands } = await editorData();
+  const [{ clients, services, clientRates, settings, brands }, folioByClient] = await Promise.all([editorData(), invoiceFolioSuggestions()]);
   const today = new Date();
   const base: DocumentDefaults = {
     clientId: clientId ? Number(clientId) : undefined,
@@ -148,6 +148,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           defaultTaxRate={settings.defaultTaxRate}
           submitLabel={t("Crear factura")}
           defaults={defaults}
+          folioByClient={folioByClient}
         />
       )}
     </div>
