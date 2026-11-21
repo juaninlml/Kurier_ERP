@@ -39,17 +39,26 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
     const week = weekOf(semana);
     const [sum, sup] = await Promise.all([clientOrdersSummary(Number(ordenes), week.from, week.to), suppliesByMaterial(week.from, week.to, Number(ordenes))]);
     if (sum) {
+      // Todos los insumos consumidos en la semana (menos «Sin insumo»). Precio: el de la tarifa del cliente
+      // con el mismo nombre del material, si la tiene; si no, el precio de venta del material.
+      const norm = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^material de empaque:\s*/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+      const clientPrice = (name: string) => sum.client.rates.find((r) => r.active && !r.atCost && norm(r.name) === norm(name))?.unitPrice;
       const supplyLines = sup.list
-        .filter((m) => !m.noSupply && m.unitPrice > 0)
-        .map((m) => ({
-          description: `Material de empaque: ${m.name}`, // se guarda en la factura: siempre en español
-          detail: m.size ? `Medidas ${m.size.replace(/\*/g, "×")} cm` : "",
-          section: "Material de empaque",
-          unit: "Pieza",
-          quantity: m.qty,
-          unitPrice: m.unitPrice,
-          taxRate: settings.defaultTaxRate,
-        }));
+        .filter((m) => !m.noSupply)
+        .map((m) => {
+          const price = clientPrice(m.name) ?? m.unitPrice;
+          return {
+            description: `Material de empaque: ${m.name}`, // se guarda en la factura: siempre en español
+            detail: m.size ? `Medidas ${m.size.replace(/\*/g, "×")} cm` : "",
+            section: "Material de empaque",
+            unit: "Pieza",
+            quantity: m.qty,
+            unitPrice: price,
+            taxRate: settings.defaultTaxRate,
+          };
+        });
+      const unpriced = supplyLines.filter((l) => !l.unitPrice).length;
+      const supplySale = supplyLines.reduce((a, l) => a + l.quantity * l.unitPrice, 0);
       const period = rangeLabel(week.from, week.to, "es-MX"); // se guarda en la factura: siempre en español
       const breakdown = sum.byWave.filter((w) => w.total > 0).map((w) => `${w.name}: ${w.total}`).join(" · ");
       defaults = {
@@ -76,8 +85,8 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
             v0: sum.total,
             v1: formatMoney(sum.rate.rate),
             v2: t(sum.rate.label).toLowerCase(),
-            v3: supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: supplyLines.length, v1: formatMoney(sup.sale) }) : "",
-          })
+            v3: supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: supplyLines.length, v1: formatMoney(supplySale) }) : "",
+          }) + (unpriced ? ` ${t("{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.", { v0: unpriced })}` : "")
         : t("Desde Órdenes diarias: {v0} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.", { v0: sum.total });
       back = { href: `/ordenes?fecha=${week.from}`, label: t("Órdenes diarias") };
     }
