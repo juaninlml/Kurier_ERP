@@ -1,13 +1,28 @@
+import { getSessionUser } from "@/lib/current-user";
+
 type PdfResult = { filename: string; buffer: Buffer } | null;
+
+/** Nombre de archivo seguro para Content-Disposition (sin comillas ni saltos de línea; acentos en filename*). */
+function disposition(download: boolean, filename: string) {
+  const ascii = filename.normalize("NFD").replace(/\p{M}/gu, "").replace(/[^\w.\- ]/g, "_");
+  return `${download ? "attachment" : "inline"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
+/** Sesión activa para las rutas /api (además del proxy, que solo revisa el JWT): un usuario desactivado ya no descarga nada. */
+export async function requireApiUser() {
+  return (await getSessionUser()) ? null : new Response("No autorizado", { status: 401, headers: { "Cache-Control": "no-store" } });
+}
 
 /**
  * Responde con el PDF generado. Si la generación falla, registra el error completo
  * (visible en los logs de Vercel) y muestra una página con el motivo, en lugar de un 500 vacío.
  */
-export async function pdfResponse(render: Promise<PdfResult>, download: boolean) {
+export async function pdfResponse(render: () => Promise<PdfResult>, download: boolean) {
+  const denied = await requireApiUser();
+  if (denied) return denied;
   let result: PdfResult;
   try {
-    result = await render;
+    result = await render();
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error("[pdf] Error al generar el PDF:", err);
@@ -20,7 +35,7 @@ export async function pdfResponse(render: Promise<PdfResult>, download: boolean)
   return new Response(new Uint8Array(result.buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${result.filename}"`,
+      "Content-Disposition": disposition(download, result.filename),
       "Cache-Control": "no-store",
     },
   });

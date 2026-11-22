@@ -13,6 +13,9 @@ import { localeOf } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
+/** Solo las columnas que muestran las tablas de "Últimas facturas/cotizaciones". */
+const RECENT_SELECT = { id: true, folio: true, issueDate: true, status: true, total: true, client: { select: { name: true } } } as const;
+
 export default async function Dashboard() {
   const [t, lang, settings] = await Promise.all([getT(), getLang(), getSettings()]);
   const locale = localeOf(lang);
@@ -24,10 +27,11 @@ export default async function Dashboard() {
     incomeStatement(from, to),
     incomeStatement(prevFrom, prevTo),
     receivables(),
-    prisma.quote.findMany({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, select: { total: true } }),
-    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } }),
+    // Suma y conteo en la base (antes se traían todas las cotizaciones abiertas para sumarlas aquí)
+    prisma.quote.aggregate({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, _sum: { total: true }, _count: { _all: true } }),
+    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, select: RECENT_SELECT }),
     prisma.quote
-      .findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } })
+      .findMany({ orderBy: { id: "desc" }, take: 6, select: { ...RECENT_SELECT, prospectName: true } })
       .then((qs) => qs.map((q) => ({ ...q, client: { name: q.client?.name ?? `${q.prospectName || t("Prospecto")} (${t("prospecto")})` } }))),
     flowSeries(year.from, year.to, locale),
     quotePipeline(),
@@ -35,7 +39,7 @@ export default async function Dashboard() {
     recentActivity(9),
     activityByDay(17, settings.timezone || "America/Mexico_City"),
   ]);
-  const openTotal = round2(openQuotes.reduce((a, q) => a + q.total, 0));
+  const openTotal = round2(openQuotes._sum.total ?? 0);
   const overdue = round2(ar.total - ar.byBucket.corriente);
   const monthName = from.toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" });
   const net = round2(stmt.incomeTotal - stmt.expenseTotal);
@@ -102,7 +106,7 @@ export default async function Dashboard() {
           icon={Wallet}
           href={overdue > 0 ? "/facturas?status=VENCIDA" : "/facturas"}
         />
-        <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes.length })} icon={ClipboardList} href="/cotizaciones" />
+        <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes._count._all })} icon={ClipboardList} href="/cotizaciones" />
       </div>
 
       <div className="mb-6 grid gap-6 xl:grid-cols-3">

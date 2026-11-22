@@ -220,6 +220,11 @@ model Quote {
   invoices          Invoice[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model QuoteItem {
@@ -240,6 +245,9 @@ model QuoteItem {
   discountPct Float   @default(0)
   taxRate     Float   @default(16)
   amount      Float   @default(0) // importe sin IVA, después de descuento
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([quoteId])
 }
 
 /// status: PENDIENTE | PARCIAL | PAGADA | CANCELADA
@@ -271,6 +279,11 @@ model Invoice {
   updatedAt  DateTime      @updatedAt
   brand      Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
   brandId    Int?
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([clientId])
+  @@index([status, dueDate])
+  @@index([createdAt])
 }
 
 model InvoiceItem {
@@ -291,6 +304,9 @@ model InvoiceItem {
   discountPct Float   @default(0)
   taxRate     Float   @default(16)
   amount      Float   @default(0)
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([invoiceId])
 }
 
 /// Pago recibido de una factura. Genera automáticamente un movimiento de INGRESO.
@@ -305,6 +321,10 @@ model Payment {
   notes       String       @default("")
   transaction Transaction?
   createdAt   DateTime     @default(now())
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([invoiceId])
+  @@index([createdAt])
 }
 
 /// Movimiento contable. type: INGRESO | EGRESO
@@ -328,6 +348,11 @@ model Transaction {
   updatedAt   DateTime  @updatedAt
 
   @@index([supplierId])
+
+  // Índices para listas, tablero y reportes (0022)
+  @@index([date])
+  @@index([clientId])
+  @@index([createdAt])
 }
 
 /// Tablas informativas del tarifario (Incluido en todos los planes, SLA, cobertura…).

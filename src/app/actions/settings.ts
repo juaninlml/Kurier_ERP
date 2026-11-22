@@ -1,14 +1,17 @@
 "use server";
 
 import { safe } from "@/lib/safe-action";
+import { requireAdmin } from "@/lib/current-user";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { numv, str } from "./helpers";
+import { numv, readLogo, str } from "./helpers";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 async function saveSettingsImpl(fd: FormData) {
+  // Datos bancarios (CLABE), folios y marca de todos los PDFs: solo la cuenta maestra o un administrador
+  await requireAdmin();
   const primaryColor = str(fd, "primaryColor");
   const accentColor = str(fd, "accentColor");
   if (!HEX.test(primaryColor) || !HEX.test(accentColor)) throw new Error("Los colores deben ser hex de 6 dígitos (#RRGGBB).");
@@ -19,9 +22,7 @@ async function saveSettingsImpl(fd: FormData) {
   if (fd.get("removeLogo") === "on") {
     logo = { logoData: null, logoMime: "" };
   } else if (file instanceof File && file.size > 0) {
-    if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("El logo debe ser PNG o JPG.");
-    if (file.size > 1024 * 1024) throw new Error("El logo no debe pesar más de 1 MB.");
-    logo = { logoData: new Uint8Array(await file.arrayBuffer()), logoMime: file.type };
+    logo = await readLogo(file);
   }
 
   const data = {

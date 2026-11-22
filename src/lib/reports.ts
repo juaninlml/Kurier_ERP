@@ -8,7 +8,8 @@ export type PartyRow = { key: string; name: string; href?: string; amount: numbe
 export async function incomeStatement(from: Date, to: Date) {
   const txs = await prisma.transaction.findMany({
     where: { date: { gte: from, lte: to } },
-    include: { client: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } },
+    // Solo las columnas que se suman (el estado de resultados puede abarcar miles de movimientos)
+    select: { type: true, category: true, amount: true, tax: true, client: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } },
   });
   /** Ingresos por cliente y egresos por proveedor; lo que no tiene contraparte va en "Sin cliente"/"Sin proveedor". */
   const byParty = (type: "INGRESO" | "EGRESO") => {

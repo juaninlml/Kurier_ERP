@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { getSessionUser } from "@/lib/current-user";
@@ -22,7 +22,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Sesión, usuario e idioma en paralelo; la página reutiliza el mismo usuario (cache por petición)
-  const [me, lang, jar] = await Promise.all([getSessionUser(), getLang(), cookies()]);
+  const [me, lang, jar, hdrs] = await Promise.all([getSessionUser(), getLang(), cookies(), headers()]);
+  // Nonce de la CSP (lo pone src/proxy.ts): sin él el navegador bloquea el script del tema
+  const nonce = hdrs.get("x-nonce") ?? undefined;
   const c = jar.get(THEME_COOKIE)?.value;
   const theme = isTheme(c) ? c : "light";
   // Solo los campos que muestra la barra lateral: nunca mandar al navegador el secreto del autenticador
@@ -34,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // La clase "dark" sale del servidor si el tema es oscuro; con "sistema" la pone el script antes de pintar
     <html lang={lang} className={cn("font-sans", geist.variable, theme === "dark" && "dark")} style={{ colorScheme: theme === "dark" ? "dark" : undefined }} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + VIEW_TRANSITION_GUARD }} />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + VIEW_TRANSITION_GUARD }} />
       </head>
       <body className="antialiased">
         <I18nProvider lang={lang} theme={theme}>

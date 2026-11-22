@@ -12,5 +12,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   let from = q.get("desde") ?? "";
   let to = q.get("hasta") ?? "";
   if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) ({ from, to } = weekOf(await companyToday()));
-  return pdfResponse(renderOrdersSummary(id, from, to), q.has("download"));
+  return pdfResponse(() => renderOrdersSummary(id, from, to), q.has("download"));
 }
