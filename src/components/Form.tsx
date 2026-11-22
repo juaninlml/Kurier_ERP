@@ -6,6 +6,8 @@ import { CircleAlert } from "lucide-react";
 import type { ActionResult } from "@/lib/safe-action";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useT } from "./I18nProvider";
+import { SessionCurtain } from "./SessionCurtain";
+import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
 
 const PendingContext = createContext(false);
 export const useFormPending = () => useContext(PendingContext);
@@ -32,7 +34,7 @@ export function Form({
   className,
   resetOnSuccess,
   successMessage,
-  leavingOverlay,
+  session,
 }: {
   action: (fd: FormData) => Promise<unknown>;
   children: React.ReactNode;
@@ -41,14 +43,15 @@ export function Form({
   resetOnSuccess?: boolean;
   /** Mensaje que se muestra unos segundos cuando la acción termina sin error (formularios de edición). */
   successMessage?: string;
-  /** Se muestra cuando la acción redirige (ej. la cortina de entrada del login). */
-  leavingOverlay?: React.ReactNode;
+  /** Login: si la acción redirige al ERP, sube la cortina de entrada (ver SessionCurtain). */
+  session?: "in";
 }) {
   const [error, setError] = useState<string | null>(null);
   // Cada guardado tiene su propio número: así el aviso se reinicia aunque se guarde dos veces seguidas.
   const [saved, setSaved] = useState<number | null>(null);
   // Tras una redirección el botón sigue en "Guardando…" hasta que llega la otra página.
   const [leaving, setLeaving] = useState(false);
+  const [door, setDoor] = useState<Door | null>(null);
   const t = useT();
   const [pending, start] = useTransition();
   const notice = successMessage ?? (resetOnSuccess ? "Registro agregado." : null);
@@ -66,7 +69,16 @@ export function Form({
           try {
             const r = (await action(fd)) as ActionResult;
             if (r && "error" in r) setError(t(r.error));
-            else {
+            else if (session) {
+              // Login correcto: sube la cortina sobre el login y, ya cubierto, se abre el ERP.
+              // (Recarga completa: así el layout llega con la sesión; la cortina continúa por sessionStorage.)
+              const next = String(fd.get("next") ?? "/");
+              const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+              setDoor(stampDoor(session));
+              setLeaving(true);
+              const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+              setTimeout(() => window.location.assign(safeNext), reduce ? 200 : DOOR_COVERED_MS);
+            } else {
               if (resetOnSuccess) formEl.reset();
               if (notice) setSaved(Date.now());
             }
@@ -89,7 +101,7 @@ export function Form({
         )}
         {children}
       </PendingContext.Provider>
-      {leaving && leavingOverlay}
+      {leaving && session && <SessionCurtain phase="cover" label={t("Entrando al ERP…")} door={door} portal />}
       {saved !== null && notice && <SavedToast key={saved} message={t(notice)} onDone={() => setSaved(null)} />}
     </form>
   );

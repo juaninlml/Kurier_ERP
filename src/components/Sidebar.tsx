@@ -48,6 +48,7 @@ import {
 import { useLang, useT, useTheme } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
 import { Tr } from "@/components/Tr";
+import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
 
 export type SidebarUser = { name: string; email: string; image: string; role: string };
 
@@ -201,10 +202,10 @@ function UserMenu({ user }: { user: SidebarUser }) {
   const lang = useLang();
   const { theme, setTheme } = useTheme();
   const [pending, start] = useTransition();
-  const [leaving, setLeaving] = useState(false);
+  const [door, setDoor] = useState<Door | null>(null);
   return (
     <>
-    {leaving && <SessionCurtain phase="closing" label={t("Cerrando sesión…")} />}
+    {door && <SessionCurtain phase="cover" label={t("Cerrando sesión…")} door={door} portal />}
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring">
         <Avatar user={user} />
@@ -256,10 +257,11 @@ function UserMenu({ user }: { user: SidebarUser }) {
         <DropdownMenuItem
           variant="destructive"
           onSelect={() => {
-            // Primero sube la cortina; luego se cierra la sesión y el login aparece detrás.
-            setLeaving(true);
+            // Sube la cortina desde el símbolo de la barra; el login la continúa y la deja sobre su logo.
+            setDoor(stampDoor("out"));
+            // Se cierra la sesión cuando la cortina ya cubre: nunca se asoma el login por arriba del borde.
             const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            setTimeout(() => start(() => signOutAction()), reduce ? 0 : 520);
+            setTimeout(() => start(() => signOutAction()), reduce ? 200 : DOOR_COVERED_MS);
           }}
         >
           <LogOut /> {t("Cerrar sesión")}

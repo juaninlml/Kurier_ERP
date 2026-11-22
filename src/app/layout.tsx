@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <AppSidebar user={user} />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <MobileNav user={user} />
-                  <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+                  <main data-app-main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
                     {/* Transición suave al cambiar de sección (solo el contenido; la barra lateral queda fija) */}
                     <PageTransition>{children}</PageTransition>
                   </main>

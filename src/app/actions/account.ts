@@ -24,7 +24,6 @@ const validInvite = (i: { usedAt: Date | null; revokedAt: Date | null; expiresAt
 async function loginImpl(fd: FormData) {
   const email = str(fd, "email").toLowerCase();
   const code = str(fd, "code").replace(/\D/g, "");
-  const next = str(fd, "next");
   if (!email || code.length !== 6) throw new Error("Escribe tu correo y el código de 6 dígitos de tu app autenticadora.");
   const user = await prisma.user.findUnique({ where: { email } });
   const lockMsg = (u: { lockedUntil: Date | null } | null) => {
@@ -39,7 +38,8 @@ async function loginImpl(fd: FormData) {
   const jar = await cookies();
   jar.set(ARRIVE_COOKIE, "1", { maxAge: 60, path: "/", sameSite: "lax" });
   try {
-    await signIn("totp", { email, code, redirectTo: next.startsWith("/") && !next.startsWith("//") ? next : "/" });
+    // Sin redirigir desde el servidor: el login primero cierra la cortina y luego abre el ERP (ver <Form session="in">).
+    await signIn("totp", { email, code, redirect: false });
   } catch (e) {
     if (e instanceof AuthError) {
       jar.delete(ARRIVE_COOKIE);

@@ -553,10 +553,25 @@ html.dark {
 }
 
 /* ── Entrar y salir del ERP ──────────────────────────────────────────────────
-   Una cortina azul marino (el mismo color del login) hace de puerta:
-   al salir sube y cubre; al entrar ya está puesta y se retira hacia arriba revelando el ERP.
-   El arco naranja gira alrededor del símbolo mientras tanto. */
-@keyframes curtain-rise {
+   Una cortina azul marino (el mismo color del login y de la barra lateral) hace de puerta, y es UN
+   solo recorrido aunque cruce de página: cada fase recibe --t (ms transcurridos desde que empezó) y
+   resta ese tiempo a sus retrasos, así la cortina de la página siguiente continúa sin reiniciar.
+   El símbolo Kurier Kido sale del logo de origen, se centra y aterriza sobre el logo de destino;
+   al quitarse la cortina el símbolo real ya está debajo, en el mismo lugar. Sin rebotes.
+   Línea de tiempo completa en src/components/SessionCurtain.tsx. */
+:root {
+  --ease-door: cubic-bezier(0.76, 0, 0.24, 1);
+}
+.session-curtain {
+  --t: 0ms;
+  --fx: 0px;
+  --fy: 0px;
+  --fs: 1;
+  --tx: 0px;
+  --ty: 0px;
+  --ts: 1;
+}
+@keyframes door-rise {
   from {
     clip-path: inset(100% 0 0 0);
   }
@@ -564,7 +579,7 @@ html.dark {
     clip-path: inset(0 0 0 0);
   }
 }
-@keyframes curtain-lift {
+@keyframes door-lift {
   from {
     clip-path: inset(0 0 0 0);
   }
@@ -572,44 +587,85 @@ html.dark {
     clip-path: inset(0 0 100% 0);
   }
 }
-@keyframes curtain-mark-in {
+@keyframes door-travel-in {
+  from {
+    transform: translate(var(--fx), var(--fy)) scale(var(--fs));
+  }
+}
+@keyframes door-travel-out {
+  to {
+    transform: translate(var(--tx), var(--ty)) scale(var(--ts));
+  }
+}
+@keyframes door-appear {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.94);
   }
 }
-@keyframes curtain-mark-out {
+@keyframes door-vanish {
   to {
     opacity: 0;
-    transform: translateY(-14px) scale(0.96);
   }
 }
-@keyframes curtain-orbit {
+@keyframes door-spin {
   to {
     transform: rotate(360deg);
   }
 }
-.session-curtain[data-phase="closing"] {
-  animation: curtain-rise 480ms cubic-bezier(0.65, 0, 0.35, 1) both;
+
+/* 0–480: sube la puerta (solo el fondo se recorta; símbolo, arco y texto van encima). */
+.door-panel {
+  animation: door-rise 480ms var(--ease-door) calc(0ms - var(--t)) both;
 }
-.session-curtain[data-phase="closing"] .session-curtain-mark {
-  animation: curtain-mark-in 360ms var(--ease-out) 220ms both;
+/* En el ERP: tras una pausa breve la puerta se levanta; en el login: todo se desvanece sobre el logo (mismo azul). */
+.session-curtain[data-phase="arrive-in"] .door-panel {
+  animation:
+    door-rise 480ms var(--ease-door) calc(0ms - var(--t)) both,
+    door-lift 600ms var(--ease-door) calc(800ms - var(--t)) forwards;
 }
-.session-curtain[data-phase="opening"] {
-  animation: curtain-lift 620ms cubic-bezier(0.7, 0, 0.25, 1) 480ms both;
-}
-.session-curtain[data-phase="opening"] .session-curtain-mark {
-  animation: curtain-mark-out 300ms ease-in 360ms both;
-}
-.session-curtain-orbit {
-  animation: curtain-orbit 1.1s linear infinite;
-}
-/* El ERP llega con su contenido subiendo apenas, ya detrás de la cortina que se retira. */
-.session-curtain[data-phase="opening"] ~ * main {
-  animation: page-in 520ms var(--ease-out) 640ms both;
+.session-curtain[data-phase="arrive-out"] {
+  animation: door-vanish 340ms ease-out calc(1080ms - var(--t)) forwards;
 }
 
-/* Login: el logo y la tarjeta aparecen al llegar (también al volver de cerrar sesión). */
+/* El símbolo: llega desde su logo de origen (o aparece, si no había logo a la vista)… */
+.door-travel-in {
+  animation: door-travel-in 520ms var(--ease-door) calc(0ms - var(--t)) both;
+}
+.session-curtain[data-from="none"] .door-travel-in {
+  animation: door-appear 300ms var(--ease-out) calc(160ms - var(--t)) both;
+}
+/* …y se va a su lugar en el destino, con la misma curva que la puerta. */
+.session-curtain[data-phase="arrive-in"] .door-travel-out {
+  animation: door-travel-out 600ms var(--ease-door) calc(800ms - var(--t)) forwards;
+}
+.session-curtain[data-phase="arrive-out"] .door-travel-out {
+  animation: door-travel-out 520ms var(--ease-door) calc(640ms - var(--t)) forwards;
+}
+
+/* Arco y texto: aparecen cuando el símbolo ya casi llegó al centro y se van antes de que vuelva a moverse. */
+.door-ring,
+.door-label {
+  animation: door-appear 220ms ease-out calc(340ms - var(--t)) both;
+}
+.session-curtain[data-phase^="arrive"] .door-ring,
+.session-curtain[data-phase^="arrive"] .door-label {
+  animation:
+    door-appear 220ms ease-out calc(340ms - var(--t)) both,
+    door-vanish 180ms ease-in calc(620ms - var(--t)) forwards;
+}
+/* El giro usa el mismo reloj: al cambiar de página el arco sigue donde iba. */
+.door-ring-spin {
+  transform-origin: 50px 50px;
+  animation: door-spin 1.1s linear calc(0ms - var(--t)) infinite;
+}
+
+/* El ERP sube apenas detrás de la cortina que se levanta. */
+html[data-door="in"] [data-app-main] {
+  animation: page-in 560ms var(--ease-out) calc(920ms - var(--door-t, 0ms)) both;
+}
+
+/* Login: la marca y la tarjeta aparecen al llegar. El símbolo del logo no se anima: es el punto
+   de aterrizaje de la cortina al cerrar sesión, y ahí solo se acompaña su llegada. */
 @keyframes auth-in {
   from {
     opacity: 0;
@@ -622,19 +678,36 @@ html.dark {
 .auth-enter-late {
   animation: auth-in 520ms var(--ease-out) 90ms both;
 }
+html[data-door="out"] .auth-enter {
+  animation-delay: calc(1060ms - var(--door-t, 0ms));
+}
+html[data-door="out"] .auth-enter-late {
+  animation-delay: calc(1150ms - var(--door-t, 0ms));
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .session-curtain[data-phase="closing"],
-  .session-curtain[data-phase="opening"] {
+  /* Sin desplazamientos: la cortina aparece y se desvanece; el símbolo no viaja. */
+  .door-panel,
+  .session-curtain[data-phase="arrive-in"] .door-panel {
     clip-path: none;
-    animation: viz-fade var(--dur-state) ease-out both;
+    animation: none;
   }
-  .session-curtain[data-phase="opening"] {
-    animation-direction: reverse;
+  .session-curtain {
+    animation: door-appear 200ms ease-out calc(0ms - var(--t)) both;
   }
-  .session-curtain .session-curtain-mark,
-  .session-curtain-orbit,
-  .session-curtain[data-phase="opening"] ~ * main,
+  .session-curtain[data-phase^="arrive"] {
+    animation:
+      door-appear 200ms ease-out calc(0ms - var(--t)) both,
+      door-vanish 240ms ease-out calc(640ms - var(--t)) forwards;
+  }
+  .door-travel-in,
+  .door-travel-out,
+  .session-curtain .door-travel-in,
+  .session-curtain .door-travel-out,
+  .door-ring-spin {
+    animation: none !important;
+  }
+  html[data-door] [data-app-main],
   .auth-enter,
   .auth-enter-late {
     animation: none;
