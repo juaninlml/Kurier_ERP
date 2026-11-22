@@ -90,6 +90,29 @@ model Client {
   dailyOrders   DailyOrder[]
 }
 
+/// Proveedor de Kurier (renta, insumos de empaque, paquetería, servicios…). Los egresos de contabilidad se ligan a él.
+model Supplier {
+  id            Int           @id @default(autoincrement())
+  name          String
+  legalName     String        @default("")
+  rfc           String        @default("")
+  category      String        @default("") // giro: Insumos, Renta, Paquetería, Servicios…
+  contactName   String        @default("")
+  email         String        @default("")
+  phone         String        @default("")
+  address       String        @default("")
+  website       String        @default("")
+  creditDays    Int           @default(0) // días de crédito que da el proveedor (0 = contado)
+  bank          String        @default("")
+  clabe         String        @default("")
+  accountNumber String        @default("")
+  notes         String        @default("")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+}
+
 /// Tarifa negociada con un cliente. Al importar movimientos del WMS se busca por wmsConcept.
 model ClientRate {
   id          Int      @id @default(autoincrement())
@@ -286,21 +309,25 @@ model Payment {
 
 /// Movimiento contable. type: INGRESO | EGRESO
 model Transaction {
-  id          Int      @id @default(autoincrement())
-  date        DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  date        DateTime  @default(now())
   type        String
   category    String
-  description String   @default("")
+  description String    @default("")
   amount      Float // monto total (con IVA)
-  tax         Float    @default(0) // IVA incluido en el monto
-  method      String   @default("Transferencia")
-  reference   String   @default("")
-  clientId    Int?
-  client      Client?  @relation(fields: [clientId], references: [id])
-  paymentId   Int?     @unique
-  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  tax         Float     @default(0) // IVA incluido en el monto
+  method      String    @default("Transferencia")
+  reference   String    @default("")
+  clientId    Int? // ingresos: cliente que pagó
+  client      Client?   @relation(fields: [clientId], references: [id])
+  supplierId  Int? // egresos: proveedor al que se pagó
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  paymentId   Int?      @unique
+  payment     Payment?  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([supplierId])
 }
 
 /// Tablas informativas del tarifario (Incluido en todos los planes, SLA, cobertura…).

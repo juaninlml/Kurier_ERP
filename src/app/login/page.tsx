@@ -6,6 +6,7 @@ import { login } from "@/app/actions/account";
 import { AuthCard } from "@/components/AuthCard";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
+import { SessionCurtain } from "@/components/SessionCurtain";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
       )}
 
-      <Form action={login} className="mt-5 space-y-4">
+      <Form action={login} className="mt-5 space-y-4" leavingOverlay={<SessionCurtain phase="closing" label={t("Entrando al ERP…")} />}>
         <input type="hidden" name="next" value={next} />
         <label className="block">
           <span className="label">{t("Correo")}</span>

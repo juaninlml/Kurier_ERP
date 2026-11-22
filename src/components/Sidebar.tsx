@@ -3,10 +3,12 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { KidoBrand } from "./KidoLogo";
+import { SessionCurtain } from "./SessionCurtain";
 import { useEffect, useState, useTransition } from "react";
 import {
   BarChart3,
   Building2,
+  Truck,
   ChevronsUpDown,
   Clock,
   HandCoins,
@@ -68,6 +70,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: "Finanzas",
     items: [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
+      { href: "/proveedores", label: "Proveedores", icon: Truck },
       { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
       { href: "/nomina", label: "Nómina", icon: HandCoins },
       { href: "/nomina/asistencias", label: "Asistencias", icon: Clock },
@@ -198,7 +201,10 @@ function UserMenu({ user }: { user: SidebarUser }) {
   const lang = useLang();
   const { theme, setTheme } = useTheme();
   const [pending, start] = useTransition();
+  const [leaving, setLeaving] = useState(false);
   return (
+    <>
+    {leaving && <SessionCurtain phase="closing" label={t("Cerrando sesión…")} />}
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring">
         <Avatar user={user} />
@@ -247,11 +253,20 @@ function UserMenu({ user }: { user: SidebarUser }) {
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => start(() => signOutAction())}>
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            // Primero sube la cortina; luego se cierra la sesión y el login aparece detrás.
+            setLeaving(true);
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            setTimeout(() => start(() => signOutAction()), reduce ? 0 : 520);
+          }}
+        >
           <LogOut /> {t("Cerrar sesión")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }
 

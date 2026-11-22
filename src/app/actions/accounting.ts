@@ -16,7 +16,9 @@ function txData(fd: FormData) {
   if (!category) throw new Error("Selecciona una categoría.");
   const tax = round2(numv(fd, "tax"));
   if (tax < 0 || tax > amount) throw new Error("El IVA debe estar entre 0 y el monto total.");
-  const clientId = numv(fd, "clientId");
+  // Ingreso → cliente que pagó; egreso → proveedor al que se le pagó.
+  const clientId = type === "INGRESO" ? numv(fd, "clientId") : 0;
+  const supplierId = type === "EGRESO" ? numv(fd, "supplierId") : 0;
   return {
     type,
     category,
@@ -27,11 +29,13 @@ function txData(fd: FormData) {
     method: str(fd, "method") || "Transferencia",
     reference: str(fd, "reference"),
     clientId: clientId || null,
+    supplierId: supplierId || null,
   };
 }
 
 function revalidate() {
   revalidatePath("/contabilidad");
+  revalidatePath("/proveedores", "layout");
   revalidatePath("/contabilidad/reportes");
   revalidatePath("/");
 }

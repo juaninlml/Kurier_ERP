@@ -32,6 +32,7 @@ export function Form({
   className,
   resetOnSuccess,
   successMessage,
+  leavingOverlay,
 }: {
   action: (fd: FormData) => Promise<unknown>;
   children: React.ReactNode;
@@ -40,6 +41,8 @@ export function Form({
   resetOnSuccess?: boolean;
   /** Mensaje que se muestra unos segundos cuando la acción termina sin error (formularios de edición). */
   successMessage?: string;
+  /** Se muestra cuando la acción redirige (ej. la cortina de entrada del login). */
+  leavingOverlay?: React.ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
   // Cada guardado tiene su propio número: así el aviso se reinicia aunque se guarde dos veces seguidas.
@@ -86,6 +89,7 @@ export function Form({
         )}
         {children}
       </PendingContext.Provider>
+      {leaving && leavingOverlay}
       {saved !== null && notice && <SavedToast key={saved} message={t(notice)} onDone={() => setSaved(null)} />}
     </form>
   );

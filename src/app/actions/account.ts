@@ -11,6 +11,7 @@ import { getCurrentUser, requireAdmin, ROLES } from "@/lib/current-user";
 import { ownerEmail, signIn, signOut } from "@/auth";
 import { decryptSecret, safeEqual, verifyCode } from "@/lib/totp";
 import { isLang, LANG_COOKIE } from "@/lib/i18n";
+import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { numv, str } from "./helpers";
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -34,10 +35,14 @@ async function loginImpl(fd: FormData) {
   };
   const locked = lockMsg(user);
   if (locked) throw new Error(locked);
+  // Marca de llegada: el ERP se abre con la cortina de entrada (solo la animación; no da acceso a nada).
+  const jar = await cookies();
+  jar.set(ARRIVE_COOKIE, "1", { maxAge: 60, path: "/", sameSite: "lax" });
   try {
     await signIn("totp", { email, code, redirectTo: next.startsWith("/") && !next.startsWith("//") ? next : "/" });
   } catch (e) {
     if (e instanceof AuthError) {
+      jar.delete(ARRIVE_COOKIE);
       const again = await prisma.user.findUnique({ where: { email } });
       throw new Error(lockMsg(again) ?? "Correo o código incorrecto. Usa el código más reciente de tu app.");
     }

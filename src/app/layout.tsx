@@ -6,6 +6,8 @@ import { getSessionUser } from "@/lib/current-user";
 import { AppSidebar, MobileNav } from "@/components/Sidebar";
 import { I18nProvider } from "@/components/I18nProvider";
 import { PageTransition } from "@/components/PageTransition";
+import { ArrivalCurtain } from "@/components/SessionCurtain";
+import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLang } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Solo los campos que muestra la barra lateral: nunca mandar al navegador el secreto del autenticador
   const user = me ? { name: me.name, email: me.email, image: me.image, role: me.role } : null;
   const signedIn = !!user;
+  const arriving = signedIn && jar.get(ARRIVE_COOKIE)?.value === "1";
 
   return (
     // La clase "dark" sale del servidor si el tema es oscuro; con "sistema" la pone el script antes de pintar
@@ -38,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <TooltipProvider delayDuration={200}>
             {signedIn ? (
               <div className="flex min-h-screen">
+                <ArrivalCurtain initial={arriving} />
                 <AppSidebar user={user} />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <MobileNav user={user} />

@@ -19,8 +19,9 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
   const t = await prisma.transaction.findUnique({ where: { id }, include: { payment: true } });
   if (!t) notFound();
   if (t.payment) redirect(`/facturas/${t.payment.invoiceId}`);
-  const [clients, s] = await Promise.all([
+  const [clients, suppliers, s] = await Promise.all([
     prisma.client.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ select: { id: true, name: true, category: true }, orderBy: { name: "asc" } }),
     getSettings(),
   ]);
 
@@ -31,6 +32,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
         <TransactionForm
           action={updateTransaction.bind(null, id)}
           clients={clients}
+          suppliers={suppliers}
           defaultTaxRate={s.defaultTaxRate}
           submitLabel={tr("Guardar cambios")}
           tx={{ ...t, date: toInputDate(t.date) }}

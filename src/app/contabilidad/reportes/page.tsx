@@ -124,6 +124,24 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         ))}
       </div>
 
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {(
+          [
+            [t("Ingresos por cliente"), stmt.incomeByClient, stmt.incomeTotal, "var(--chart-1)"],
+            [t("Egresos por proveedor"), stmt.expenseBySupplier, stmt.expenseTotal, "var(--chart-2)"],
+          ] as const
+        ).map(([title, rows, total, color]) => (
+          <Panel key={title} title={title} action={<span className="font-semibold tabular-nums">{formatMoney(total)}</span>} bodyClassName="p-5">
+            <BarList
+              color={color}
+              total={total}
+              emptyText={t("Sin movimientos.")}
+              rows={rows.map((r) => ({ key: r.key, label: r.href ? r.name : t(r.name), href: r.href, value: r.amount, hint: `(${r.count})` }))}
+            />
+          </Panel>
+        ))}
+      </div>
+
       <div className="card mt-6 p-5">
         <h2 className="mb-3 text-[0.95rem] font-semibold"><Tr>Resumen de IVA (estimado)</Tr></h2>
         <dl className="grid gap-4 text-sm sm:grid-cols-3">

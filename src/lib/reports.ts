@@ -3,8 +3,32 @@ import { round2 } from "./money";
 
 export type CategoryRow = { category: string; amount: number; tax: number; count: number };
 
+export type PartyRow = { key: string; name: string; href?: string; amount: number; count: number };
+
 export async function incomeStatement(from: Date, to: Date) {
-  const txs = await prisma.transaction.findMany({ where: { date: { gte: from, lte: to } } });
+  const txs = await prisma.transaction.findMany({
+    where: { date: { gte: from, lte: to } },
+    include: { client: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } },
+  });
+  /** Ingresos por cliente y egresos por proveedor; lo que no tiene contraparte va en "Sin cliente"/"Sin proveedor". */
+  const byParty = (type: "INGRESO" | "EGRESO") => {
+    const map = new Map<string, PartyRow>();
+    for (const t of txs.filter((x) => x.type === type)) {
+      const p = type === "INGRESO" ? t.client : t.supplier;
+      const key = p ? String(p.id) : "none";
+      const r = map.get(key) ?? {
+        key,
+        name: p?.name ?? (type === "INGRESO" ? "Sin cliente" : "Sin proveedor"),
+        href: p ? (type === "INGRESO" ? `/clientes/${p.id}` : `/proveedores/${p.id}`) : undefined,
+        amount: 0,
+        count: 0,
+      };
+      r.amount += t.amount;
+      r.count += 1;
+      map.set(key, r);
+    }
+    return [...map.values()].map((r) => ({ ...r, amount: round2(r.amount) })).sort((a, b) => b.amount - a.amount);
+  };
   const group = (type: string) => {
     const map = new Map<string, CategoryRow>();
     for (const t of txs.filter((x) => x.type === type)) {
@@ -28,6 +52,8 @@ export async function incomeStatement(from: Date, to: Date) {
   return {
     income,
     expense,
+    incomeByClient: byParty("INGRESO"),
+    expenseBySupplier: byParty("EGRESO"),
     incomeTotal,
     expenseTotal,
     incomeTax,
