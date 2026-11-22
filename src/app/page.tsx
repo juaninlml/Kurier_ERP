@@ -10,6 +10,8 @@ import { AGING_LABEL, activityByDay, flowSeries, lastMonthsRange, pctChange, quo
 import { getSettings } from "@/lib/settings";
 import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
+import { NoAccessNotice } from "@/components/NoAccessNotice";
+import { canManageUsers, getSessionUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,9 @@ export const dynamic = "force-dynamic";
 const RECENT_SELECT = { id: true, folio: true, issueDate: true, status: true, total: true, client: { select: { name: true } } } as const;
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ sinpermiso?: string }> }) {
-  const [t, lang, settings, sp] = await Promise.all([getT(), getLang(), getSettings(), searchParams]);
+  const [t, lang, settings, sp, me] = await Promise.all([getT(), getLang(), getSettings(), searchParams, getSessionUser()]);
+  // El aviso solo aplica a roles con secciones restringidas (nunca a la cuenta maestra ni a administradores)
+  const showNoAccess = !!sp.sinpermiso && !!me && !canManageUsers(me.role);
   const locale = localeOf(lang);
   const { from, to } = parseRange();
   const prevFrom = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - 1, 1));
@@ -63,11 +67,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <div>
-      {sp.sinpermiso && (
-        <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {t("Tu rol no tiene acceso a esa sección. Si lo necesitas, pídeselo a un administrador.")}
-        </div>
-      )}
+      {showNoAccess && <NoAccessNotice />}
       <PageHeader
         title={t("Inicio")}
         subtitle={
