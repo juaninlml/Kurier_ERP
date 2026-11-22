@@ -49,8 +49,10 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(url);
   }
   // Permisos por rol: una sección que el rol no puede consultar regresa al Inicio (un PDF responde 403)
+  // Si el rol no viene en la sesión no se bloquea aquí (las páginas y acciones lo revisan en el servidor),
+  // y nunca se redirige al Inicio desde el Inicio: así no puede formarse un ciclo de redirecciones.
   const role = String(req.auth?.user?.role ?? "");
-  if (req.auth?.user && !isPublicPath(pathname) && !canOpen(role, pathname)) {
+  if (req.auth?.user && role && pathname !== "/" && !isPublicPath(pathname) && !canOpen(role, pathname)) {
     if (pathname.startsWith("/api/")) return new NextResponse("Sin permiso", { status: 403 });
     const url = req.nextUrl.clone();
     url.pathname = "/";
