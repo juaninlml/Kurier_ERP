@@ -61,4 +61,4 @@ async function saveSettingsImpl(fd: FormData) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const saveSettings = safe(saveSettingsImpl);
+export const saveSettings = safe(saveSettingsImpl, "configuracion", "saveSettingsImpl");

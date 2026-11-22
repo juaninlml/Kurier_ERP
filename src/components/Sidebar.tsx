@@ -9,6 +9,11 @@ import {
   BarChart3,
   Building2,
   Truck,
+  Receipt,
+  Landmark,
+  Target,
+  PieChart,
+  History,
   ChevronsUpDown,
   Clock,
   HandCoins,
@@ -49,10 +54,11 @@ import { useLang, useT, useTheme } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
 import { Tr } from "@/components/Tr";
 import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
+import { canOpen, ROLE_LABEL } from "@/lib/permissions";
 
 export type SidebarUser = { name: string; email: string; image: string; role: string };
 
-type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean };
+type NavItem = { href: string; label: string; icon: LucideIcon };
 const NAV: { title: string; items: NavItem[] }[] = [
   { title: "General", items: [{ href: "/", label: "Inicio", icon: LayoutDashboard }] },
   {
@@ -72,16 +78,21 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
       { href: "/proveedores", label: "Proveedores", icon: Truck },
+      { href: "/cuentas-por-pagar", label: "Cuentas por pagar", icon: Receipt },
+      { href: "/contabilidad/conciliacion", label: "Conciliación bancaria", icon: Landmark },
+      { href: "/contabilidad/presupuesto", label: "Presupuesto", icon: Target },
       { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
       { href: "/nomina", label: "Nómina", icon: HandCoins },
       { href: "/nomina/asistencias", label: "Asistencias", icon: Clock },
       { href: "/contabilidad/reportes", label: "Reportes", icon: BarChart3 },
+      { href: "/contabilidad/rentabilidad", label: "Rentabilidad por cliente", icon: PieChart },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { href: "/usuarios", label: "Usuarios y accesos", icon: ShieldCheck, adminOnly: true },
+      { href: "/usuarios", label: "Usuarios y accesos", icon: ShieldCheck },
+      { href: "/bitacora", label: "Bitácora", icon: History },
       { href: "/configuracion", label: "Configuración", icon: Settings },
     ],
   },
@@ -136,11 +147,11 @@ function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => 
   useEffect(() => setClicked(null), [pathname]);
   const isActive = (href: string) => (clicked ? clicked === href : isActiveNow(href));
   const t = useT();
-  const admin = user.role === "OWNER" || user.role === "ADMIN";
   return (
     <nav className="flex flex-col gap-5">
       {NAV.map((group) => {
-        const items = group.items.filter((i) => !i.adminOnly || admin);
+        // Solo las secciones que el rol puede consultar (ver src/lib/permissions.ts)
+        const items = group.items.filter((i) => canOpen(user.role, i.href));
         if (!items.length) return null;
         return (
           <div key={group.title}>
@@ -194,7 +205,6 @@ export function Avatar({ user, className }: { user: { name: string; email: strin
   );
 }
 
-const ROLE_LABEL: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
 
 /** Menú del usuario: perfil, idioma y cerrar sesión. */
 function UserMenu({ user }: { user: SidebarUser }) {

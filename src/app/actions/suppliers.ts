@@ -49,5 +49,5 @@ async function updateSupplierImpl(id: number, fd: FormData) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createSupplier = safe(createSupplierImpl);
-export const updateSupplier = safe(updateSupplierImpl);
+export const createSupplier = safe(createSupplierImpl, "proveedores", "createSupplierImpl");
+export const updateSupplier = safe(updateSupplierImpl, "proveedores", "updateSupplierImpl");

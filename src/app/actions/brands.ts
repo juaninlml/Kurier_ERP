@@ -65,5 +65,5 @@ async function updateBrandImpl(id: number, fd: FormData) {
   refresh();
 }
 
-export const createBrand = safe(createBrandImpl);
-export const updateBrand = safe(updateBrandImpl);
+export const createBrand = safe(createBrandImpl, "configuracion", "createBrandImpl");
+export const updateBrand = safe(updateBrandImpl, "configuracion", "updateBrandImpl");

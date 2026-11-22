@@ -2,12 +2,13 @@ import { Download, Eye } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, Panel, Stat } from "@/components/kit";
 import { BarList, ColumnChart, SegmentedBar } from "@/components/charts";
-import { incomeStatement, receivables, parseRange, AGING_BUCKETS } from "@/lib/reports";
+import { incomeStatement, receivables, payables, parseRange, AGING_BUCKETS } from "@/lib/reports";
 import { AGING_LABEL, flowSeries } from "@/lib/insights";
 import { SuppliesPanel } from "@/components/SuppliesPanel";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
-  const [stmt, ar, flow] = await Promise.all([incomeStatement(from, to), receivables(), flowSeries(from, to)]);
+  const [stmt, ar, ap, flow] = await Promise.all([incomeStatement(from, to), receivables(), payables(), flowSeries(from, to)]);
   const fromStr = toInputDate(from);
   const toStr = toInputDate(to);
 
@@ -40,6 +41,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         subtitle={t("Periodo: {v0} – {v1}", { v0: formatDate(from), v1: formatDate(to) })}
         actions={
           <>
+            <Link href={`/contabilidad/rentabilidad?from=${fromStr}&to=${toStr}`} className="btn-secondary">
+              <Tr>Rentabilidad por cliente</Tr>
+            </Link>
+            <ExportButton kind="movimientos" label="Movimientos a Excel" params={{ desde: fromStr, hasta: toStr }} />
             <a href={`/api/pdf/reporte?from=${fromStr}&to=${toStr}`} target="_blank" className="btn-secondary">
               <Eye className="size-4" /> <Tr>Ver PDF</Tr>
             </a>
@@ -198,6 +203,54 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     </Link>
                   </td>
                   <td>{r.client.name}</td>
+                  <td>{formatDate(r.dueDate)}</td>
+                  <td className={r.daysOverdue > 0 ? "text-rose-600" : "text-muted-foreground"}>{r.daysOverdue || "—"}</td>
+                  <td className="text-right tabular-nums">{formatMoney(r.balance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card mt-6 overflow-x-auto">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+          <h2 className="text-[0.95rem] font-semibold"><Tr>Antigüedad de saldos (cuentas por pagar)</Tr></h2>
+          <span className="font-semibold tabular-nums">{formatMoney(ap.total)}</span>
+        </div>
+        <div className="border-b border-border p-5">
+          <SegmentedBar
+            emptyText={t("Sin cuentas por pagar pendientes")}
+            parts={AGING_BUCKETS.map((b, i) => ({
+              key: b,
+              name: t(AGING_LABEL[b]!),
+              value: ap.byBucket[b],
+              color: `var(--aging-${i})`,
+              ink: i === 1 ? ("dark" as const) : undefined,
+            }))}
+          />
+        </div>
+        {ap.rows.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th><Tr>Concepto</Tr></th>
+                <th><Tr>Proveedor</Tr></th>
+                <th><Tr>Vencimiento</Tr></th>
+                <th><Tr>Días vencida</Tr></th>
+                <th className="text-right"><Tr>Saldo</Tr></th>
+              </tr>
+            </thead>
+            <tbody>
+              {ap.rows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <Link href={`/cuentas-por-pagar/${r.id}`} className="font-medium text-primary hover:underline">
+                      {r.concept}
+                    </Link>
+                    {r.folio && <div className="text-xs text-muted-foreground">{r.folio}</div>}
+                  </td>
+                  <td>{r.supplier.name}</td>
                   <td>{formatDate(r.dueDate)}</td>
                   <td className={r.daysOverdue > 0 ? "text-rose-600" : "text-muted-foreground"}>{r.daysOverdue || "—"}</td>
                   <td className="text-right tabular-nums">{formatMoney(r.balance)}</td>

@@ -111,6 +111,47 @@ model Supplier {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   transactions  Transaction[]
+  bills         SupplierBill[]
+}
+
+/// Cuenta por pagar: factura o recibo que un proveedor le cobra a Kurier.
+/// status: PENDIENTE | PARCIAL | PAGADA | CANCELADA ("VENCIDA" se calcula al mostrar: abierta y con fecha de pago pasada).
+model SupplierBill {
+  id         Int               @id @default(autoincrement())
+  supplierId Int
+  supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  folio      String            @default("") // folio de la factura del proveedor
+  concept    String
+  category   String // categoría de egreso con la que se registran sus pagos
+  issueDate  DateTime
+  dueDate    DateTime
+  total      Float // con IVA
+  tax        Float             @default(0) // IVA incluido en el total
+  paidTotal  Float             @default(0)
+  status     String            @default("PENDIENTE")
+  notes      String            @default("")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  payments   SupplierPayment[]
+
+  @@index([supplierId])
+  @@index([status, dueDate])
+}
+
+/// Pago (total o parcial) de una cuenta por pagar. Cada pago genera su egreso en contabilidad.
+model SupplierPayment {
+  id          Int          @id @default(autoincrement())
+  billId      Int
+  bill        SupplierBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  amount      Float
+  date        DateTime
+  method      String       @default("Transferencia")
+  reference   String       @default("")
+  notes       String       @default("")
+  createdAt   DateTime     @default(now())
+  transaction Transaction?
+
+  @@index([billId])
 }
 
 /// Tarifa negociada con un cliente. Al importar movimientos del WMS se busca por wmsConcept.
@@ -344,6 +385,9 @@ model Transaction {
   supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   paymentId   Int?      @unique
   payment     Payment?  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  supplierPaymentId Int?             @unique // egresos: pago de una cuenta por pagar
+  supplierPayment   SupplierPayment? @relation(fields: [supplierPaymentId], references: [id], onDelete: Cascade)
+  bankLine          BankLine? // renglón del estado de cuenta con el que se concilió
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -704,4 +748,64 @@ model Brand {
   quotes        Quote[]
   invoices      Invoice[]
   payrolls      PayrollRun[]
+}
+
+/// Bitácora: quién hizo qué y cuándo (la escribe `safe()` al terminar cada acción; ver src/lib/audit.ts).
+/// Sin llave foránea al usuario: el registro se conserva aunque el usuario se elimine.
+model AuditLog {
+  id       Int      @id @default(autoincrement())
+  at       DateTime @default(now())
+  userId   Int?
+  userName String   @default("")
+  module   String // ver ModuleId en src/lib/permissions.ts
+  action   String // Creó | Modificó | Eliminó | Canceló | Reactivó | Registró pago | Exportó
+  fnName   String   @default("") // acción técnica (createInvoice, addBillPayment…)
+  entityId Int?
+  summary  String   @default("")
+  href     String   @default("")
+
+  @@index([at])
+  @@index([module, at])
+  @@index([userId, at])
+}
+
+/// Estado de cuenta bancario importado (CSV del banco) para conciliar contra los movimientos.
+model BankImport {
+  id        Int        @id @default(autoincrement())
+  name      String // cuenta o banco ("BBVA 1234")
+  fileName  String     @default("")
+  fromDate  DateTime?
+  toDate    DateTime?
+  createdBy String     @default("")
+  createdAt DateTime   @default(now())
+  lines     BankLine[]
+}
+
+/// Renglón del estado de cuenta: positivo = depósito, negativo = retiro.
+model BankLine {
+  id            Int          @id @default(autoincrement())
+  importId      Int
+  bankImport    BankImport   @relation(fields: [importId], references: [id], onDelete: Cascade)
+  date          DateTime
+  description   String       @default("")
+  reference     String       @default("")
+  amount        Float
+  transactionId Int?         @unique // movimiento de contabilidad con el que se concilió
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  ignored       Boolean      @default(false) // no requiere movimiento (traspasos propios, etc.)
+
+  @@index([importId])
+  @@index([date])
+}
+
+/// Presupuesto mensual por categoría (ingreso o egreso) para comparar contra lo real.
+model Budget {
+  id       Int    @id @default(autoincrement())
+  year     Int
+  month    Int // 1-12
+  type     String // INGRESO | EGRESO
+  category String
+  amount   Float
+
+  @@unique([year, month, type, category])
 }

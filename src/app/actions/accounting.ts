@@ -4,7 +4,8 @@ import { safe } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { fromInputDate, round2 } from "@/lib/money";
+import { formatMoney, fromInputDate, round2 } from "@/lib/money";
+import { auditNote } from "@/lib/audit";
 import { numv, str } from "./helpers";
 
 function txData(fd: FormData) {
@@ -40,8 +41,12 @@ function revalidate() {
   revalidatePath("/");
 }
 
+const describe = (t: { type: string; amount: number; category: string; description: string }) =>
+  `${t.type === "INGRESO" ? "Ingreso" : "Egreso"} de ${formatMoney(t.amount)} · ${t.category}${t.description ? ` · ${t.description}` : ""}`;
+
 async function createTransactionImpl(fd: FormData) {
-  await prisma.transaction.create({ data: txData(fd) });
+  const t = await prisma.transaction.create({ data: txData(fd) });
+  auditNote(describe(t), `/contabilidad/movimientos/${t.id}`, t.id);
   revalidate();
   redirect("/contabilidad");
 }
@@ -49,7 +54,9 @@ async function createTransactionImpl(fd: FormData) {
 async function updateTransactionImpl(id: number, fd: FormData) {
   const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
   if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; edítalo desde la factura.");
-  await prisma.transaction.update({ where: { id }, data: txData(fd) });
+  if (t.supplierPaymentId) throw new Error("Este movimiento proviene de un pago a proveedor; edítalo desde su cuenta por pagar.");
+  const u = await prisma.transaction.update({ where: { id }, data: txData(fd) });
+  auditNote(`${describe(u)} (antes ${formatMoney(t.amount)})`, `/contabilidad/movimientos/${id}`, id);
   revalidate();
   redirect("/contabilidad");
 }
@@ -57,12 +64,14 @@ async function updateTransactionImpl(id: number, fd: FormData) {
 async function deleteTransactionImpl(id: number) {
   const t = await prisma.transaction.findUniqueOrThrow({ where: { id } });
   if (t.paymentId) throw new Error("Este movimiento proviene de un pago de factura; elimina el pago desde la factura.");
+  if (t.supplierPaymentId) throw new Error("Este movimiento proviene de un pago a proveedor; elimina el pago desde su cuenta por pagar.");
   await prisma.transaction.delete({ where: { id } });
+  auditNote(describe(t), undefined, id);
   revalidate();
   redirect("/contabilidad");
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createTransaction = safe(createTransactionImpl);
-export const updateTransaction = safe(updateTransactionImpl);
-export const deleteTransaction = safe(deleteTransactionImpl);
+export const createTransaction = safe(createTransactionImpl, "contabilidad", "createTransactionImpl");
+export const updateTransaction = safe(updateTransactionImpl, "contabilidad", "updateTransactionImpl");
+export const deleteTransaction = safe(deleteTransactionImpl, "contabilidad", "deleteTransactionImpl");

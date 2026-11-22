@@ -37,5 +37,5 @@ async function updateClientImpl(id: number, fd: FormData) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createClient = safe(createClientImpl);
-export const updateClient = safe(updateClientImpl);
+export const createClient = safe(createClientImpl, "clientes", "createClientImpl");
+export const updateClient = safe(updateClientImpl, "clientes", "updateClientImpl");

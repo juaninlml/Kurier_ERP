@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Landmark } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { createTransaction } from "@/app/actions/accounting";
 import { PageHeader, Stat, Empty, Panel } from "@/components/kit";
@@ -11,6 +12,7 @@ import { getSettings } from "@/lib/settings";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import { Tr } from "@/components/Tr";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,8 @@ export default async function AccountingPage({
         client: { select: { id: true, name: true } },
         supplier: { select: { id: true, name: true } },
         payment: { select: { invoiceId: true } },
+        supplierPayment: { select: { billId: true } },
+        bankLine: { select: { id: true } },
       },
       orderBy: [{ date: "desc" }, { id: "desc" }],
     }),
@@ -60,6 +64,7 @@ export default async function AccountingPage({
         subtitle={tr("Movimientos del {v0} al {v1}", { v0: formatDate(from), v1: formatDate(to) })}
         actions={
           <>
+            <ExportButton kind="movimientos" params={{ desde: fromStr, hasta: toStr }} />
             <Link href="/contabilidad/gastos-fijos" className="btn-secondary">
               <Tr>Gastos fijos y punto de equilibrio</Tr>
             </Link>
@@ -179,6 +184,10 @@ export default async function AccountingPage({
                           <Link href={`/facturas/${t.payment.invoiceId}`} className="hover:text-primary">
                             {t.description}
                           </Link>
+                        ) : t.supplierPayment ? (
+                          <Link href={`/cuentas-por-pagar/${t.supplierPayment.billId}`} className="hover:text-primary">
+                            {t.description}
+                          </Link>
                         ) : (
                           <Link href={`/contabilidad/movimientos/${t.id}`} className="hover:text-primary">
                             {t.description || tr("(sin concepto)")}
@@ -204,6 +213,11 @@ export default async function AccountingPage({
                         {t.reference && <div className="text-xs text-muted-foreground">{t.reference}</div>}
                       </td>
                       <td className={`whitespace-nowrap text-right font-medium tabular-nums ${t.type === "INGRESO" ? "text-emerald-700" : "text-rose-700"}`}>
+                        {t.bankLine && (
+                          <Landmark className="mr-1.5 inline size-3.5 text-muted-foreground" aria-label={tr("Conciliado con el banco")}>
+                            <title>{tr("Conciliado con el banco")}</title>
+                          </Landmark>
+                        )}
                         {t.type === "INGRESO" ? "+" : "−"}
                         {formatMoney(t.amount)}
                       </td>

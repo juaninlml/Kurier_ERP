@@ -56,6 +56,6 @@ async function updateSectionNoteImpl(id: number, fd: FormData) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createService = safe(createServiceImpl);
-export const updateService = safe(updateServiceImpl);
-export const updateSectionNote = safe(updateSectionNoteImpl);
+export const createService = safe(createServiceImpl, "tarifario", "createServiceImpl");
+export const updateService = safe(updateServiceImpl, "tarifario", "updateServiceImpl");
+export const updateSectionNote = safe(updateSectionNoteImpl, "tarifario", "updateSectionNoteImpl");

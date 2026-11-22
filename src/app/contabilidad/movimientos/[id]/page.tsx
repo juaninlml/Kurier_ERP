@@ -16,9 +16,11 @@ export const dynamic = "force-dynamic";
 export default async function TransactionPage({ params }: { params: Promise<{ id: string }> }) {
   const tr = await getT();
   const id = Number((await params).id);
-  const t = await prisma.transaction.findUnique({ where: { id }, include: { payment: true } });
+  const t = await prisma.transaction.findUnique({ where: { id }, include: { payment: true, supplierPayment: { select: { billId: true } } } });
   if (!t) notFound();
   if (t.payment) redirect(`/facturas/${t.payment.invoiceId}`);
+  // Pago a proveedor: se edita desde su cuenta por pagar
+  if (t.supplierPayment) redirect(`/cuentas-por-pagar/${t.supplierPayment.billId}`);
   const [clients, suppliers, s] = await Promise.all([
     prisma.client.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ select: { id: true, name: true, category: true }, orderBy: { name: "asc" } }),

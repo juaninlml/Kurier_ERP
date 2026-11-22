@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { QUOTE_STATUSES } from "@/lib/constants";
 import { quoteParty } from "@/lib/quote-party";
 import { getT } from "@/lib/i18n/server";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -35,9 +36,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         title={t("Cotizaciones")}
         subtitle={t("Propuestas comerciales para prospectos. Al aceptarse, el prospecto se da de alta como cliente con sus tarifas.")}
         actions={
-          <Link href="/cotizaciones/nueva" className="btn-primary">
-            <Plus className="size-4" /> {t("Nueva cotización")}
-          </Link>
+          <>
+            <ExportButton kind="cotizaciones" />
+            <Link href="/cotizaciones/nueva" className="btn-primary">
+              <Plus className="size-4" /> {t("Nueva cotización")}
+            </Link>
+          </>
         }
       />
       <div className="card overflow-hidden">

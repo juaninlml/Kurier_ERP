@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import authConfig, { isPublicPath } from "./auth.config";
+import { canOpen } from "./lib/permissions";
 
 const { auth } = NextAuth(authConfig);
 
@@ -45,6 +46,15 @@ export const proxy = auth((req) => {
     url.pathname = "/login";
     url.search = "";
     url.searchParams.set("callbackUrl", req.nextUrl.href);
+    return NextResponse.redirect(url);
+  }
+  // Permisos por rol: una sección que el rol no puede consultar regresa al Inicio (un PDF responde 403)
+  const role = String(req.auth?.user?.role ?? "");
+  if (req.auth?.user && !isPublicPath(pathname) && !canOpen(role, pathname)) {
+    if (pathname.startsWith("/api/")) return new NextResponse("Sin permiso", { status: 403 });
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "?sinpermiso=1";
     return NextResponse.redirect(url);
   }
   // Las respuestas de /api (PDFs, logos) no son HTML: no necesitan CSP

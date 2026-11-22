@@ -22,7 +22,7 @@ type Props = {
   /** Tarjetas de indicadores. */
   stats?: number;
   /** Columnas de la rejilla de indicadores (como en la página). */
-  statCols?: 2 | 3 | 4;
+  statCols?: 2 | 3 | 4 | 5;
 };
 
 function Header({ title, subtitle, back, actions = 0 }: Props) {
@@ -54,10 +54,10 @@ function Header({ title, subtitle, back, actions = 0 }: Props) {
   );
 }
 
-const COLS = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-3", 4: "sm:grid-cols-2 xl:grid-cols-4" } as const;
+const COLS = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-3", 4: "sm:grid-cols-2 xl:grid-cols-4", 5: "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5" } as const;
 
 /** Igual que <Stat>: py-5, renglón de etiqueta con ícono de 32px, cifra de 32px y pista de 16px. */
-export function StatsSkeleton({ count, cols = 3 }: { count: number; cols?: 2 | 3 | 4 }) {
+export function StatsSkeleton({ count, cols = 3 }: { count: number; cols?: 2 | 3 | 4 | 5 }) {
   return (
     <div className={cn("mb-6 grid gap-4", COLS[cols])}>
       {Array.from({ length: count }).map((_, i) => (

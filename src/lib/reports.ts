@@ -87,6 +87,23 @@ export async function receivables(asOf = new Date()) {
   return { rows, byBucket, total: round2(rows.reduce((a, r) => a + r.balance, 0)) };
 }
 
+/** Cuentas por pagar abiertas, por antigüedad (mismos rangos que la cobranza). */
+export async function payables(asOf = new Date()) {
+  const bills = await prisma.supplierBill.findMany({
+    where: { status: { in: ["PENDIENTE", "PARCIAL"] } },
+    select: { id: true, folio: true, concept: true, dueDate: true, total: true, paidTotal: true, supplier: { select: { id: true, name: true } } },
+    orderBy: { dueDate: "asc" },
+  });
+  const rows = bills.map((b) => {
+    const balance = round2(b.total - b.paidTotal);
+    const days = Math.floor((asOf.getTime() - b.dueDate.getTime()) / 86_400_000);
+    const bucket: AgingBucket = days <= 0 ? "corriente" : days <= 30 ? "1-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
+    return { ...b, balance, daysOverdue: Math.max(0, days), bucket };
+  });
+  const byBucket = Object.fromEntries(AGING_BUCKETS.map((b) => [b, round2(rows.filter((r) => r.bucket === b).reduce((a, r) => a + r.balance, 0))])) as Record<AgingBucket, number>;
+  return { rows, byBucket, total: round2(rows.reduce((a, r) => a + r.balance, 0)) };
+}
+
 /** Rango por defecto: mes en curso. Acepta yyyy-mm-dd. */
 export function parseRange(from?: string, to?: string) {
   const now = new Date();

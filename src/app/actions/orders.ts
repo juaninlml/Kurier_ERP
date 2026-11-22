@@ -23,7 +23,7 @@ const cellsSchema = z
  */
 export async function saveOrderCells(date: string, cells: { clientId: number; waveId: number; quantity: number }[]): Promise<{ ok: true } | { error: string }> {
   try {
-    await assertSignedIn();
+    await assertSignedIn("ordenes");
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -50,7 +50,7 @@ export async function saveOrderCells(date: string, cells: { clientId: number; wa
 /** Tarifa por paquete del servicio logístico de un cliente (0 = usar su tarifa negociada). */
 export async function saveOrderRate(clientId: number, rate: number): Promise<{ ok: true } | { error: string }> {
   try {
-    await assertSignedIn();
+    await assertSignedIn("ordenes");
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -105,7 +105,7 @@ async function moveWaveImpl(id: number, fd: FormData) {
   revalidatePath("/ordenes");
 }
 
-export const addWave = safe(addWaveImpl);
-export const renameWave = safe(renameWaveImpl);
-export const toggleWave = safe(toggleWaveImpl);
-export const moveWave = safe(moveWaveImpl);
+export const addWave = safe(addWaveImpl, "ordenes", "addWaveImpl");
+export const renameWave = safe(renameWaveImpl, "ordenes", "renameWaveImpl");
+export const toggleWave = safe(toggleWaveImpl, "ordenes", "toggleWaveImpl");
+export const moveWave = safe(moveWaveImpl, "ordenes", "moveWaveImpl");

@@ -16,6 +16,7 @@ import { getT } from "@/lib/i18n/server";
 import { Tr } from "@/components/Tr";
 import { requestLocale } from "@/lib/request-lang";
 import { brandOptions } from "@/lib/brands";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -67,6 +68,7 @@ export default async function PayrollPage() {
         subtitle={t("Empleados, prestaciones de ley (antigüedad, vacaciones, prima vacacional y aguinaldo) y nómina semanal. Sin ISR ni carga patronal.")}
         actions={
           <>
+            <ExportButton kind="nomina" />
             <Link href="/nomina/puestos" className="btn-secondary">
               <Network className="size-4" /> {t("Puestos")}
             </Link>

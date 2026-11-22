@@ -13,13 +13,14 @@ import { Avatar } from "@/components/Sidebar";
 import { Badge } from "@/components/ui/badge";
 import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
+import { ROLE_HINT, ROLE_LABEL } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   return { title: (await getT())("Usuarios y accesos") };
 }
 
-const ROLE: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
+const ROLE = ROLE_LABEL;
 
 export default async function UsersPage() {
   const me = await getCurrentUser();
@@ -75,8 +76,10 @@ export default async function UsersPage() {
                     {u.role !== "OWNER" && u.id !== me.id && (
                       <Form action={updateUser.bind(null, u.id)} className="flex flex-wrap items-end gap-3 border-t bg-muted/30 px-5 py-4">
                         <Field label={t("Rol")}>
-                          <select name="role" defaultValue={u.role} className="input w-48" disabled={u.role === "ADMIN" && me.role !== "OWNER"}>
+                          <select name="role" defaultValue={u.role} className="input w-56" disabled={u.role === "ADMIN" && me.role !== "OWNER"}>
                             <option value="USER">{t("Usuario")}</option>
+                            <option value="CONTADOR">{t("Contador (consulta)")}</option>
+                            <option value="VENTAS">{t("Ventas")}</option>
                             {me.role === "OWNER" && <option value="ADMIN">{t("Administrador")}</option>}
                             {me.role !== "OWNER" && u.role === "ADMIN" && <option value="ADMIN">{t("Administrador")}</option>}
                           </select>
@@ -164,6 +167,8 @@ export default async function UsersPage() {
               <Field label={t("Rol")}>
                 <select name="role" defaultValue="USER" className="input">
                   <option value="USER">{t("Usuario")}</option>
+                  <option value="CONTADOR">{t("Contador (consulta)")}</option>
+                  <option value="VENTAS">{t("Ventas")}</option>
                   {me.role === "OWNER" && <option value="ADMIN">{t("Administrador")}</option>}
                 </select>
               </Field>
@@ -181,6 +186,14 @@ export default async function UsersPage() {
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
               {t("Los administradores pueden invitar usuarios. Solo la cuenta maestra puede crear administradores.")}
             </p>
+            <dl className="space-y-1.5 border-t pt-3 text-xs">
+              {(["USER", "CONTADOR", "VENTAS", "ADMIN"] as const).map((r) => (
+                <div key={r}>
+                  <dt className="font-medium">{t(ROLE_LABEL[r])}</dt>
+                  <dd className="text-muted-foreground">{t(ROLE_HINT[r])}</dd>
+                </div>
+              ))}
+            </dl>
           </Form>
         </Panel>
       </div>

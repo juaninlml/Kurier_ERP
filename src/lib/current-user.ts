@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "./db";
 
-export const ROLES = ["OWNER", "ADMIN", "USER"] as const;
-export type Role = (typeof ROLES)[number];
+export { ROLES, type Role } from "./permissions";
 export const canManageUsers = (role: string) => role === "OWNER" || role === "ADMIN";
 
 /**

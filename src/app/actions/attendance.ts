@@ -317,16 +317,16 @@ async function runAutoCloseImpl() {
   refresh();
 }
 
-export const createKioskDevice = safe(createKioskDeviceImpl);
+export const createKioskDevice = safe(createKioskDeviceImpl, "nomina", "createKioskDeviceImpl");
 export const activateKiosk = safePublic(activateKioskImpl);
 export const pairKiosk = safePublic(pairKioskImpl);
-export const deactivateKioskDevice = safe(async (id: number) => setKioskDeviceActiveImpl(id, false));
-export const startEmployeeKiosk = safe(startEmployeeKioskImpl);
-export const confirmEmployeeKiosk = safe(confirmEmployeeKioskImpl);
-export const unlinkEmployeeKiosk = safe(unlinkEmployeeKioskImpl);
-export const authorizeOvertime = safe(authorizeOvertimeImpl);
-export const deleteOvertime = safe(deleteOvertimeImpl);
-export const addManualPunch = safe(addManualPunchImpl);
-export const deletePunch = safe(deletePunchImpl);
-export const saveAttendanceSettings = safe(saveAttendanceSettingsImpl);
-export const runAutoClose = safe(runAutoCloseImpl);
+export const deactivateKioskDevice = safe(async (id: number) => setKioskDeviceActiveImpl(id, false), "nomina", "deactivateKioskDevice");
+export const startEmployeeKiosk = safe(startEmployeeKioskImpl, "nomina", "startEmployeeKioskImpl");
+export const confirmEmployeeKiosk = safe(confirmEmployeeKioskImpl, "nomina", "confirmEmployeeKioskImpl");
+export const unlinkEmployeeKiosk = safe(unlinkEmployeeKioskImpl, "nomina", "unlinkEmployeeKioskImpl");
+export const authorizeOvertime = safe(authorizeOvertimeImpl, "nomina", "authorizeOvertimeImpl");
+export const deleteOvertime = safe(deleteOvertimeImpl, "nomina", "deleteOvertimeImpl");
+export const addManualPunch = safe(addManualPunchImpl, "nomina", "addManualPunchImpl");
+export const deletePunch = safe(deletePunchImpl, "nomina", "deletePunchImpl");
+export const saveAttendanceSettings = safe(saveAttendanceSettingsImpl, "nomina", "saveAttendanceSettingsImpl");
+export const runAutoClose = safe(runAutoCloseImpl, "nomina", "runAutoCloseImpl");

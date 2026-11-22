@@ -237,9 +237,9 @@ async function deleteQuoteImpl(id: number) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createQuote = safe(createQuoteImpl);
-export const updateQuote = safe(updateQuoteImpl);
-export const setQuoteStatus = safe(setQuoteStatusImpl);
-export const duplicateQuote = safe(duplicateQuoteImpl);
-export const deleteQuote = safe(deleteQuoteImpl);
-export const acceptQuote = safe(acceptQuoteImpl);
+export const createQuote = safe(createQuoteImpl, "cotizaciones", "createQuoteImpl");
+export const updateQuote = safe(updateQuoteImpl, "cotizaciones", "updateQuoteImpl");
+export const setQuoteStatus = safe(setQuoteStatusImpl, "cotizaciones", "setQuoteStatusImpl");
+export const duplicateQuote = safe(duplicateQuoteImpl, "cotizaciones", "duplicateQuoteImpl");
+export const deleteQuote = safe(deleteQuoteImpl, "cotizaciones", "deleteQuoteImpl");
+export const acceptQuote = safe(acceptQuoteImpl, "cotizaciones", "acceptQuoteImpl");
