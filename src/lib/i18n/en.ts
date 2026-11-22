@@ -270,6 +270,7 @@ export const en: Record<string, string> = {
   Regresar: "Go back",
   Reintentar: "Try again",
   "Cambios guardados.": "Changes saved.",
+  "Registro agregado.": "Record added.",
   "No encontramos esta página": "We couldn't find this page",
   "El documento pudo haberse eliminado o la dirección es incorrecta.": "The document may have been deleted or the address is wrong.",
   "Ir al inicio": "Go home",

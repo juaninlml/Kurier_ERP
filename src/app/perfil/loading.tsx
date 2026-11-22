@@ -1,5 +1,5 @@
-import { PageSkeleton } from "@/components/PageSkeleton";
+import { FormSkeleton } from "@/components/PageSkeleton";
 
 export default function Loading() {
-  return <PageSkeleton />;
+  return <FormSkeleton title="Mi perfil" subtitle="Tus datos y preferencias en Kurier ERP." panels={2} />;
 }

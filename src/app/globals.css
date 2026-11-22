@@ -315,6 +315,9 @@ html.dark {
   }
   html {
     @apply font-sans;
+    /* Reserva el carril de la barra de scroll: al pasar de una página corta a una larga
+       (o mientras carga) el contenido no se recorre de lado. */
+    scrollbar-gutter: stable;
     scrollbar-color: oklch(0.8 0.015 255) transparent;
     -webkit-tap-highlight-color: transparent;
   }
@@ -452,6 +455,100 @@ html.dark {
   ::view-transition-old(.page-swap),
   ::view-transition-new(.page-swap) {
     animation: none;
+  }
+}
+
+/* Esqueleto de carga: espera 120ms antes de aparecer; si la página llega antes, no parpadea. */
+.skeleton-in {
+  animation: viz-fade var(--dur-state) ease-out 120ms both;
+}
+
+/* ── Guardado y errores de formularios ───────────────────────────────────────
+   El aviso de guardado es el único momento "con carácter": entra desde abajo enfocándose,
+   la palomita se traza y una línea fina marca el tiempo que le queda. Sin rebotes. */
+@keyframes save-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+    filter: blur(3px);
+  }
+}
+@keyframes save-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes save-check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes save-check-badge {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes save-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes form-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.save-toast {
+  animation: save-toast-in 320ms var(--ease-out) both;
+}
+.save-toast[data-closing] {
+  animation: save-toast-out 180ms ease-in both;
+}
+.save-toast > span:first-child {
+  animation: save-check-badge 260ms var(--ease-out) 90ms both;
+}
+.save-toast-check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: save-check-draw 300ms var(--ease-out) 200ms forwards;
+}
+.save-toast-timer {
+  animation-name: save-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-delay: 300ms;
+}
+.form-alert {
+  animation: form-alert-in var(--dur-state) var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-toast,
+  .save-toast[data-closing] {
+    animation-name: viz-fade;
+    animation-duration: var(--dur-feedback);
+  }
+  .save-toast[data-closing] {
+    animation-direction: reverse;
+  }
+  .save-toast > span:first-child,
+  .form-alert {
+    animation: none;
+  }
+  .save-toast-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .save-toast-timer {
+    display: none;
   }
 }
 

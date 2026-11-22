@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { ViewTransition } from "react";
 import { cookies } from "next/headers";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { getSessionUser } from "@/lib/current-user";
 import { AppSidebar, MobileNav } from "@/components/Sidebar";
 import { I18nProvider } from "@/components/I18nProvider";
+import { PageTransition } from "@/components/PageTransition";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLang } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <MobileNav user={user} />
                   <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
                     {/* Transición suave al cambiar de sección (solo el contenido; la barra lateral queda fija) */}
-                    <ViewTransition default="page-swap">{children}</ViewTransition>
+                    <PageTransition>{children}</PageTransition>
                   </main>
                 </div>
               </div>
