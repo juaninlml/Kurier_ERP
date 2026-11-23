@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { assertSignedIn, safe } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
-import { newTracking, quoteLastMile, SHIPMENT_STATUS, ZIP_RE, type LastMileQuote } from "@/lib/lastmile";
+import { newTracking, quoteLastMile, SERVICE_LEVELS, serviceLevelOf, SHIPMENT_STATUS, ZIP_RE, type LastMileQuote } from "@/lib/lastmile";
 import { numv, str } from "./helpers";
 
 const who = async () => {
@@ -102,6 +102,7 @@ async function createShipmentImpl(fd: FormData) {
       reference,
       clientId,
       packageType: str(fd, "packageType") === "SOBRE" ? "SOBRE" : "CAJA",
+      serviceLevel: serviceLevelOf(str(fd, "serviceLevel")),
       ...origin,
       originRfc: str(fd, "originRfc").toUpperCase(),
       ...dest,
@@ -125,7 +126,7 @@ async function createShipmentImpl(fd: FormData) {
       priceLabel: quote.label,
       notes: str(fd, "notes"),
       createdBy: by,
-      events: { create: { kind: "CREADA", detail: `Guía generada · ${quote.label} · ${quote.borough}`, by } },
+      events: { create: { kind: "CREADA", detail: `Guía generada · ${SERVICE_LEVELS[serviceLevelOf(str(fd, "serviceLevel"))]} · ${quote.label} · ${quote.borough}`, by } },
     },
   });
   // Libreta de direcciones (opcional)

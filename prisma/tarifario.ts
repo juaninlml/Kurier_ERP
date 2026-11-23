@@ -140,12 +140,8 @@ export const TARIFAS: Tarifa[] = [
 
   // Última milla CDMX
   { code: "UM-01", section: "Última milla CDMX", name: "Picking de caja cerrada", unitPrice: 12, unit: "Caja", description: "Surtido de la caja tal como la entrega el cliente, sin empaque adicional ni generación de guía." },
-  { code: "UM-02", section: "Última milla CDMX", name: "Entrega Zona 1", unitPrice: 130, unit: "Parada", description: "Benito Juárez, Cuauhtémoc, Iztacalco, Venustiano Carranza, Coyoacán y Miguel Hidalgo. Sin límite de cajas por parada. De 10 a 19 entregas diarias: $110.00; 20 o más: $90.00." },
-  { code: "UM-03", section: "Última milla CDMX", name: "Entrega Zona 2", unitPrice: 160, unit: "Parada", description: "Resto de las alcaldías de la Ciudad de México. Sin límite de cajas por parada. De 10 a 19 entregas diarias: $130.00; 20 o más: $110.00." },
-  { code: "UM-04", section: "Última milla CDMX", name: "Entrega Zona 1 — 10 a 19 entregas diarias", unitPrice: 110, unit: "Parada", description: "Tarifa preferencial por volumen, aplica a todas las entregas del mes." },
-  { code: "UM-05", section: "Última milla CDMX", name: "Entrega Zona 1 — 20 o más entregas diarias", unitPrice: 90, unit: "Parada", description: "Tarifa preferencial por volumen, aplica a todas las entregas del mes." },
-  { code: "UM-06", section: "Última milla CDMX", name: "Entrega Zona 2 — 10 a 19 entregas diarias", unitPrice: 130, unit: "Parada", description: "Tarifa preferencial por volumen, aplica a todas las entregas del mes." },
-  { code: "UM-07", section: "Última milla CDMX", name: "Entrega Zona 2 — 20 o más entregas diarias", unitPrice: 110, unit: "Parada", description: "Tarifa preferencial por volumen, aplica a todas las entregas del mes." },
+  { code: "UM-02", section: "Última milla CDMX", name: "Entrega Zona 1", unitPrice: 70, unit: "Parada", description: "Benito Juárez, Cuauhtémoc, Iztacalco, Venustiano Carranza, Coyoacán y Miguel Hidalgo. Sin límite de cajas por parada. Precio más IVA." },
+  { code: "UM-03", section: "Última milla CDMX", name: "Entrega Zona 2", unitPrice: 110, unit: "Parada", description: "Resto de las alcaldías de la Ciudad de México. Sin límite de cajas por parada. Precio más IVA." },
   { code: "UM-08", section: "Última milla CDMX", name: "Reintento por entrega fallida", unitPrice: 0, unit: "Parada", priceText: "50% de la parada", description: "Aplica cuando el punto de entrega está cerrado o no hay quien reciba." },
   { code: "UM-09", section: "Última milla CDMX", name: "Tiempo de espera", unitPrice: 50, unit: "Fracción de 15 min", description: "Cuando la espera en el punto de entrega supera los primeros 15 minutos." },
 

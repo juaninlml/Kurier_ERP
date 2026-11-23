@@ -1195,4 +1195,5 @@ export const enModules: Record<string, string> = {
   "sin IVA": "before VAT",
   "Zona": "Zone",
   "CP": "ZIP",
+  "Mismo día": "Same day",
 };

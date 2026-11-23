@@ -1,8 +1,7 @@
 import React from "react";
-import { Document, Page, View, Text, Image, Svg, Path, Rect } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Svg, Path, Rect, Circle } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 import type { CompanySettings, Shipment } from "@prisma/client";
-import { loadLogo } from "./brand";
 
 /*
  * Guía de última milla en formato 4 × 6 pulgadas (288 × 432 pt) para impresora térmica.
@@ -62,6 +61,22 @@ function QR({ value, size }: { value: string; size: number }) {
   );
 }
 
+/**
+ * Símbolo de Kurier Kido (núcleo, órbita que pasa por delante y por detrás, y satélite) en negro,
+ * para impresión térmica: mismo trazo que el logo de la app (src/components/KidoLogo.tsx).
+ */
+function KidoMark({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="-32 -32 64 64">
+      <Path d="M -25.3 6.6 A 26 9.5 -22 0 1 25.3 -6.6" fill="none" stroke="#000" strokeWidth={3.6} strokeLinecap="round" />
+      <Circle cx={0} cy={0} r={10.5} fill="#000" stroke="#fff" strokeWidth={2.5} />
+      <Path d="M 25.3 -6.6 A 26 9.5 -22 0 1 -25.3 6.6" fill="none" stroke="#000" strokeWidth={3.6} strokeLinecap="round" />
+      <Circle cx={21.5} cy={5.6} r={4.8} fill="#000" stroke="#fff" strokeWidth={1.6} />
+      <Circle cx={-18} cy={-24} r={2.6} fill="#000" />
+    </Svg>
+  );
+}
+
 // ───────── Guía ─────────
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -77,7 +92,6 @@ const line = { borderBottomWidth: 1, borderBottomColor: INK } as const;
 const small = { fontSize: 6, letterSpacing: 0.2 } as const;
 
 function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; of: number }) {
-  const logo = loadLogo(s);
   const borough = (sh.borough || sh.destCity || "").toUpperCase();
   const street = [sh.destStreet, sh.destNumber].filter(Boolean).join(" ");
   const colony = [sh.destColony && `Col. ${sh.destColony}`, sh.borough && `Alc. ${sh.borough}`].filter(Boolean).join(", ");
@@ -94,14 +108,14 @@ function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; 
       <View style={{ flex: 1, borderWidth: 1.5, borderColor: INK }}>
         {/* Encabezado */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingVertical: 4, borderBottomWidth: 2, borderBottomColor: INK }}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          {logo && <Image src={logo} style={{ width: 20, height: 20, objectFit: "contain", marginRight: 5 }} />}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold" }}>{(s.tradeName || "Kurier Fulfillment").toUpperCase()}</Text>
-            <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold" }}>GUÍA DE ÚLTIMA MILLA · CDMX</Text>
+          <KidoMark size={30} />
+          <View style={{ flex: 1, marginLeft: 5 }}>
+            <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", letterSpacing: -0.6, lineHeight: 1 }}>kurier kido</Text>
+            <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", letterSpacing: 0.6, marginTop: 1 }}>GUÍA DE ÚLTIMA MILLA · CDMX</Text>
           </View>
-          <View style={{ backgroundColor: INK, paddingHorizontal: 7, paddingVertical: 4 }}>
+          <View style={{ backgroundColor: INK, paddingHorizontal: 7, paddingVertical: 3, alignItems: "center" }}>
             <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Helvetica-Bold" }}>ZONA {sh.zone}</Text>
+            <Text style={{ color: "#fff", fontSize: 6.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 }}>{sh.serviceLevel === "DIA_SIGUIENTE" ? "DÍA SIGUIENTE" : "MISMO DÍA"}</Text>
           </View>
         </View>
 
@@ -148,7 +162,7 @@ function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; 
             ) : (
               <>
                 <Text style={{ ...small, marginTop: 3 }}>SERVICIO</Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>Entrega a domicilio · mismo día</Text>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>Entrega a domicilio · {sh.serviceLevel === "DIA_SIGUIENTE" ? "día siguiente" : "mismo día"}</Text>
               </>
             )}
             <Text style={{ fontSize: 6, marginTop: 2 }}>Escanea al entregar: foto y firma</Text>

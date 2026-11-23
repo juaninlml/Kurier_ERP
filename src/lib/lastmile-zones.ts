@@ -31,6 +31,11 @@ export const zoneOf = (borough: string) => (!borough ? 0 : ZONE1.has(borough) ? 
 export const volumetricKg = (l: number, w: number, h: number) => Math.round(((l * w * h) / 5000) * 100) / 100;
 
 
+/** Tipo de servicio de la guía (mismo precio por parada; cambia el compromiso de entrega). */
+export const SERVICE_LEVELS = { MISMO_DIA: "Mismo día", DIA_SIGUIENTE: "Día siguiente" } as const;
+export type ServiceLevel = keyof typeof SERVICE_LEVELS;
+export const serviceLevelOf = (v: string): ServiceLevel => (v === "DIA_SIGUIENTE" ? "DIA_SIGUIENTE" : "MISMO_DIA");
+
 export const SHIPMENT_STATUS: Record<string, string> = {
   GENERADA: "Generada",
   EN_RUTA: "En ruta",

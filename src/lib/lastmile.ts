@@ -55,14 +55,15 @@ export async function quoteLastMile(input: { zip: string; borough?: string; clie
   if (!zone) return { ok: false, error: "Fuera de cobertura: la última milla solo entrega dentro de la Ciudad de México." };
 
   const [services, cfg, client] = await Promise.all([
-    prisma.service.findMany({ where: { name: { startsWith: `Entrega Zona ${zone}` } }, select: { code: true, name: true, unitPrice: true, active: true } }),
+    prisma.service.findMany({ where: { name: { startsWith: `Entrega Zona ${zone}` }, active: true }, select: { code: true, name: true, unitPrice: true, active: true } }),
     prisma.companySettings.findUnique({ where: { id: 1 }, select: { timezone: true } }),
     input.clientId ? prisma.client.findUnique({ where: { id: input.clientId }, include: { rates: { where: { active: true } } } }) : null,
   ]);
   const base = services.find((s) => norm(s.name) === norm(`Entrega Zona ${zone}`));
-  const mid = services.find((s) => /10 a 19/.test(s.name));
-  const top = services.find((s) => /20 o m/.test(s.name));
-  const basePrice = base?.unitPrice ?? (zone === 1 ? 130 : 160);
+  const cheaper = (x?: { unitPrice: number }) => (x && base && x.unitPrice < base.unitPrice ? x : undefined);
+  const mid = cheaper(services.find((s) => /10 a 19/.test(s.name)));
+  const top = cheaper(services.find((s) => /20 o m/.test(s.name)));
+  const basePrice = base?.unitPrice ?? (zone === 1 ? 70 : 110);
 
   // Tarifa negociada del cliente con el mismo nombre ("Entrega Zona 1"): manda sobre el tarifario
   const own = client?.rates.find((r) => norm(r.name) === norm(`Entrega Zona ${zone}`));

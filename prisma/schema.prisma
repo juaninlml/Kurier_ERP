@@ -760,6 +760,7 @@ model Shipment {
   clientId      Int?
   client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
   packageType   String          @default("CAJA") // SOBRE | CAJA
+  serviceLevel  String          @default("MISMO_DIA") // MISMO_DIA | DIA_SIGUIENTE
   // Origen (remitente)
   originName    String
   originCompany String          @default("")

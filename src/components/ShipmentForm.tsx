@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Box, Calculator, Eraser, Mail, MapPin, PackageCheck, Save, Truck } from "lucide-react";
+import { Box, CalendarClock, Zap, Calculator, Eraser, Mail, MapPin, PackageCheck, Save, Truck } from "lucide-react";
 import { createShipment, quoteShipment, saveShipAddress } from "@/app/actions/shipments";
 import { BOROUGH_LIST, boroughOfZip, volumetricKg, zoneOf } from "@/lib/lastmile-zones";
 import type { LastMileQuote } from "@/lib/lastmile";
@@ -48,7 +48,7 @@ export function ShipmentForm({
   const [dest, setDest] = useState<Addr>(EMPTY);
   const [borough, setBorough] = useState("");
   const [clientId, setClientId] = useState(0);
-  const [pkg, setPkg] = useState({ packageType: "CAJA", content: "", lengthCm: "", widthCm: "", heightCm: "", weightKg: "", packages: "1", cod: "" });
+  const [pkg, setPkg] = useState({ packageType: "CAJA", serviceLevel: "MISMO_DIA", content: "", lengthCm: "", widthCm: "", heightCm: "", weightKg: "", packages: "1", cod: "" });
   const [quote, setQuote] = useState<LastMileQuote | null>(null);
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [pending, start] = useTransition();
@@ -145,6 +145,29 @@ export function ShipmentForm({
                 </button>
               ))}
               <input type="hidden" name="packageType" value={pkg.packageType} />
+            </div>
+            <div>
+              <span className="label">{t("Servicio")}</span>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("Servicio")}>
+                {(
+                  [
+                    ["MISMO_DIA", t("Mismo día"), Zap],
+                    ["DIA_SIGUIENTE", t("Día siguiente"), CalendarClock],
+                  ] as const
+                ).map(([v, label, Icon]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={pkg.serviceLevel === v}
+                    onClick={() => setPkg({ ...pkg, serviceLevel: v })}
+                    className={cn("flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-medium", pkg.serviceLevel === v ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
+                  >
+                    <Icon className="size-4" /> {label}
+                  </button>
+                ))}
+              </div>
+              <input type="hidden" name="serviceLevel" value={pkg.serviceLevel} />
             </div>
             <label className="block">
               <span className="label">{t("Contenido")} *</span>

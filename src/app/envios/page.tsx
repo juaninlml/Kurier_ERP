@@ -90,6 +90,7 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
                     </td>
                     <td className="whitespace-nowrap">
                       {s.borough} <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold">Z{s.zone}</span>
+                      <div className="text-[11px] text-muted-foreground">{s.serviceLevel === "DIA_SIGUIENTE" ? t("Día siguiente") : t("Mismo día")}</div>
                     </td>
                     <td className="text-muted-foreground">{s.client?.name ?? "—"}</td>
                     <td>

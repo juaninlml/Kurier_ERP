@@ -7,7 +7,7 @@ import { PageHeader, Panel, StatusBadge } from "@/components/kit";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { RecipientDialog } from "@/components/RecipientDialog";
-import { SHIPMENT_STATUS, volumetricKg } from "@/lib/lastmile-zones";
+import { SERVICE_LEVELS, SHIPMENT_STATUS, serviceLevelOf, volumetricKg } from "@/lib/lastmile-zones";
 import { formatDate, formatMoney } from "@/lib/money";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
@@ -51,7 +51,7 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
           <span className="flex flex-wrap items-center gap-2">
             <StatusBadge status={s.status} />
             <span>
-              {s.borough} · <Tr>Zona</Tr> {s.zone} · {formatMoney(s.price)} <Tr>sin IVA</Tr> · {formatDate(s.createdAt)}
+              {t(SERVICE_LEVELS[serviceLevelOf(s.serviceLevel)])} · {s.borough} · <Tr>Zona</Tr> {s.zone} · {formatMoney(s.price)} <Tr>sin IVA</Tr> · {formatDate(s.createdAt)}
             </span>
             {s.client && (
               <Link href={`/clientes/${s.client.id}`} className="text-primary hover:underline">
@@ -100,6 +100,7 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
             </Panel>
             <Panel title="Paquete">
               {rows([
+                [t("Servicio"), t(SERVICE_LEVELS[serviceLevelOf(s.serviceLevel)])],
                 [t("Tipo"), s.packageType === "SOBRE" ? t("Sobre") : t("Caja")],
                 [t("Contenido"), s.content],
                 [t("Medidas"), s.lengthCm ? `${s.lengthCm} × ${s.widthCm} × ${s.heightCm} cm` : ""],
