@@ -1214,4 +1214,6 @@ export const enModules: Record<string, string> = {
   "Firma de quien recibió": "Recipient's signature",
   "Firma de {v0}": "Signature of {v0}",
   "quien recibió": "the recipient",
+  "Toca para el siguiente registro": "Tap for the next check-in",
+  "Toca la pantalla para el siguiente registro": "Tap the screen for the next check-in",
 };

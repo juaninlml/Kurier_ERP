@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { CircleAlert, CircleCheck, Delete, LogIn, LogOut, Utensils, UtensilsCrossed } from "lucide-react";
+import { Hand, CircleAlert, CircleCheck, Delete, LogIn, LogOut, Utensils, UtensilsCrossed } from "lucide-react";
 import { KidoBrand } from "./KidoLogo";
 import { kioskChangeType, kioskHeartbeat, kioskPunch, type KioskResult } from "@/app/actions/attendance";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,10 @@ const TONE = {
 } as const;
 
 /** Pantalla del kiosco: el empleado solo escribe el código de 6 dígitos de su app. */
+/** Tiempo que se muestra el resultado antes de volver al teclado (hay fila: se puede tocar para seguir antes). */
+const OK_MS = 4000;
+const ERROR_MS = 3500;
+
 export function KioskScreen({ company, device, tz }: { company: string; device: string; tz: string }) {
   const t = useT();
   const [code, setCode] = useState("");
@@ -46,7 +50,13 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
     codeRef.current = "";
     setCode("");
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setResult(null), r.ok ? 8000 : 5000);
+    timer.current = setTimeout(() => setResult(null), r.ok ? OK_MS : ERROR_MS);
+  }, []);
+
+  /** Quitar el resultado y volver al teclado para el siguiente de la fila. */
+  const dismiss = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    setResult(null);
   }, []);
 
   const submit = useCallback(
@@ -76,14 +86,21 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
   // Teclado físico (si la tablet tiene uno)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (result) return;
+      if (result) {
+        // Con teclado físico: un dígito cierra el resultado y empieza el siguiente código
+        if (/^\d$/.test(e.key) && !pending) {
+          dismiss();
+          press(e.key);
+        } else if (e.key === "Enter" || e.key === "Escape" || e.key === " ") dismiss();
+        return;
+      }
       if (/^\d$/.test(e.key)) press(e.key);
       else if (e.key === "Backspace") setCodeBoth(codeRef.current.slice(0, -1));
       else if (e.key === "Escape") setCodeBoth("");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [press, result]);
+  }, [press, result, dismiss, pending]);
 
   const time = !now ? " " : now.toLocaleTimeString("es-MX", { timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = !now ? " " : now.toLocaleDateString("es-MX", { timeZone: tz, weekday: "long", day: "numeric", month: "long" });
@@ -103,7 +120,25 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
       {/* Vertical: todo en columna. Horizontal (ej. Galaxy Tab A 11): reloj y código a la izquierda, teclado a la derecha */}
       <main className="grid min-h-0 flex-1 place-items-center px-4 pb-6 landscape:px-8 landscape:pb-4">
         {result ? (
-          <ResultCard key={seq} result={result} onChange={(type) => result.ok && start(async () => showResult(await kioskChangeType(result.punchId, result.ticket, type)))} />
+          // Tocar cualquier parte (menos los botones de "Cambiar a") pasa al siguiente registro.
+          // Se usa click (no pointerdown) para que ese mismo toque no presione una tecla del teclado.
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={t("Toca para el siguiente registro")}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return;
+              if (!pending) dismiss();
+            }}
+            className="grid h-full w-full cursor-pointer place-items-center outline-none"
+          >
+            <div className="flex w-full flex-col items-center gap-5">
+              <ResultCard key={seq} result={result} onChange={(type) => result.ok && start(async () => showResult(await kioskChangeType(result.punchId, result.ticket, type)))} />
+              <p className="kiosk-rise flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-sidebar-foreground" style={{ animationDelay: "500ms" }}>
+                <Hand className="size-4" aria-hidden /> <Tr>Toca la pantalla para el siguiente registro</Tr>
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="flex w-full max-w-md flex-col items-center landscape:grid landscape:max-w-5xl landscape:grid-cols-2 landscape:items-center landscape:gap-x-12">
             <div className="flex flex-col items-center">
@@ -190,7 +225,7 @@ function ResultCard({ result, onChange }: { result: KioskResult; onChange: (type
           </div>
           <p className="mt-4 text-lg font-medium"><Tr>{result.error}</Tr></p>
         </div>
-        <div className="kiosk-timer h-1 origin-left bg-amber-500" style={{ animationDuration: "5s" }} />
+        <div className="kiosk-timer h-1 origin-left bg-amber-500" style={{ animationDuration: `${ERROR_MS}ms` }} />
       </div>
     );
   }
@@ -233,7 +268,7 @@ function ResultCard({ result, onChange }: { result: KioskResult; onChange: (type
           )}
         </div>
         {/* Tiempo que queda antes de volver al teclado */}
-        <div className={cn("kiosk-timer h-1 origin-left", TONE[result.type])} style={{ animationDuration: "8s" }} />
+        <div className={cn("kiosk-timer h-1 origin-left", TONE[result.type])} style={{ animationDuration: `${OK_MS}ms` }} />
       </div>
     </div>
   );
