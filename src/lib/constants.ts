@@ -12,6 +12,9 @@ export const STATUS_LABELS: Record<string, string> = {
   PAGADA: "Pagada",
   CANCELADA: "Cancelada",
   VENCIDA: "Vencida",
+  GENERADA: "Generada",
+  EN_RUTA: "En ruta",
+  ENTREGADA: "Entregada",
 };
 
 export const STATUS_TONES: Record<string, string> = {
@@ -25,7 +28,11 @@ export const STATUS_TONES: Record<string, string> = {
   PAGADA: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
   CANCELADA: "bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-600/20",
   VENCIDA: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20",
+  GENERADA: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20",
+  EN_RUTA: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20",
+  ENTREGADA: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
 };
+export const SHIPMENT_STATUSES = ["GENERADA", "EN_RUTA", "ENTREGADA", "CANCELADA"] as const;
 
 export const PAYMENT_METHODS = ["Transferencia", "Efectivo", "Tarjeta", "Cheque", "Depósito", "Otro"] as const;
 

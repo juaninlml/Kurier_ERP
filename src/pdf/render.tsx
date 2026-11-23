@@ -172,3 +172,12 @@ export async function renderIncident(id: number) {
     buffer: await renderToBuffer(<IncidentPdf s={s} i={i} e={e} seniority={senLabel} vacation={vacation} />),
   };
 }
+
+/** Guía de última milla 4 × 6 (una página por bulto). `sheet` = en hoja carta con líneas de corte. */
+export async function renderShipmentLabel(id: number, sheet = false) {
+  const [base, sh] = await Promise.all([getSettings(), prisma.shipment.findUnique({ where: { id }, include: { client: { include: { brand: true } } } })]);
+  if (!sh) return null;
+  const s = applyBrand(base, sh.client?.brand ?? null);
+  const { ShipmentLabelPdf } = await import("./label");
+  return { filename: `Guia_UltimaMilla_${sh.tracking}${sheet ? "_carta" : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} />) };
+}
