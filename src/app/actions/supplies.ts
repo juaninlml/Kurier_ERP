@@ -25,7 +25,7 @@ const refresh = () => {
 /** Guarda celdas de la hoja de insumos (autoguardado). Una cantidad 0 borra la celda. */
 export async function saveSupplyCells(date: string, cells: { clientId: number; colId: number; quantity: number }[]): Promise<{ ok: true } | { error: string }> {
   try {
-    await assertSignedIn();
+    await assertSignedIn("ordenes");
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -101,7 +101,7 @@ async function moveMaterialImpl(id: number, fd: FormData) {
   refresh();
 }
 
-export const addMaterial = safe(addMaterialImpl);
-export const updateMaterial = safe(updateMaterialImpl);
-export const toggleMaterial = safe(toggleMaterialImpl);
-export const moveMaterial = safe(moveMaterialImpl);
+export const addMaterial = safe(addMaterialImpl, "ordenes", "addMaterialImpl");
+export const updateMaterial = safe(updateMaterialImpl, "ordenes", "updateMaterialImpl");
+export const toggleMaterial = safe(toggleMaterialImpl, "ordenes", "toggleMaterialImpl");
+export const moveMaterial = safe(moveMaterialImpl, "ordenes", "moveMaterialImpl");

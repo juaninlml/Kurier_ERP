@@ -13,7 +13,7 @@ export const KIDO_NAVY = "#0E1B3D";
  */
 export function KidoMark({ className, ring = "var(--sidebar)" }: { className?: string; ring?: string }) {
   return (
-    <svg viewBox="-32 -32 64 64" className={className} role="img" aria-label="Kurier Kido">
+    <svg viewBox="-32 -32 64 64" className={className} role="img" aria-label="Kurier Kido" data-kido-mark="">
       <circle r="30" fill="none" stroke="#FFFFFF" strokeWidth="1.2" strokeDasharray="2 3" opacity="0.35" />
       <path d="M -25.3 6.6 A 26 9.5 -22 0 1 25.3 -6.6" fill="none" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" />
       <circle r="10.5" fill={KIDO_ACCENT} stroke={ring} strokeWidth="2.5" />
@@ -25,11 +25,11 @@ export function KidoMark({ className, ring = "var(--sidebar)" }: { className?: s
 }
 
 /** Logo completo para el login: símbolo + "kurier kido" + apartado ERP. */
-export function KidoLogo({ className }: { className?: string }) {
+export function KidoLogo({ className, textClassName }: { className?: string; /** Clase para el nombre (el símbolo queda quieto). */ textClassName?: string }) {
   return (
     <div className={cn("flex flex-col items-center gap-3 text-white", className)}>
       <KidoMark className="size-20" />
-      <div className="flex flex-col items-center gap-2">
+      <div className={cn("flex flex-col items-center gap-2", textClassName)}>
         <p className={cn(grotesk.className, "m-0 text-4xl leading-[0.9] font-bold tracking-[-0.045em]")}>
           kurier <span style={{ color: KIDO_ACCENT }}>kido</span>
         </p>

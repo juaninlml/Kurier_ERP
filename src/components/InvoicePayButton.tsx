@@ -8,19 +8,22 @@ import { useT } from "./I18nProvider";
 import { formatMoney } from "@/lib/money";
 import { PAYMENT_METHODS } from "@/lib/constants";
 
-/** Botón de la lista de facturas para registrar un pago sin entrar a la factura (abre un cuadro de diálogo). */
+/** Botón de lista para registrar un pago sin entrar al documento (facturas y cuentas por pagar; abre un cuadro de diálogo). */
 export function InvoicePayButton({
   action,
   folio,
   client,
   balance,
   today,
+  note,
 }: {
   action: (fd: FormData) => Promise<unknown>;
   folio: string;
   client: string;
   balance: number;
   today: string;
+  /** Aviso bajo el formulario (por omisión: se registra como ingreso). Ya traducido. */
+  note?: string;
 }) {
   const t = useT();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -86,7 +89,7 @@ export function InvoicePayButton({
             <span className="label">{t("Referencia")}</span>
             <input name="reference" className="input" placeholder={t("SPEI, # de cheque…")} />
           </label>
-          <p className="text-xs text-muted-foreground">{t("Se registra automáticamente como ingreso en contabilidad.")}</p>
+          <p className="text-xs text-muted-foreground">{note ?? t("Se registra automáticamente como ingreso en contabilidad.")}</p>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={close} className="btn-secondary">
               {t("Cancelar")}

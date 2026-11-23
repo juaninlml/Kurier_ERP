@@ -22,5 +22,5 @@ async function resyncDocImpl(ref: string, path: string) {
   revalidatePath(path);
 }
 
-export const syncDrive = safe(syncDriveImpl);
-export const resyncDoc = safe(resyncDocImpl);
+export const syncDrive = safe(syncDriveImpl, "configuracion", "syncDriveImpl");
+export const resyncDoc = safe(resyncDocImpl, "configuracion", "resyncDocImpl");

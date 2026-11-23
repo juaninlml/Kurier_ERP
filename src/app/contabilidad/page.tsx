@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Landmark } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { createTransaction } from "@/app/actions/accounting";
 import { PageHeader, Stat, Empty, Panel } from "@/components/kit";
@@ -11,34 +12,48 @@ import { getSettings } from "@/lib/settings";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import { Tr } from "@/components/Tr";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; type?: string; category?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; type?: string; category?: string; cp?: string; proveedor?: string; nuevo?: string }>;
 }) {
   const tr = await getT();
   const t = await getT();
   const sp = await searchParams;
   const { from, to } = parseRange(sp.from, sp.to);
-  const [txs, clients, settings, flow] = await Promise.all([
+  // Filtro por contraparte: "c12" = cliente 12, "p5" = proveedor 5
+  const cpId = Number(sp.cp?.slice(1)) || 0;
+  const cpWhere = !cpId ? {} : sp.cp?.startsWith("c") ? { clientId: cpId } : sp.cp?.startsWith("p") ? { supplierId: cpId } : {};
+  const [txs, clients, suppliers, settings, flow] = await Promise.all([
     prisma.transaction.findMany({
       where: {
         date: { gte: from, lte: to },
         ...(sp.type ? { type: sp.type } : {}),
         ...(sp.category ? { category: sp.category } : {}),
+        ...cpWhere,
       },
-      include: { client: { select: { name: true } }, payment: { select: { invoiceId: true } } },
+      include: {
+        client: { select: { id: true, name: true } },
+        supplier: { select: { id: true, name: true } },
+        payment: { select: { invoiceId: true } },
+        supplierPayment: { select: { billId: true } },
+        bankLine: { select: { id: true } },
+      },
       orderBy: [{ date: "desc" }, { id: "desc" }],
     }),
     prisma.client.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true, category: true }, orderBy: { name: "asc" } }),
     getSettings(),
     flowSeries(from, to),
   ]);
   const income = round2(txs.filter((t) => t.type === "INGRESO").reduce((a, t) => a + t.amount, 0));
   const expense = round2(txs.filter((t) => t.type === "EGRESO").reduce((a, t) => a + t.amount, 0));
+  // "Registrar pago" desde la ficha de un proveedor: egreso con el proveedor y su giro ya puestos
+  const preSupplier = sp.nuevo === "egreso" ? suppliers.find((s) => s.id === Number(sp.proveedor)) : undefined;
   const fromStr = toInputDate(from);
   const toStr = toInputDate(to);
 
@@ -49,6 +64,7 @@ export default async function AccountingPage({
         subtitle={tr("Movimientos del {v0} al {v1}", { v0: formatDate(from), v1: formatDate(to) })}
         actions={
           <>
+            <ExportButton kind="movimientos" params={{ desde: fromStr, hasta: toStr }} />
             <Link href="/contabilidad/gastos-fijos" className="btn-secondary">
               <Tr>Gastos fijos y punto de equilibrio</Tr>
             </Link>
@@ -121,6 +137,26 @@ export default async function AccountingPage({
                 </optgroup>
               </select>
             </label>
+            <label>
+              <span className="label">{t("Cliente o proveedor")}</span>
+              <select name="cp" defaultValue={sp.cp ?? ""} className="input max-w-56">
+                <option value="">{t("Todos")}</option>
+                <optgroup label={t("Clientes (ingresos)")}>
+                  {clients.map((c) => (
+                    <option key={c.id} value={`c${c.id}`}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label={t("Proveedores (egresos)")}>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={`p${s.id}`}>
+                      {s.name}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
             <button className="btn-secondary">{t("Filtrar")}</button>
           </form>
 
@@ -133,6 +169,7 @@ export default async function AccountingPage({
                   <tr>
                     <th>{t("Fecha")}</th>
                     <th>{t("Concepto")}</th>
+                    <th>{t("Cliente / proveedor")}</th>
                     <th>{t("Categoría")}</th>
                     <th>{t("Método")}</th>
                     <th className="text-right">{t("Monto")}</th>
@@ -147,19 +184,40 @@ export default async function AccountingPage({
                           <Link href={`/facturas/${t.payment.invoiceId}`} className="hover:text-primary">
                             {t.description}
                           </Link>
+                        ) : t.supplierPayment ? (
+                          <Link href={`/cuentas-por-pagar/${t.supplierPayment.billId}`} className="hover:text-primary">
+                            {t.description}
+                          </Link>
                         ) : (
                           <Link href={`/contabilidad/movimientos/${t.id}`} className="hover:text-primary">
                             {t.description || tr("(sin concepto)")}
                           </Link>
                         )}
-                        {t.client && !t.payment && <div className="text-xs text-muted-foreground">{t.client.name}</div>}
                       </td>
-                      <td className="text-muted-foreground">{t.category}</td>
+                      <td>
+                        {t.client ? (
+                          <Link href={`/clientes/${t.client.id}`} className="hover:text-primary hover:underline">
+                            {t.client.name}
+                          </Link>
+                        ) : t.supplier ? (
+                          <Link href={`/proveedores/${t.supplier.id}`} className="hover:text-primary hover:underline">
+                            {t.supplier.name}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="text-muted-foreground">{tr(t.category)}</td>
                       <td className="text-muted-foreground">
-                        {t.method}
+                        {tr(t.method)}
                         {t.reference && <div className="text-xs text-muted-foreground">{t.reference}</div>}
                       </td>
                       <td className={`whitespace-nowrap text-right font-medium tabular-nums ${t.type === "INGRESO" ? "text-emerald-700" : "text-rose-700"}`}>
+                        {t.bankLine && (
+                          <Landmark className="mr-1.5 inline size-3.5 text-muted-foreground" aria-label={tr("Conciliado con el banco")}>
+                            <title>{tr("Conciliado con el banco")}</title>
+                          </Landmark>
+                        )}
                         {t.type === "INGRESO" ? "+" : "−"}
                         {formatMoney(t.amount)}
                       </td>
@@ -171,14 +229,27 @@ export default async function AccountingPage({
           </div>
         </div>
 
-        <div className="card h-fit p-5">
+        <div id="nuevo-movimiento" className="card h-fit scroll-mt-6 p-5">
           <h2 className="mb-3 font-semibold">{t("Nuevo movimiento")}</h2>
           <TransactionForm
+            key={preSupplier?.id ?? "nuevo"}
             action={createTransaction}
             clients={clients}
+            suppliers={suppliers}
             defaultTaxRate={settings.defaultTaxRate}
             submitLabel={tr("Registrar movimiento")}
-            tx={{ type: "EGRESO", category: "", amount: 0, tax: 0, date: toInputDate(new Date()), description: "", method: "Transferencia", reference: "", clientId: null }}
+            tx={{
+              type: "EGRESO",
+              category: preSupplier?.category ?? "",
+              amount: 0,
+              tax: 0,
+              date: toInputDate(new Date()),
+              description: "",
+              method: "Transferencia",
+              reference: "",
+              clientId: null,
+              supplierId: preSupplier?.id ?? null,
+            }}
           />
         </div>
       </div>

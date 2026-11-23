@@ -1,33 +1,42 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, ReceiptText, Wallet, ClipboardList, Activity } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader, Stat, StatusBadge, Empty, Panel } from "@/components/kit";
 import { ActivityHeatmap, BarList, ColumnChart, Delta, SegmentedBar } from "@/components/charts";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { formatDate, formatMoney, round2 } from "@/lib/money";
-import { AGING_BUCKETS, incomeStatement, parseRange, receivables } from "@/lib/reports";
+import { AGING_BUCKETS, incomeStatement, parseRange, payables, receivables } from "@/lib/reports";
 import { AGING_LABEL, activityByDay, flowSeries, lastMonthsRange, pctChange, quotePipeline, recentActivity, topClients } from "@/lib/insights";
 import { getSettings } from "@/lib/settings";
 import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
+import { NoAccessNotice } from "@/components/NoAccessNotice";
+import { canManageUsers, getSessionUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard() {
-  const [t, lang, settings] = await Promise.all([getT(), getLang(), getSettings()]);
+/** Solo las columnas que muestran las tablas de "Últimas facturas/cotizaciones". */
+const RECENT_SELECT = { id: true, folio: true, issueDate: true, status: true, total: true, client: { select: { name: true } } } as const;
+
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ sinpermiso?: string }> }) {
+  const [t, lang, settings, sp, me] = await Promise.all([getT(), getLang(), getSettings(), searchParams, getSessionUser()]);
+  // El aviso solo aplica a roles con secciones restringidas (nunca a la cuenta maestra ni a administradores)
+  const showNoAccess = !!sp.sinpermiso && !!me && !canManageUsers(me.role);
   const locale = localeOf(lang);
   const { from, to } = parseRange();
   const prevFrom = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - 1, 1));
   const prevTo = new Date(from.getTime() - 1);
   const year = lastMonthsRange(12);
-  const [stmt, prev, ar, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat] = await Promise.all([
+  const [stmt, prev, ar, ap, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat] = await Promise.all([
     incomeStatement(from, to),
     incomeStatement(prevFrom, prevTo),
     receivables(),
-    prisma.quote.findMany({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, select: { total: true } }),
-    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } }),
+    payables(),
+    // Suma y conteo en la base (antes se traían todas las cotizaciones abiertas para sumarlas aquí)
+    prisma.quote.aggregate({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, _sum: { total: true }, _count: { _all: true } }),
+    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, select: RECENT_SELECT }),
     prisma.quote
-      .findMany({ orderBy: { id: "desc" }, take: 6, include: { client: { select: { name: true } } } })
+      .findMany({ orderBy: { id: "desc" }, take: 6, select: { ...RECENT_SELECT, prospectName: true } })
       .then((qs) => qs.map((q) => ({ ...q, client: { name: q.client?.name ?? `${q.prospectName || t("Prospecto")} (${t("prospecto")})` } }))),
     flowSeries(year.from, year.to, locale),
     quotePipeline(),
@@ -35,8 +44,9 @@ export default async function Dashboard() {
     recentActivity(9),
     activityByDay(17, settings.timezone || "America/Mexico_City"),
   ]);
-  const openTotal = round2(openQuotes.reduce((a, q) => a + q.total, 0));
+  const openTotal = round2(openQuotes._sum.total ?? 0);
   const overdue = round2(ar.total - ar.byBucket.corriente);
+  const apOverdue = round2(ap.total - ap.byBucket.corriente);
   const monthName = from.toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" });
   const net = round2(stmt.incomeTotal - stmt.expenseTotal);
   const yearIncome = round2(flow.points.reduce((a, p) => a + p.income, 0));
@@ -57,6 +67,7 @@ export default async function Dashboard() {
 
   return (
     <div>
+      {showNoAccess && <NoAccessNotice />}
       <PageHeader
         title={t("Inicio")}
         subtitle={
@@ -76,7 +87,7 @@ export default async function Dashboard() {
           </>
         }
       />
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <Stat
           label={t("Ingresos del mes")}
           value={formatMoney(stmt.incomeTotal)}
@@ -102,7 +113,15 @@ export default async function Dashboard() {
           icon={Wallet}
           href={overdue > 0 ? "/facturas?status=VENCIDA" : "/facturas"}
         />
-        <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes.length })} icon={ClipboardList} href="/cotizaciones" />
+        <Stat
+          label={t("Por pagar")}
+          value={formatMoney(ap.total)}
+          tone={apOverdue > 0 ? "neg" : undefined}
+          hint={apOverdue > 0 ? t("{amount} vencido", { amount: formatMoney(apOverdue) }) : ap.total > 0 ? t("Todo al corriente") : t("Sin cuentas pendientes")}
+          icon={Receipt}
+          href={apOverdue > 0 ? "/cuentas-por-pagar?status=VENCIDA" : "/cuentas-por-pagar"}
+        />
+        <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes._count._all })} icon={ClipboardList} href="/cotizaciones" />
       </div>
 
       <div className="mb-6 grid gap-6 xl:grid-cols-3">

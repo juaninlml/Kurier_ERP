@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   const download = new URL(req.url).searchParams.has("download");
-  return pdfResponse(renderInvoice(id, await getLang()), download);
+  return pdfResponse(async () => renderInvoice(id, await getLang()), download);
 }

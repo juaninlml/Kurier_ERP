@@ -6,6 +6,7 @@ import { login } from "@/app/actions/account";
 import { AuthCard } from "@/components/AuthCard";
 import { Form } from "@/components/Form";
 import { SubmitButton } from "@/components/SubmitButton";
+import { DepartureCurtain } from "@/components/SessionCurtain";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <AuthCard>
+      {/* Al venir de cerrar sesión, la cortina termina aquí sobre el logo */}
+      <DepartureCurtain />
       <h1 className="text-xl font-semibold tracking-tight">{t("Iniciar sesión")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{t("Escribe tu correo y el código de 6 dígitos de tu app autenticadora.")}</p>
 
@@ -52,7 +55,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
       )}
 
-      <Form action={login} className="mt-5 space-y-4">
+      <Form action={login} className="mt-5 space-y-4" session="in">
         <input type="hidden" name="next" value={next} />
         <label className="block">
           <span className="label">{t("Correo")}</span>

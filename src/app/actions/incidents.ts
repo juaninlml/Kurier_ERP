@@ -130,8 +130,8 @@ async function deleteIncidentImpl(id: number) {
   refresh(i.employeeId);
 }
 
-export const createIncident = safe(createIncidentImpl);
-export const decideIncident = safe(decideIncidentImpl);
-export const justifyIncident = safe(justifyIncidentImpl);
-export const moveLateRest = safe(moveLateRestImpl);
-export const deleteIncident = safe(deleteIncidentImpl);
+export const createIncident = safe(createIncidentImpl, "nomina", "createIncidentImpl");
+export const decideIncident = safe(decideIncidentImpl, "nomina", "decideIncidentImpl");
+export const justifyIncident = safe(justifyIncidentImpl, "nomina", "justifyIncidentImpl");
+export const moveLateRest = safe(moveLateRestImpl, "nomina", "moveLateRestImpl");
+export const deleteIncident = safe(deleteIncidentImpl, "nomina", "deleteIncidentImpl");

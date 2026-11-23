@@ -8,6 +8,7 @@ import { addPayment } from "@/app/actions/invoices";
 import { InvoicePayButton } from "@/components/InvoicePayButton";
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -48,6 +49,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         subtitle={t("Formato interno de facturación y estado de cuenta (no sustituye al CFDI).")}
         actions={
           <>
+            <ExportButton kind="facturas" />
             <Link href="/facturas/importar" className="btn-secondary">
               <FileUp className="size-4" /> {t("Importar del WMS")}
               {pendingImports > 0 && <span className="rounded-md bg-kurier px-1.5 text-[11px] text-white tabular-nums">{pendingImports}</span>}

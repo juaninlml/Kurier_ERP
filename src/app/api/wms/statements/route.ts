@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { ZodError } from "zod";
 import { saveStatement } from "@/lib/wms/imports";
 
@@ -17,9 +18,13 @@ export async function POST(req: Request) {
   const auth = req.headers.get("authorization") ?? "";
   if (!safeEqual(auth, `Bearer ${token}`)) return Response.json({ error: "No autorizado." }, { status: 401 });
 
+  // Vercel corta en 4.5 MB; se rechaza antes de leer si el WMS declara más
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY) return Response.json({ error: "El envío pesa más de 4 MB." }, { status: 413 });
   let body: unknown;
   try {
-    body = await req.json();
+    const text = await req.text();
+    if (text.length > MAX_BODY) return Response.json({ error: "El envío pesa más de 4 MB." }, { status: 413 });
+    body = JSON.parse(text);
   } catch {
     return Response.json({ error: "El cuerpo debe ser JSON." }, { status: 400 });
   }
@@ -42,9 +47,10 @@ export async function POST(req: Request) {
   return Response.json({ received: list.length, saved: list.length - failed, results }, { status: failed === list.length ? 422 : 200 });
 }
 
+const MAX_BODY = 4 * 1024 * 1024;
+
+/** Comparación en tiempo constante; con hash para no revelar ni la longitud del token. */
 function safeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+  const h = (s: string) => createHash("sha256").update(s).digest();
+  return timingSafeEqual(h(a), h(b));
 }

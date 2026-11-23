@@ -421,20 +421,20 @@ async function deletePayrollRunImpl(id: number) {
   redirect("/nomina");
 }
 
-export const createFixedExpense = safe(createFixedExpenseImpl);
-export const updateFixedExpense = safe(updateFixedExpenseImpl);
-export const deleteFixedExpense = safe(deleteFixedExpenseImpl);
-export const saveBreakEven = safe(saveBreakEvenImpl);
-export const createEmployee = safe(createEmployeeImpl);
-export const updateEmployee = safe(updateEmployeeImpl);
-export const createJobPosition = safe(createJobPositionImpl);
-export const updateJobPosition = safe(updateJobPositionImpl);
-export const deleteJobPosition = safe(deleteJobPositionImpl);
-export const createPayrollRun = safe(createPayrollRunImpl);
-export const savePayrollRun = safe(savePayrollRunImpl);
-export const approvePayrollRun = safe(approvePayrollRunImpl);
-export const setPayrollLinePaid = safe(setPayrollLinePaidImpl);
-export const setPayrollLineMethod = safe(setPayrollLineMethodImpl);
-export const refreshPayrollIncidents = safe(refreshPayrollIncidentsImpl);
-export const reopenPayrollRun = safe(reopenPayrollRunImpl);
-export const deletePayrollRun = safe(deletePayrollRunImpl);
+export const createFixedExpense = safe(createFixedExpenseImpl, "nomina", "createFixedExpenseImpl");
+export const updateFixedExpense = safe(updateFixedExpenseImpl, "nomina", "updateFixedExpenseImpl");
+export const deleteFixedExpense = safe(deleteFixedExpenseImpl, "nomina", "deleteFixedExpenseImpl");
+export const saveBreakEven = safe(saveBreakEvenImpl, "nomina", "saveBreakEvenImpl");
+export const createEmployee = safe(createEmployeeImpl, "nomina", "createEmployeeImpl");
+export const updateEmployee = safe(updateEmployeeImpl, "nomina", "updateEmployeeImpl");
+export const createJobPosition = safe(createJobPositionImpl, "nomina", "createJobPositionImpl");
+export const updateJobPosition = safe(updateJobPositionImpl, "nomina", "updateJobPositionImpl");
+export const deleteJobPosition = safe(deleteJobPositionImpl, "nomina", "deleteJobPositionImpl");
+export const createPayrollRun = safe(createPayrollRunImpl, "nomina", "createPayrollRunImpl");
+export const savePayrollRun = safe(savePayrollRunImpl, "nomina", "savePayrollRunImpl");
+export const approvePayrollRun = safe(approvePayrollRunImpl, "nomina", "approvePayrollRunImpl");
+export const setPayrollLinePaid = safe(setPayrollLinePaidImpl, "nomina", "setPayrollLinePaidImpl");
+export const setPayrollLineMethod = safe(setPayrollLineMethodImpl, "nomina", "setPayrollLineMethodImpl");
+export const refreshPayrollIncidents = safe(refreshPayrollIncidentsImpl, "nomina", "refreshPayrollIncidentsImpl");
+export const reopenPayrollRun = safe(reopenPayrollRunImpl, "nomina", "reopenPayrollRunImpl");
+export const deletePayrollRun = safe(deletePayrollRunImpl, "nomina", "deletePayrollRunImpl");

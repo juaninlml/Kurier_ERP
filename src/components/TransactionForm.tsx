@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS } from "@/lib/constants";
 import { SubmitButton } from "./SubmitButton";
 import { Form } from "./Form";
@@ -17,17 +18,21 @@ type Tx = {
   method: string;
   reference: string;
   clientId: number | null;
+  supplierId: number | null;
 };
 
 export function TransactionForm({
   action,
   clients,
+  suppliers,
   tx,
   defaultTaxRate,
   submitLabel,
 }: {
   action: (fd: FormData) => Promise<unknown>;
   clients: { id: number; name: string }[];
+  /** Proveedores activos; su giro se propone como categoría del egreso. */
+  suppliers: { id: number; name: string; category: string }[];
   tx: Tx;
   defaultTaxRate: number;
   submitLabel: string;
@@ -35,6 +40,7 @@ export function TransactionForm({
   const tr = useT();
   const t = useT();
   const [type, setType] = useState(tx.type);
+  const [category, setCategory] = useState(tx.category);
   const [amount, setAmount] = useState(String(tx.amount || ""));
   const [tax, setTax] = useState(String(tx.tax || ""));
   const categories = type === "INGRESO" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -61,7 +67,13 @@ export function TransactionForm({
       </div>
       <label className="block">
         <span className="label"><Tr>Categoría</Tr></span>
-        <select name="category" key={type} defaultValue={(categories as readonly string[]).includes(tx.category) ? tx.category : ""} required className="input">
+        <select
+          name="category"
+          value={(categories as readonly string[]).includes(category) ? category : ""}
+          onChange={(e) => setCategory(e.target.value)}
+          required
+          className="input"
+        >
           <option value="" disabled>
             {t("Selecciona…")}
           </option>
@@ -107,17 +119,47 @@ export function TransactionForm({
           <input name="reference" defaultValue={tx.reference} className="input" />
         </label>
       </div>
-      <label className="block">
-        <span className="label"><Tr>Cliente (opcional)</Tr></span>
-        <select name="clientId" defaultValue={tx.clientId ?? ""} className="input">
-          <option value="">—</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Ingreso: quién pagó (cliente). Egreso: a quién se le pagó (proveedor). */}
+      {type === "INGRESO" ? (
+        <label className="block">
+          <span className="label">
+            <Tr>Cliente</Tr>
+          </span>
+          <select name="clientId" defaultValue={tx.clientId ?? ""} className="input">
+            <option value="">{t("Sin cliente")}</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <label className="block">
+          <span className="label flex justify-between">
+            <Tr>Proveedor</Tr>
+            <Link href="/proveedores/nuevo" className="normal-case text-primary hover:underline">
+              <Tr>nuevo</Tr>
+            </Link>
+          </span>
+          <select
+            name="supplierId"
+            defaultValue={tx.supplierId ?? ""}
+            onChange={(e) => {
+              const s = suppliers.find((x) => String(x.id) === e.target.value);
+              if (s?.category && (EXPENSE_CATEGORIES as readonly string[]).includes(s.category)) setCategory(s.category);
+            }}
+            className="input"
+          >
+            <option value="">{t("Sin proveedor")}</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <SubmitButton className="btn-primary w-full">{submitLabel}</SubmitButton>
     </Form>
   );

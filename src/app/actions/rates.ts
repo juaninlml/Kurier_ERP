@@ -119,9 +119,9 @@ async function copyRatesFromClientImpl(clientId: number, fd: FormData) {
   );
 }
 
-export const copyRatesFromTariff = safe(copyRatesFromTariffImpl);
-export const copyRatesFromClient = safe(copyRatesFromClientImpl);
-export const createRate = safe(createRateImpl);
-export const updateRate = safe(updateRateImpl);
-export const deleteRate = safe(deleteRateImpl);
-export const copyRatesFromQuote = safe(copyRatesFromQuoteImpl);
+export const copyRatesFromTariff = safe(copyRatesFromTariffImpl, "clientes", "copyRatesFromTariffImpl");
+export const copyRatesFromClient = safe(copyRatesFromClientImpl, "clientes", "copyRatesFromClientImpl");
+export const createRate = safe(createRateImpl, "clientes", "createRateImpl");
+export const updateRate = safe(updateRateImpl, "clientes", "updateRateImpl");
+export const deleteRate = safe(deleteRateImpl, "clientes", "deleteRateImpl");
+export const copyRatesFromQuote = safe(copyRatesFromQuoteImpl, "clientes", "copyRatesFromQuoteImpl");

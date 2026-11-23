@@ -18,5 +18,12 @@ export default {
       if (isPublicPath(request.nextUrl.pathname)) return true;
       return !!auth?.user;
     },
+    // El proxy usa esta configuración (sin base de datos): sin este callback la sesión del proxy no traía
+    // el rol y los permisos por rol bloqueaban todo. El token ya trae uid y role (los pone src/auth.ts).
+    session({ session, token }) {
+      session.user.id = String(token.uid ?? "");
+      session.user.role = String(token.role ?? "");
+      return session;
+    },
   },
 } satisfies NextAuthConfig;

@@ -11,6 +11,7 @@ import { getCurrentUser, requireAdmin, ROLES } from "@/lib/current-user";
 import { ownerEmail, signIn, signOut } from "@/auth";
 import { decryptSecret, safeEqual, verifyCode } from "@/lib/totp";
 import { isLang, LANG_COOKIE } from "@/lib/i18n";
+import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { numv, str } from "./helpers";
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -23,7 +24,6 @@ const validInvite = (i: { usedAt: Date | null; revokedAt: Date | null; expiresAt
 async function loginImpl(fd: FormData) {
   const email = str(fd, "email").toLowerCase();
   const code = str(fd, "code").replace(/\D/g, "");
-  const next = str(fd, "next");
   if (!email || code.length !== 6) throw new Error("Escribe tu correo y el código de 6 dígitos de tu app autenticadora.");
   const user = await prisma.user.findUnique({ where: { email } });
   const lockMsg = (u: { lockedUntil: Date | null } | null) => {
@@ -34,10 +34,15 @@ async function loginImpl(fd: FormData) {
   };
   const locked = lockMsg(user);
   if (locked) throw new Error(locked);
+  // Marca de llegada: el ERP se abre con la cortina de entrada (solo la animación; no da acceso a nada).
+  const jar = await cookies();
+  jar.set(ARRIVE_COOKIE, "1", { maxAge: 60, path: "/", sameSite: "lax" });
   try {
-    await signIn("totp", { email, code, redirectTo: next.startsWith("/") && !next.startsWith("//") ? next : "/" });
+    // Sin redirigir desde el servidor: el login primero cierra la cortina y luego abre el ERP (ver <Form session="in">).
+    await signIn("totp", { email, code, redirect: false });
   } catch (e) {
     if (e instanceof AuthError) {
+      jar.delete(ARRIVE_COOKIE);
       const again = await prisma.user.findUnique({ where: { email } });
       throw new Error(lockMsg(again) ?? "Correo o código incorrecto. Usa el código más reciente de tu app.");
     }
@@ -164,7 +169,7 @@ async function updateUserImpl(id: number, fd: FormData) {
   if (target.role === "OWNER") throw new Error("La cuenta maestra no se puede modificar.");
   if (target.id === admin.id) throw new Error("No puedes cambiar tu propio acceso.");
   const role = str(fd, "role");
-  if (!["ADMIN", "USER"].includes(role)) throw new Error("Rol inválido.");
+  if (!(ROLES as readonly string[]).includes(role) || role === "OWNER") throw new Error("Rol inválido.");
   if ((role === "ADMIN" || target.role === "ADMIN") && admin.role !== "OWNER") throw new Error("Solo la cuenta maestra puede cambiar administradores.");
   await prisma.user.update({ where: { id }, data: { role, active: fd.get("active") === "on", ...(fd.get("unlock") === "on" ? { failedLogins: 0, lockedUntil: null } : {}) } });
   revalidatePath("/usuarios");
@@ -175,8 +180,8 @@ export const setInvitationIdentity = safePublic(setInvitationIdentityImpl);
 export const confirmEnrollment = safePublic(confirmEnrollmentImpl);
 export const startOwnerSetup = safePublic(startOwnerSetupImpl);
 export const setLanguage = safePublic(setLanguageImpl);
-export const updateProfile = safe(updateProfileImpl);
-export const createInvitation = safe(createInvitationImpl);
-export const createResetLink = safe(createResetLinkImpl);
-export const revokeInvitation = safe(revokeInvitationImpl);
-export const updateUser = safe(updateUserImpl);
+export const updateProfile = safe(updateProfileImpl, "perfil", "updateProfileImpl");
+export const createInvitation = safe(createInvitationImpl, "usuarios", "createInvitationImpl");
+export const createResetLink = safe(createResetLinkImpl, "usuarios", "createResetLinkImpl");
+export const revokeInvitation = safe(revokeInvitationImpl, "usuarios", "revokeInvitationImpl");
+export const updateUser = safe(updateUserImpl, "usuarios", "updateUserImpl");

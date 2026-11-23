@@ -9,6 +9,19 @@ export const numv = (fd: FormData, k: string, def = 0) => {
   return n;
 };
 
+/**
+ * Logo subido (PNG o JPG, máx. 1 MB). El tipo se comprueba con los primeros bytes del archivo,
+ * no con el que declara el navegador, y se guarda ese tipo real.
+ */
+export async function readLogo(file: File): Promise<{ logoData: Uint8Array<ArrayBuffer>; logoMime: string }> {
+  if (file.size > 1024 * 1024) throw new Error("El logo no debe pesar más de 1 MB.");
+  const data = new Uint8Array(await file.arrayBuffer());
+  const png = data.length > 8 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47;
+  const jpg = data.length > 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  if (!png && !jpg) throw new Error("El logo debe ser PNG o JPG.");
+  return { logoData: data, logoMime: png ? "image/png" : "image/jpeg" };
+}
+
 export const lineSchema = z.object({
   code: z.string().optional().default(""),
   description: z.string().min(1, "Cada concepto necesita descripción"),

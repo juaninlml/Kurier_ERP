@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text } from "@react-pdf/renderer";
 import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Service, ServiceSection, TariffTable } from "@prisma/client";
-import { BrandedPage, DocTitle, SectionTab, Table, DataTable, Note, NoticeBox, Conditions, PdfDoc, Callout, InfoTable, base, palette, tint, GRAY } from "./brand";
+import { BrandedPage, DocTitle, SectionTab, Table, Note, Conditions, PdfDoc, Callout, InfoTable, parseInfoTable, base, palette, tint } from "./brand";
+import { CleanPage, PartyBlock, InfoGrid, SectionLabel, CleanTable, TotalsBox, SmallNote, CompactTerms, C, type CleanCell, type CleanCol } from "./clean";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
 import { formatDateEs, formatDateLongEs, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
-import { translator } from "@/lib/i18n";
+import { docText } from "@/lib/i18n/doc-text";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
@@ -16,39 +17,6 @@ const taxLabel = (items: { taxRate: number }[]) => {
   const rates = [...new Set(items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
   return rates.length === 1 ? `IVA ${formatNumber(rates[0])}%` : "IVA";
 };
-
-/** Renglones de totales alineados a la derecha (formato de factura). */
-function Totals({
-  s,
-  rows,
-  totalLabel,
-  total,
-  lang = "es",
-}: {
-  s: CompanySettings;
-  rows: { label: string; value: string }[];
-  totalLabel: string;
-  total: number;
-  lang?: "es" | "en";
-}) {
-  const c = palette(s);
-  return (
-    <View wrap={false} style={{ marginTop: 14 }}>
-      {rows.map((r) => (
-        <View key={r.label} style={{ flexDirection: "row", justifyContent: "flex-end", paddingVertical: 2.5, paddingRight: 8 }}>
-          <Text style={{ width: 160, textAlign: "right", fontFamily: "Helvetica-Bold", color: c.blue, fontSize: 9.5 }}>{r.label}</Text>
-          <Text style={{ width: 110, textAlign: "right", fontFamily: "Helvetica-Bold", fontSize: 9.5 }}>{r.value}</Text>
-        </View>
-      ))}
-      <View style={{ height: 1, backgroundColor: c.orange, marginTop: 5, marginBottom: 6 }} />
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingRight: 8 }}>
-        <Text style={{ width: 160, textAlign: "right", fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 12.5 }}>{totalLabel}</Text>
-        <Text style={{ width: 110, textAlign: "right", fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 15 }}>{formatMoney(total)}</Text>
-      </View>
-      <Text style={{ textAlign: "right", fontSize: 7.5, color: GRAY, marginTop: 4, paddingRight: 8 }}>{lang === "en" ? amountInWordsEn(total) : amountInWords(total)}</Text>
-    </View>
-  );
-}
 
 // ───────────────────────────── Cotización ─────────────────────────────
 
@@ -64,7 +32,6 @@ export function QuotePdf({
   /** Tablas informativas del tarifario marcadas para imprimirse en cotizaciones (SLA, etc.). */
   infoTables?: TariffTable[];
 }) {
-  const c = palette(s);
   const profile: { label: string; value: string }[] = (() => {
     try {
       return JSON.parse(quote.profile);
@@ -73,54 +40,57 @@ export function QuotePdf({
     }
   })();
   const party = quoteParty(quote);
-  const profileRows: [string, string][] = [
-    ["Cliente", party.legalName || party.name],
-    ...(party.rfc ? ([["RFC", party.rfc]] as [string, string][]) : []),
-    ...profile.filter((r) => r.value.trim()).map((r) => [r.label, r.value] as [string, string]),
-  ];
   const groups = groupBySection(quote.items);
   const estimate = quote.items.filter((i) => i.quantity > 0 && i.amount > 0);
   const perOrder = parsePerOrder(quote.perOrder);
   const volumes = parseVolumes(quote.scenarios);
   const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
-  const subtitle = [party.name, quote.attention && `Atención: ${quote.attention}`, PRICES_NOTE, formatDateLongEs(quote.issueDate)].filter(Boolean).join(" · ");
+  const tax = taxLabel(quote.items);
+
+  // Servicios: una sola tabla; cada sección es un subtítulo dentro de ella.
+  const svcRows: CleanCell[][] = [];
+  const svcGroups: Record<number, string> = {};
+  const svcNotes = groups.map(([section]) => sectionNotes[section]).filter((n) => n?.trim());
+  for (const [section, items] of groups) {
+    if (groups.length > 1 || section) svcGroups[svcRows.length] = section || "Otros servicios";
+    for (const i of items) svcRows.push([{ main: i.description, bold: true }, { main: rateLabel(i, formatMoney), color: s.accentColor, bold: true }, i.detail]);
+  }
 
   return (
     <PdfDoc title={`Cotización ${quote.folio} — ${party.name}`}>
-      <BrandedPage s={s} footerLabel={`Cotización de Fulfillment · ${party.name}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
-        <DocTitle s={s} title="Cotización de Fulfillment" subtitle={subtitle} extra={`Folio ${quote.folio} · Vigente hasta el ${formatDateLongEs(quote.validUntil)}`} />
+      <CleanPage s={s} title={`Cotización ${quote.folio}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
+        <PartyBlock
+          name={party.legalName || party.name}
+          lines={[party.legalName && party.legalName !== party.name ? party.name : "", party.rfc && `RFC: ${party.rfc}`, quote.attention && `Atención: ${quote.attention}`]}
+        />
 
-        <SectionTab s={s} full>
-          Perfil de la operación cotizada
-        </SectionTab>
-        <DataTable s={s} rows={profileRows} />
+        <InfoGrid
+          items={[
+            { label: "Fecha", value: formatDateNumEs(quote.issueDate) },
+            { label: "Vigente hasta", value: formatDateNumEs(quote.validUntil) },
+            ...profile.filter((r) => r.label.trim() && r.value.trim()),
+          ]}
+        />
 
-        {groups.map(([section, items]) => (
-          <View key={section}>
-            <SectionTab s={s} full>
-              {section}
-            </SectionTab>
-            <Table
-              s={s}
-              cols={[
-                { title: "Servicio", width: "27%" },
-                { title: "Tarifa", width: "20%" },
-                { title: "Descripción", width: "53%" },
-              ]}
-              styles={["label", "rate", "normal"]}
-              rows={items.map((i) => [i.description, rateLabel(i, formatMoney), i.detail])}
-            />
-            <Note>{sectionNotes[section] ?? ""}</Note>
-          </View>
+        {svcRows.length > 0 && (
+          <CleanTable
+            cols={[
+              { title: "Servicio", width: "27%" },
+              { title: "Tarifa", width: "20%" },
+              { title: "Descripción", width: "53%" },
+            ]}
+            rows={svcRows}
+            groups={svcGroups}
+          />
+        )}
+        {svcNotes.map((n) => (
+          <SmallNote key={n} text={n} />
         ))}
 
         {perOrder.length > 0 && (
           <View wrap={false}>
-            <SectionTab s={s} full>
-              Costo por pedido
-            </SectionTab>
-            <Table
-              s={s}
+            <SectionLabel s={s}>Costo por pedido</SectionLabel>
+            <CleanTable
               cols={
                 quote.perOrderFee > 0
                   ? [
@@ -133,86 +103,99 @@ export function QuotePdf({
                       { title: "Fulfillment", width: "25%", align: "right" },
                     ]
               }
-              styles={["label", "normal", "label"]}
               rows={perOrder.map((r) =>
-                quote.perOrderFee > 0 ? [r.label, formatMoney(r.amount), formatMoney(round2(r.amount + quote.perOrderFee))] : [r.label, formatMoney(r.amount)],
+                quote.perOrderFee > 0
+                  ? [r.label, formatMoney(r.amount), { main: formatMoney(round2(r.amount + quote.perOrderFee)), bold: true }]
+                  : [r.label, { main: formatMoney(r.amount), bold: true }],
               )}
             />
-            <Note>
-              {quote.perOrderFee > 0
-                ? `Precios sin IVA. La columna "Con guía de Kurier" suma la comisión de ${formatMoney(quote.perOrderFee)} por guía; no incluye el flete.`
-                : "Precios sin IVA."}
-            </Note>
+            <SmallNote
+              text={
+                quote.perOrderFee > 0
+                  ? `Precios sin IVA. La columna "Con guía de Kurier" suma la comisión de ${formatMoney(quote.perOrderFee)} por guía; no incluye el flete.`
+                  : "Precios sin IVA."
+              }
+            />
           </View>
         )}
 
         {scenarios && (
           <View wrap={scenarios.rows.length > 12}>
-            <SectionTab s={s} full>
-              Costo mensual de fulfillment según volumen
-            </SectionTab>
-            <ScenarioTable s={s} volumes={volumes} data={scenarios} taxText={taxLabel(quote.items)} />
-            <Note>{quote.notes}</Note>
+            <SectionLabel s={s}>Costo mensual según volumen</SectionLabel>
+            <CleanTable
+              cols={scenarioCols(volumes)}
+              rows={[
+                ...scenarios.rows.map((r) => [r.label, ...r.values.map((v) => formatMoney(v))]),
+                ["Subtotal sin IVA", ...scenarios.subtotal.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true })),
+                [tax, ...scenarios.tax.map((v) => formatMoney(v))],
+                ["Total mensual estimado", ...scenarios.total.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true, color: s.accentColor })),
+              ]}
+            />
+            <SmallNote text={quote.notes} />
           </View>
         )}
 
         {!scenarios && estimate.length > 0 && (
           <View wrap={estimate.length > 12}>
-            <SectionTab s={s} full>
-              Costo mensual estimado
-            </SectionTab>
-            <Table
-              s={s}
+            <SectionLabel s={s}>Costo mensual estimado</SectionLabel>
+            <CleanTable
               cols={[
                 { title: "Concepto", width: "52%" },
                 { title: "Cantidad", width: "16%", align: "right" },
                 { title: "Tarifa", width: "15%", align: "right" },
                 { title: "Importe", width: "17%", align: "right" },
               ]}
-              styles={["normal", "normal", "normal", "strong"]}
-              rows={estimate.map((i) => [
-                i.description,
-                qtyLabel(i.quantity, i.unit),
-                i.atCost ? "Al costo" : formatMoney(i.unitPrice),
-                formatMoney(i.amount),
-              ])}
+              rows={estimate.map((i) => [i.description, qtyLabel(i.quantity, i.unit), i.atCost ? "Al costo" : formatMoney(i.unitPrice), formatMoney(i.amount)])}
             />
-            <View wrap={false}>
-              {[
-                { l: "Subtotal sin IVA", v: quote.subtotal - quote.discount, strong: true },
-                ...(quote.discount > 0 ? [{ l: "Descuento incluido", v: -quote.discount, strong: false }] : []),
-                { l: taxLabel(quote.items), v: quote.tax, strong: false },
-              ].map((r) => (
-                <View key={r.l} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 7, borderBottomWidth: 0.5, borderBottomColor: "#e8e1da", borderTopWidth: r.strong ? 1 : 0, borderTopColor: c.blue }}>
-                  <Text style={r.strong ? base.bold : {}}>{r.l}</Text>
-                  <Text style={r.strong ? base.bold : {}}>{formatMoney(r.v)}</Text>
-                </View>
-              ))}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 7, borderTopWidth: 1, borderTopColor: c.orange }}>
-                <Text style={{ fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 10.5 }}>Total mensual estimado</Text>
-                <Text style={{ fontFamily: "Helvetica-Bold", color: c.orange, fontSize: 10.5 }}>{formatMoney(quote.total)}</Text>
+            <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
+              <View style={{ flex: 1, paddingRight: 24 }}>
+                <SmallNote text={quote.notes} style={{ marginTop: 0 }} />
               </View>
+              <TotalsBox
+                s={s}
+                rows={[
+                  { label: "Subtotal sin IVA", value: formatMoney(quote.subtotal - quote.discount) },
+                  ...(quote.discount > 0 ? [{ label: "Descuento incluido", value: formatMoney(-quote.discount) }] : []),
+                  { label: tax, value: formatMoney(quote.tax) },
+                ]}
+                total={{ label: "Total mensual estimado", value: formatMoney(quote.total) }}
+              />
             </View>
-            <Note>{quote.notes}</Note>
           </View>
         )}
-        {!scenarios && estimate.length === 0 && <Note>{quote.notes}</Note>}
+        {!scenarios && estimate.length === 0 && <SmallNote text={quote.notes} />}
 
-        {infoTables.map((t) => (
-          <InfoTable key={t.id} s={s} full title={t.title} columns={t.columns} rows={t.rows} note={t.note} />
-        ))}
+        {infoTables.map((t) => {
+          const p = parseInfoTable(t.columns, t.rows);
+          if (!p) return null;
+          return (
+            <View key={t.id} wrap={p.data.length > 10}>
+              <SectionLabel s={s}>{t.title}</SectionLabel>
+              <CleanTable cols={p.cols} rows={p.data.map((r) => r.map((v, j): CleanCell => (j === 0 ? { main: v, bold: true } : p.isRate ? { main: v, color: s.accentColor, bold: true } : v)))} />
+              <SmallNote text={t.note} />
+            </View>
+          );
+        })}
 
         {quote.terms.trim() && (
           <View>
-            <SectionTab s={s} full>
-              Condiciones comerciales
-            </SectionTab>
-            <Conditions s={s} text={quote.terms} />
+            <SectionLabel s={s}>Condiciones comerciales</SectionLabel>
+            <CompactTerms text={quote.terms} />
           </View>
         )}
-      </BrandedPage>
+        <SmallNote text={`${PRICES_NOTE}.`} style={{ marginTop: 10 }} />
+      </CleanPage>
     </PdfDoc>
   );
+}
+
+/** Columnas de la tabla de escenarios por volumen. */
+function scenarioCols(volumes: number[]): CleanCol[] {
+  const w = volumes.length <= 3 ? 17 : 14;
+  return [
+    { title: "Concepto", width: `${100 - w * volumes.length}%` },
+    ...volumes.map((v) => ({ title: `${formatNumber(v)} pedidos`, width: `${w}%`, align: "right" as const })),
+  ];
 }
 
 // ───────────────────────────── Factura ─────────────────────────────
@@ -225,7 +208,8 @@ const INVOICE_L = {
     period: "Periodo facturado", volume: "Volumen del periodo", storage: "Almacenamiento", terms: "Condiciones de pago", quote: "Cotización de referencia",
     billing: "Datos de facturación", detail: "Detalle de servicios facturados", concept: "Concepto", qty: "Cantidad", unitPrice: "Precio unitario", amount: "Importe",
     atCost: "Variable (al costo)", subtotal: "Subtotal sin IVA", discount: "Descuento", tax: "IVA", paid: "Pagado", balance: "Saldo pendiente", total: "Total a pagar",
-    payments: "Pagos recibidos", ref: "Ref.", payData: "Datos para pago", bank: "Banco", account: "Cuenta", clabe: "CLABE", beneficiary: "Beneficiario", reference: "Referencia",
+    taxes: "Impuestos", exempt: "Exento", totalInv: "Total factura", words: "Importe con letra:",
+    payments: "Pagos recibidos", ref: "Ref.", payData: "Datos para pago", bank: "Banco", account: "Cuenta", clabe: "CLABE", beneficiary: "Beneficiario", reference: "Referencia de pago",
     cancelled: "CANCELADA", paidMark: "PAGADA",
   },
   en: {
@@ -234,32 +218,11 @@ const INVOICE_L = {
     period: "Billing period", volume: "Period volume", storage: "Storage", terms: "Payment terms", quote: "Reference quote",
     billing: "Billing details", detail: "Services billed", concept: "Description", qty: "Quantity", unitPrice: "Unit price", amount: "Amount",
     atCost: "Variable (at cost)", subtotal: "Subtotal before VAT", discount: "Discount", tax: "VAT", paid: "Paid", balance: "Balance due", total: "Total due",
-    payments: "Payments received", ref: "Ref.", payData: "Payment details", bank: "Bank", account: "Account", clabe: "CLABE", beneficiary: "Beneficiary", reference: "Reference",
+    taxes: "Taxes", exempt: "Exempt", totalInv: "Invoice total", words: "Total amount in words:",
+    payments: "Payments received", ref: "Ref.", payData: "Payment details", bank: "Bank", account: "Account", clabe: "CLABE", beneficiary: "Beneficiary", reference: "Payment reference",
     cancelled: "CANCELLED", paidMark: "PAID",
   },
 } as const;
-
-const EN_MONTHS: Record<string, string> = {
-  enero: "January", febrero: "February", marzo: "March", abril: "April", mayo: "May", junio: "June",
-  julio: "July", agosto: "August", septiembre: "September", octubre: "October", noviembre: "November", diciembre: "December",
-};
-/** Traduce textos comunes que genera el ERP (conceptos, periodos, volumen); lo demás se deja como se capturó. */
-function toEnglish(text: string, t: (s: string) => string) {
-  if (!text) return text;
-  const direct = t(text);
-  if (direct !== text) return direct;
-  return text
-    .replace(/^Material de empaque: /, "Packing material: ")
-    .replace(/(\d+) al (\d+) de (\w+) de (\d{4})/g, (_, a, b, m, y) => `${EN_MONTHS[m.toLowerCase()] ?? m} ${a}–${b}, ${y}`)
-    .replace(/(\d+) de (\w+) al (\d+) de (\w+) de (\d{4})/g, (_, a, m1, b, m2, y) => `${EN_MONTHS[m1.toLowerCase()] ?? m1} ${a} – ${EN_MONTHS[m2.toLowerCase()] ?? m2} ${b}, ${y}`)
-    .replace(/ — ciclo semanal/, " — weekly cycle")
-    .replace(/ — ciclo mensual/, " — monthly cycle")
-    .replace(/(\d+) paquetes en (\d+) día\(s\) operado\(s\)/, "$1 packages over $2 operating day(s)")
-    .replace(/Paquetes procesados del /, "Packages processed ")
-    .replace(/^Medidas (.+) cm$/, "Size $1 cm")
-    .replace(/^Pago contra recepción de factura a (\d+) días naturales\.?$/, "Payment due within $1 calendar days of receipt of invoice.")
-    .replace(/^Pago contra recepción de factura\.?$/, "Payment due upon receipt of invoice.");
-}
 
 /** Plural simple en inglés para unidades ("package" → "packages"); las que ya terminan en s o llevan "/" se dejan. */
 const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
@@ -276,104 +239,101 @@ export function InvoicePdf({
 }) {
   const L = INVOICE_L[lang];
   const en = lang === "en";
-  const tr = translator(lang);
-  const x = (text: string) => (en ? toEnglish(text, tr) : text);
+  const x = (text: string) => docText(text, lang);
   const date = (d: Date) => (en ? formatDateNum(d, "en-US") : formatDateNumEs(d));
   const balance = round2(invoice.total - invoice.paidTotal);
-  const data: [string, string][] = [
-    [L.folio, `${invoice.folio} (${L.folioNote})`],
-    [L.issue, date(invoice.issueDate)],
-    [L.due, date(invoice.dueDate)],
-    [L.client, invoice.client.legalName || invoice.client.name],
-    [L.rfc, invoice.client.rfc || "—"],
-  ];
-  if (invoice.period) data.push([L.period, x(invoice.period)]);
-  if (invoice.volume) data.push([L.volume, x(invoice.volume)]);
-  if (invoice.storage) data.push([L.storage, x(invoice.storage)]);
-  if (invoice.terms) data.push([L.terms, x(invoice.terms)]);
-  if (invoice.quote) data.push([L.quote, invoice.quote.folio]);
+  const cl = invoice.client;
 
   const rates = [...new Set(invoice.items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
   const totalsRows: { label: string; value: string }[] = [{ label: L.subtotal, value: formatMoney(invoice.subtotal) }];
   if (invoice.discount > 0) totalsRows.push({ label: L.discount, value: `-${formatMoney(invoice.discount)}` });
   totalsRows.push({ label: rates.length === 1 ? `${L.tax} ${formatNumber(rates[0])}%` : L.tax, value: formatMoney(invoice.tax) });
+  if (invoice.paidTotal > 0) {
+    totalsRows.push({ label: L.totalInv, value: formatMoney(invoice.total) });
+    totalsRows.push({ label: L.paid, value: `-${formatMoney(invoice.paidTotal)}` });
+  }
+  const due = invoice.paidTotal > 0 ? balance : invoice.total;
 
-  const bank = [
-    s.bankName && `${L.bank}: ${s.bankName}`,
-    s.bankAccount && `${L.account}: ${s.bankAccount}`,
-    s.clabe && `${L.clabe}: ${s.clabe}`,
-    s.legalName && `${L.beneficiary}: ${s.legalName}`,
-  ].filter(Boolean) as string[];
-  const c = palette(s);
+  const bank: [string, string][] = (
+    [
+      [L.bank, s.bankName],
+      [L.account, s.bankAccount],
+      [L.clabe, s.clabe],
+      [L.beneficiary, s.legalName],
+    ] as [string, string][]
+  ).filter(([, v]) => v);
 
   return (
-    <PdfDoc title={`${L.doc} ${invoice.folio} — ${invoice.client.name}`}>
-      <BrandedPage
-        s={s}
-        lang={lang}
-        footerLabel={L.footer}
-        watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}
-      >
-        <DocTitle s={s} title={L.doc} subtitle={L.subtitle} />
+    <PdfDoc title={`${L.doc} ${invoice.folio} — ${cl.name}`}>
+      <CleanPage s={s} lang={lang} title={`${L.doc} ${invoice.folio}`} watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}>
+        <PartyBlock name={cl.legalName || cl.name} lines={[cl.legalName && cl.legalName !== cl.name ? cl.name : "", cl.rfc && `${L.rfc}: ${cl.rfc}`, cl.address]} />
 
-        <SectionTab s={s}>{L.billing}</SectionTab>
-        <DataTable s={s} rows={data} headers={en ? ["Item", "Details"] : undefined} />
+        <InfoGrid
+          items={[
+            { label: L.issue, value: date(invoice.issueDate) },
+            { label: L.due, value: date(invoice.dueDate) },
+            { label: L.period, value: x(invoice.period) },
+            { label: L.quote, value: invoice.quote?.folio ?? "" },
+            { label: L.volume, value: x(invoice.volume) },
+            { label: L.storage, value: docText(invoice.storage, lang, "storage") },
+          ]}
+        />
 
-        <SectionTab s={s}>{L.detail}</SectionTab>
-        <Table
-          s={s}
+        <CleanTable
           cols={[
-            { title: L.concept, width: "48%" },
-            { title: L.qty, width: "15%", align: "center" },
-            { title: L.unitPrice, width: "19%", align: "right" },
-            { title: L.amount, width: "18%", align: "right" },
+            { title: L.concept, width: "40%" },
+            { title: L.qty, width: "17%", align: "right" },
+            { title: L.unitPrice, width: "16%", align: "right" },
+            { title: L.taxes, width: "11%", align: "right" },
+            { title: L.amount, width: "16%", align: "right" },
           ]}
           rows={invoice.items.map((i) => [
-            x(i.description),
+            { main: x(i.description), sub: x(i.detail) },
             en ? `${formatNumber(i.quantity)} ${pluralEn(x(i.unit).toLowerCase(), i.quantity)}` : qtyLabel(i.quantity, i.unit),
             (i.priceText && x(i.priceText)) || (i.atCost ? L.atCost : `${formatMoney(i.unitPrice)}${i.discountPct ? ` (-${formatNumber(i.discountPct)}%)` : ""}`),
+            i.taxRate > 0 ? `${L.tax} ${formatNumber(i.taxRate)}%` : L.exempt,
             formatMoney(i.amount),
           ])}
         />
-        <Note>{x(invoice.notes)}</Note>
+        <SmallNote text={x(invoice.notes)} />
 
-        <Totals
-          s={s}
-          lang={lang}
-          rows={[...totalsRows, ...(invoice.paidTotal > 0 ? [{ label: L.paid, value: formatMoney(invoice.paidTotal) }] : [])]}
-          totalLabel={invoice.paidTotal > 0 ? L.balance : L.total}
-          total={invoice.paidTotal > 0 ? balance : invoice.total}
-        />
-
-        {invoice.payments.length > 0 && (
-          <View wrap={false} style={{ marginTop: 14 }}>
-            <Text style={[base.sectionTitle, { color: c.blue }]}>{L.payments}</Text>
-            {invoice.payments.map((p) => (
-              <View key={p.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" }}>
-                <Text>
-                  {date(p.date)} · {x(p.method)}
-                  {p.reference ? ` · ${L.ref} ${p.reference}` : ""}
-                </Text>
-                <Text style={base.bold}>{formatMoney(p.amount)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {bank.length > 0 && (
-          <View wrap={false} style={[base.box, { marginTop: 14, borderWidth: 1, borderColor: c.line }]}>
-            <Text style={[base.sectionTitle, { color: c.blue }]}>{L.payData}</Text>
-            {bank.map((b) => (
-              <Text key={b}>{b}</Text>
-            ))}
-            <Text style={[base.muted, { marginTop: 3 }]}>
-              {L.reference}: {invoice.folio}
+        <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 14 }}>
+          <View style={{ flex: 1, paddingRight: 24 }}>
+            {invoice.terms ? (
+              <Text style={{ marginBottom: 8 }}>
+                {L.terms}: {x(invoice.terms)}
+              </Text>
+            ) : null}
+            <Text style={{ marginBottom: 8 }}>
+              {L.reference}: <Text style={{ fontFamily: "Helvetica-Bold" }}>{invoice.folio}</Text>
             </Text>
+            {bank.map(([k, v]) => (
+              <Text key={k} style={{ color: C.muted }}>
+                {k}: <Text style={{ color: C.ink }}>{v}</Text>
+              </Text>
+            ))}
+            {invoice.payments.length > 0 && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={{ fontSize: 8, color: C.faint, marginBottom: 1 }}>{L.payments}</Text>
+                {invoice.payments.map((p) => (
+                  <Text key={p.id} style={{ fontSize: 8.5 }}>
+                    {date(p.date)} · {x(p.method)}
+                    {p.reference ? ` · ${L.ref} ${p.reference}` : ""} · {formatMoney(p.amount)}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
-        )}
+          <TotalsBox
+            s={s}
+            rows={totalsRows}
+            total={{ label: invoice.paidTotal > 0 ? L.balance : L.total, value: formatMoney(due) }}
+            words={`${L.words}\n${en ? amountInWordsEn(due) : amountInWords(due)}`}
+          />
+        </View>
 
-        <NoticeBox s={s} text={x(s.invoiceDisclaimer)} />
-      </BrandedPage>
+        <SmallNote text={x(s.invoiceDisclaimer)} style={{ marginTop: 14 }} />
+      </CleanPage>
     </PdfDoc>
   );
 }
@@ -543,68 +503,6 @@ export function ReportPdf({
         )}
       </BrandedPage>
     </PdfDoc>
-  );
-}
-
-// ───────────────────── Escenarios por volumen (cotización) ─────────────────────
-
-function ScenarioTable({
-  s,
-  volumes,
-  data,
-  taxText,
-}: {
-  s: CompanySettings;
-  volumes: number[];
-  data: NonNullable<ReturnType<typeof scenarioTable>>;
-  taxText: string;
-}) {
-  const c = palette(s);
-  const w = volumes.length <= 3 ? 17 : 14;
-  const first = `${100 - w * volumes.length}%`;
-  const cols = [
-    { title: "Concepto", width: first },
-    ...volumes.map((v) => ({ title: `${formatNumber(v)} pedidos`, width: `${w}%`, align: "right" as const })),
-  ];
-  const row = (label: string, values: number[], kind: "sub" | "tax" | "total") => (
-    <View
-      key={label}
-      style={{
-        flexDirection: "row",
-        paddingVertical: kind === "total" ? 7 : 6,
-        borderBottomWidth: 0.5,
-        borderBottomColor: "#e8e1da",
-        borderTopWidth: kind === "tax" ? 0 : 1,
-        borderTopColor: kind === "total" ? c.orange : c.blue,
-        backgroundColor: kind === "tax" ? c.peach : "#fff",
-      }}
-    >
-      {[label, ...values.map((v) => formatMoney(v))].map((v, j) => (
-        <Text
-          key={j}
-          style={{
-            width: cols[j].width,
-            paddingHorizontal: 7,
-            textAlign: j === 0 ? "left" : "right",
-            fontSize: kind === "total" ? 10 : 9,
-            fontFamily: kind === "tax" ? "Helvetica" : "Helvetica-Bold",
-            color: kind === "total" ? c.orange : undefined,
-          }}
-        >
-          {v}
-        </Text>
-      ))}
-    </View>
-  );
-  return (
-    <View>
-      <Table s={s} cols={cols} rows={data.rows.map((r) => [r.label, ...r.values.map((v) => formatMoney(v))])} />
-      <View wrap={false}>
-        {row("Subtotal sin IVA", data.subtotal, "sub")}
-        {row(taxText, data.tax, "tax")}
-        {row("Total mensual estimado", data.total, "total")}
-      </View>
-    </View>
   );
 }
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { safe } from "@/lib/safe-action";
 import { requireAdmin } from "@/lib/current-user";
-import { str } from "./helpers";
+import { readLogo, str } from "./helpers";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,9 +23,7 @@ async function brandData(fd: FormData) {
   const file = fd.get("logo");
   if (fd.get("removeLogo") === "on") logo = { logoData: null, logoMime: "" };
   else if (file instanceof File && file.size > 0) {
-    if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("El logo debe ser PNG o JPG.");
-    if (file.size > 1024 * 1024) throw new Error("El logo no debe pesar más de 1 MB.");
-    logo = { logoData: new Uint8Array(await file.arrayBuffer()), logoMime: file.type };
+    logo = await readLogo(file);
   }
   return {
     tradeName,
@@ -67,5 +65,5 @@ async function updateBrandImpl(id: number, fd: FormData) {
   refresh();
 }
 
-export const createBrand = safe(createBrandImpl);
-export const updateBrand = safe(updateBrandImpl);
+export const createBrand = safe(createBrandImpl, "configuracion", "createBrandImpl");
+export const updateBrand = safe(updateBrandImpl, "configuracion", "updateBrandImpl");

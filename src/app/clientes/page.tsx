@@ -6,6 +6,7 @@ import { FilterBar } from "@/components/list";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
+import { ExportButton } from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -43,9 +44,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         title={t("Clientes")}
         subtitle={t("{n} cliente(s) registrados", { n: clients.length })}
         actions={
-          <Link href="/clientes/nuevo" className="btn-primary">
-            <Plus className="size-4" /> {t("Nuevo cliente")}
-          </Link>
+          <>
+            <ExportButton kind="clientes" />
+            <Link href="/clientes/nuevo" className="btn-primary">
+              <Plus className="size-4" /> {t("Nuevo cliente")}
+            </Link>
+          </>
         }
       />
       <div className="card overflow-hidden">

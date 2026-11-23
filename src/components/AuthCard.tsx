@@ -9,8 +9,8 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
         <LanguageSwitch dark />
       </div>
       <div className="w-full max-w-sm">
-        <KidoLogo className="mb-7" />
-        <div className="rounded-2xl bg-card p-7 text-card-foreground shadow-xl">{children}</div>
+        <KidoLogo className="mb-7" textClassName="auth-enter" />
+        <div className="auth-enter-late rounded-2xl bg-card p-7 text-card-foreground shadow-xl">{children}</div>
       </div>
     </div>
   );

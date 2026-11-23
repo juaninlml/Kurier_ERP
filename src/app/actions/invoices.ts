@@ -6,7 +6,8 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { computeLines } from "@/lib/totals";
-import { fromInputDate, round2 } from "@/lib/money";
+import { formatMoney, fromInputDate, round2 } from "@/lib/money";
+import { auditNote } from "@/lib/audit";
 import { nextFolio } from "@/lib/settings";
 import { numv, parseItems, str } from "./helpers";
 import { queueArchive } from "@/lib/archive";
@@ -103,6 +104,7 @@ async function updateInvoiceImpl(id: number, fd: FormData) {
   ]);
   revalidateAll(id);
   queueArchive(`factura:${id}`);
+  auditNote(`Factura ${folio}: ${formatMoney(totals.total)}`, `/facturas/${id}`, id);
   redirect(`/facturas/${id}`);
 }
 
@@ -141,10 +143,11 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
   });
   revalidateAll(invoiceId);
   queueArchive(`factura:${invoiceId}`);
+  auditNote(`Cobro de ${formatMoney(amount)} a ${inv.folio} — ${inv.client.name}`, `/facturas/${invoiceId}`, invoiceId);
 }
 
 async function deletePaymentImpl(paymentId: number) {
-  const p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  const p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { invoice: { select: { folio: true } } } });
   await prisma.$transaction(async (tx) => {
     await tx.transaction.deleteMany({ where: { paymentId } });
     await tx.payment.delete({ where: { id: paymentId } });
@@ -152,6 +155,7 @@ async function deletePaymentImpl(paymentId: number) {
   });
   revalidateAll(p.invoiceId);
   queueArchive(`factura:${p.invoiceId}`);
+  auditNote(`Eliminó el cobro de ${formatMoney(p.amount)} de ${p.invoice.folio}`, `/facturas/${p.invoiceId}`, p.invoiceId);
 }
 
 async function cancelInvoiceImpl(id: number) {
@@ -165,9 +169,12 @@ async function cancelInvoiceImpl(id: number) {
   revalidateAll(id);
   revalidatePath("/facturas/importar");
   queueArchive(`factura:${id}`);
+  auditNote(`Factura ${inv.folio} (${formatMoney(inv.total)})`, `/facturas/${id}`, id);
 }
 
 async function reactivateInvoiceImpl(id: number) {
+  const inv = await prisma.invoice.findUniqueOrThrow({ where: { id }, select: { folio: true } });
+  auditNote(`Factura ${inv.folio}`, `/facturas/${id}`, id);
   await prisma.$transaction(async (tx) => {
     await tx.invoice.update({ where: { id }, data: { status: "PENDIENTE" } });
     await syncInvoice(tx, id);
@@ -177,9 +184,9 @@ async function reactivateInvoiceImpl(id: number) {
 }
 
 // Acciones públicas: los errores regresan como { error } para mostrarlos en el formulario.
-export const createInvoice = safe(createInvoiceImpl);
-export const updateInvoice = safe(updateInvoiceImpl);
-export const addPayment = safe(addPaymentImpl);
-export const deletePayment = safe(deletePaymentImpl);
-export const cancelInvoice = safe(cancelInvoiceImpl);
-export const reactivateInvoice = safe(reactivateInvoiceImpl);
+export const createInvoice = safe(createInvoiceImpl, "facturas", "createInvoiceImpl");
+export const updateInvoice = safe(updateInvoiceImpl, "facturas", "updateInvoiceImpl");
+export const addPayment = safe(addPaymentImpl, "facturas", "addPaymentImpl");
+export const deletePayment = safe(deletePaymentImpl, "facturas", "deletePaymentImpl");
+export const cancelInvoice = safe(cancelInvoiceImpl, "facturas", "cancelInvoiceImpl");
+export const reactivateInvoice = safe(reactivateInvoiceImpl, "facturas", "reactivateInvoiceImpl");

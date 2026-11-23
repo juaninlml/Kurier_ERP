@@ -58,8 +58,8 @@ async function deleteImportImpl(id: number) {
   redirect("/facturas/importar");
 }
 
-export const importWmsPdf = safe(importWmsPdfImpl);
-export const assignImportClient = safe(assignImportClientImpl);
-export const discardImport = safe(async (id: number) => setImportStatusImpl(id, "DESCARTADO"));
-export const restoreImport = safe(async (id: number) => setImportStatusImpl(id, "PENDIENTE"));
-export const deleteImport = safe(deleteImportImpl);
+export const importWmsPdf = safe(importWmsPdfImpl, "facturas", "importWmsPdfImpl");
+export const assignImportClient = safe(assignImportClientImpl, "facturas", "assignImportClientImpl");
+export const discardImport = safe(async (id: number) => setImportStatusImpl(id, "DESCARTADO"), "facturas", "discardImport");
+export const restoreImport = safe(async (id: number) => setImportStatusImpl(id, "PENDIENTE"), "facturas", "restoreImport");
+export const deleteImport = safe(deleteImportImpl, "facturas", "deleteImportImpl");

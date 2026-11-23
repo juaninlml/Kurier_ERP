@@ -12,12 +12,14 @@ import { PAYMENT_METHODS } from "@/lib/constants";
 import { Form } from "@/components/Form";
 import { DriveButton } from "@/components/DriveButton";
 import { Tr } from "@/components/Tr";
-import { getT } from "@/lib/i18n/server";
+import { getLang, getT } from "@/lib/i18n/server";
+import { docText } from "@/lib/i18n/doc-text";
 
 export const dynamic = "force-dynamic";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getT();
+  const lang = await getLang();
   const id = Number((await params).id);
   const inv = await prisma.invoice.findUnique({
     where: { id },
@@ -80,10 +82,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <div className="card overflow-hidden">
               <dl className="divide-y divide-border text-sm">
                 {[
-                  { label: t("Periodo facturado"), value: inv.period },
-                  { label: t("Volumen del periodo"), value: inv.volume },
-                  { label: t("Almacenamiento"), value: inv.storage },
-                  { label: t("Condiciones de pago"), value: inv.terms },
+                  { label: t("Periodo facturado"), value: docText(inv.period, lang) },
+                  { label: t("Volumen del periodo"), value: docText(inv.volume, lang) },
+                  { label: t("Almacenamiento"), value: docText(inv.storage, lang, "storage") },
+                  { label: t("Condiciones de pago"), value: docText(inv.terms, lang) },
                 ]
                   .filter((r) => r.value)
                   .map((r) => (

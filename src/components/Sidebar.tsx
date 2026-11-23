@@ -3,10 +3,17 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { KidoBrand } from "./KidoLogo";
+import { SessionCurtain } from "./SessionCurtain";
 import { useEffect, useState, useTransition } from "react";
 import {
   BarChart3,
   Building2,
+  Truck,
+  Receipt,
+  Landmark,
+  Target,
+  PieChart,
+  History,
   ChevronsUpDown,
   Clock,
   HandCoins,
@@ -47,10 +54,12 @@ import {
 import { useLang, useT, useTheme } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
 import { Tr } from "@/components/Tr";
+import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
+import { canOpen, ROLE_LABEL } from "@/lib/permissions";
 
 export type SidebarUser = { name: string; email: string; image: string; role: string };
 
-type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean };
+type NavItem = { href: string; label: string; icon: LucideIcon };
 const NAV: { title: string; items: NavItem[] }[] = [
   { title: "General", items: [{ href: "/", label: "Inicio", icon: LayoutDashboard }] },
   {
@@ -70,16 +79,22 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: "Finanzas",
     items: [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
+      { href: "/proveedores", label: "Proveedores", icon: Truck },
+      { href: "/cuentas-por-pagar", label: "Cuentas por pagar", icon: Receipt },
+      { href: "/contabilidad/conciliacion", label: "Conciliación bancaria", icon: Landmark },
+      { href: "/contabilidad/presupuesto", label: "Presupuesto", icon: Target },
       { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
       { href: "/nomina", label: "Nómina", icon: HandCoins },
       { href: "/nomina/asistencias", label: "Asistencias", icon: Clock },
       { href: "/contabilidad/reportes", label: "Reportes", icon: BarChart3 },
+      { href: "/contabilidad/rentabilidad", label: "Rentabilidad por cliente", icon: PieChart },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { href: "/usuarios", label: "Usuarios y accesos", icon: ShieldCheck, adminOnly: true },
+      { href: "/usuarios", label: "Usuarios y accesos", icon: ShieldCheck },
+      { href: "/bitacora", label: "Bitácora", icon: History },
       { href: "/configuracion", label: "Configuración", icon: Settings },
     ],
   },
@@ -134,11 +149,11 @@ function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => 
   useEffect(() => setClicked(null), [pathname]);
   const isActive = (href: string) => (clicked ? clicked === href : isActiveNow(href));
   const t = useT();
-  const admin = user.role === "OWNER" || user.role === "ADMIN";
   return (
     <nav className="flex flex-col gap-5">
       {NAV.map((group) => {
-        const items = group.items.filter((i) => !i.adminOnly || admin);
+        // Solo las secciones que el rol puede consultar (ver src/lib/permissions.ts)
+        const items = group.items.filter((i) => canOpen(user.role, i.href));
         if (!items.length) return null;
         return (
           <div key={group.title}>
@@ -192,7 +207,6 @@ export function Avatar({ user, className }: { user: { name: string; email: strin
   );
 }
 
-const ROLE_LABEL: Record<string, string> = { OWNER: "Cuenta maestra", ADMIN: "Administrador", USER: "Usuario" };
 
 /** Menú del usuario: perfil, idioma y cerrar sesión. */
 function UserMenu({ user }: { user: SidebarUser }) {
@@ -200,7 +214,10 @@ function UserMenu({ user }: { user: SidebarUser }) {
   const lang = useLang();
   const { theme, setTheme } = useTheme();
   const [pending, start] = useTransition();
+  const [door, setDoor] = useState<Door | null>(null);
   return (
+    <>
+    {door && <SessionCurtain phase="cover" label={t("Cerrando sesión…")} door={door} portal />}
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring">
         <Avatar user={user} />
@@ -249,11 +266,21 @@ function UserMenu({ user }: { user: SidebarUser }) {
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => start(() => signOutAction())}>
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            // Sube la cortina desde el símbolo de la barra; el login la continúa y la deja sobre su logo.
+            setDoor(stampDoor("out"));
+            // Se cierra la sesión cuando la cortina ya cubre: nunca se asoma el login por arriba del borde.
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            setTimeout(() => start(() => signOutAction()), reduce ? 200 : DOOR_COVERED_MS);
+          }}
+        >
           <LogOut /> {t("Cerrar sesión")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }
 

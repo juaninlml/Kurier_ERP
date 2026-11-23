@@ -53,7 +53,7 @@ async function saveTariffTextsImpl(fd: FormData) {
   refresh();
 }
 
-export const createTariffTable = safe(createTariffTableImpl);
-export const updateTariffTable = safe(updateTariffTableImpl);
-export const deleteTariffTable = safe(deleteTariffTableImpl);
-export const saveTariffTexts = safe(saveTariffTextsImpl);
+export const createTariffTable = safe(createTariffTableImpl, "tarifario", "createTariffTableImpl");
+export const updateTariffTable = safe(updateTariffTableImpl, "tarifario", "updateTariffTableImpl");
+export const deleteTariffTable = safe(deleteTariffTableImpl, "tarifario", "deleteTariffTableImpl");
+export const saveTariffTexts = safe(saveTariffTextsImpl, "tarifario", "saveTariffTextsImpl");
