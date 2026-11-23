@@ -9,7 +9,7 @@
  *   VENTAS         cotizaciones, clientes y órdenes; consulta tarifario y facturas.
  */
 
-export const ROLES = ["OWNER", "ADMIN", "USER", "CONTADOR", "VENTAS"] as const;
+export const ROLES = ["OWNER", "ADMIN", "USER", "CONTADOR", "VENTAS", "REPARTIDOR"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<string, string> = {
@@ -18,12 +18,14 @@ export const ROLE_LABEL: Record<string, string> = {
   USER: "Usuario",
   CONTADOR: "Contador (consulta)",
   VENTAS: "Ventas",
+  REPARTIDOR: "Repartidor",
 };
 export const ROLE_HINT: Record<string, string> = {
   ADMIN: "Todo, incluidos usuarios y configuración.",
   USER: "Toda la operación; sin usuarios, configuración ni bitácora.",
   CONTADOR: "Consulta finanzas, reportes y bitácora; puede conciliar el banco y exportar.",
   VENTAS: "Cotizaciones, clientes y órdenes; consulta tarifario y facturas.",
+  REPARTIDOR: "Solo la app de reparto: escanea guías al cargar y al entregar (firma y foto).",
 };
 
 export type ModuleId =
@@ -32,6 +34,7 @@ export type ModuleId =
   | "facturas"
   | "ordenes"
   | "envios"
+  | "reparto"
   | "clientes"
   | "tarifario"
   | "contabilidad"
@@ -51,6 +54,8 @@ const ROUTES: [string, ModuleId][] = [
   ["/facturas", "facturas"],
   ["/ordenes", "ordenes"],
   ["/envios", "envios"],
+  ["/reparto", "reparto"],
+  ["/api/envios", "envios"],
   ["/clientes", "clientes"],
   ["/servicios", "tarifario"],
   ["/contabilidad/conciliacion", "conciliacion"],
@@ -76,7 +81,7 @@ const ROUTES: [string, ModuleId][] = [
 
 type Access = "write" | "read";
 const ALL: ModuleId[] = [
-  "inicio", "cotizaciones", "facturas", "ordenes", "envios", "clientes", "tarifario", "contabilidad", "conciliacion",
+  "inicio", "cotizaciones", "facturas", "ordenes", "envios", "reparto", "clientes", "tarifario", "contabilidad", "conciliacion",
   "proveedores", "cxp", "nomina", "usuarios", "configuracion", "bitacora", "perfil", "general",
 ];
 const every = (a: Access, except: ModuleId[] = []) =>
@@ -97,6 +102,10 @@ const ACCESS: Record<Role, Partial<Record<ModuleId, Access>>> = {
     cxp: "read",
     nomina: "read",
     bitacora: "read",
+    perfil: "write",
+  },
+  REPARTIDOR: {
+    reparto: "write",
     perfil: "write",
   },
   VENTAS: {
@@ -138,6 +147,7 @@ export const MODULE_LABEL: Record<string, string> = {
   facturas: "Facturas",
   ordenes: "Órdenes",
   envios: "Envíos",
+  reparto: "Reparto",
   clientes: "Clientes",
   tarifario: "Tarifario",
   contabilidad: "Contabilidad",

@@ -80,6 +80,7 @@ export default async function UsersPage() {
                             <option value="USER">{t("Usuario")}</option>
                             <option value="CONTADOR">{t("Contador (consulta)")}</option>
                             <option value="VENTAS">{t("Ventas")}</option>
+                            <option value="REPARTIDOR">{t("Repartidor")}</option>
                             {me.role === "OWNER" && <option value="ADMIN">{t("Administrador")}</option>}
                             {me.role !== "OWNER" && u.role === "ADMIN" && <option value="ADMIN">{t("Administrador")}</option>}
                           </select>
@@ -169,6 +170,7 @@ export default async function UsersPage() {
                   <option value="USER">{t("Usuario")}</option>
                   <option value="CONTADOR">{t("Contador (consulta)")}</option>
                   <option value="VENTAS">{t("Ventas")}</option>
+                            <option value="REPARTIDOR">{t("Repartidor")}</option>
                   {me.role === "OWNER" && <option value="ADMIN">{t("Administrador")}</option>}
                 </select>
               </Field>
@@ -187,7 +189,7 @@ export default async function UsersPage() {
               {t("Los administradores pueden invitar usuarios. Solo la cuenta maestra puede crear administradores.")}
             </p>
             <dl className="space-y-1.5 border-t pt-3 text-xs">
-              {(["USER", "CONTADOR", "VENTAS", "ADMIN"] as const).map((r) => (
+              {(["USER", "CONTADOR", "VENTAS", "REPARTIDOR", "ADMIN"] as const).map((r) => (
                 <div key={r}>
                   <dt className="font-medium">{t(ROLE_LABEL[r])}</dt>
                   <dd className="text-muted-foreground">{t(ROLE_HINT[r])}</dd>

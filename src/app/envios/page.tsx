@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CalendarDays, MapPinned, Plus, Truck } from "lucide-react";
+import { CalendarDays, MapPinned, MessageCircle, Plus, Truck } from "lucide-react";
+import { siteOrigin, trackingUrl, whatsappLink, whatsappMessage } from "@/lib/tracking";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
@@ -34,6 +35,7 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
     prisma.shipment.groupBy({ by: ["zone"], where: { ...live, createdAt: { gte: monthStart } }, _count: true }),
   ]);
   const counts = Object.fromEntries(grouped.map((g) => [g.status, g._count]));
+  const origin = await siteOrigin();
   const zone = (z: number) => byZone.find((x) => x.zone === z)?._count ?? 0;
 
   return (
@@ -98,7 +100,19 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
                     </td>
                     <td className="text-right tabular-nums">{formatMoney(s.price)}</td>
                     <td className="py-1 text-right">
-                      <PdfLink href={`/api/pdf/guia/${s.id}`} label="Imprimir guía" />
+                      <div className="flex items-center justify-end">
+                        <a
+                          href={whatsappLink(s.destPhone, whatsappMessage(s, trackingUrl(origin, s.tracking)))}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={t("Enviar por WhatsApp a {v0}", { v0: s.destName })}
+                          title={t("Enviar por WhatsApp")}
+                          className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40"
+                        >
+                          <MessageCircle className="size-4" />
+                        </a>
+                        <PdfLink href={`/api/pdf/guia/${s.id}`} label="Imprimir guía" />
+                      </div>
                     </td>
                   </tr>
                 ))}

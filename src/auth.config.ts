@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 /** Rutas que no requieren sesión. */
-const PUBLIC_PATHS = ["/login", "/invitacion", "/configurar-acceso", "/kiosco", "/api/auth"];
+const PUBLIC_PATHS = ["/login", "/invitacion", "/configurar-acceso", "/kiosco", "/api/auth", "/rastreo"];
 export const isPublicPath = (pathname: string) => PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
 /**

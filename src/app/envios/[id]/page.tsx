@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileText, Printer } from "lucide-react";
+import { ExternalLink, FileText, MessageCircle, Printer } from "lucide-react";
+import { CopyButton } from "@/components/CopyButton";
+import { siteOrigin, trackingUrl, whatsappLink, whatsappMessage } from "@/lib/tracking";
 import { prisma } from "@/lib/db";
 import { setShipmentStatus, updateRecipient } from "@/app/actions/shipments";
 import { PageHeader, Panel, StatusBadge } from "@/components/kit";
@@ -25,9 +27,14 @@ const phone = (p: string) => (p.length === 10 ? `${p.slice(0, 2)} ${p.slice(2, 6
 export default async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getT();
   const id = Number((await params).id);
-  const s = await prisma.shipment.findUnique({ where: { id }, include: { client: { select: { id: true, name: true } }, events: { orderBy: { at: "desc" } } } });
+  const s = await prisma.shipment.findUnique({
+    where: { id },
+    include: { client: { select: { id: true, name: true } }, events: { orderBy: { at: "desc" } }, proof: { select: { createdAt: true } } },
+  });
   if (!s) notFound();
   const locked = s.status === "ENTREGADA" || s.status === "CANCELADA";
+  const url = trackingUrl(await siteOrigin(), s.tracking);
+  const wa = whatsappLink(s.destPhone, whatsappMessage(s, url));
   const vol = volumetricKg(s.lengthCm, s.widthCm, s.heightCm);
   const rows = (r: [string, string][]) => (
     <dl className="divide-y text-sm">
@@ -74,6 +81,32 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
+          {(s.proof || s.loadedAt || s.attempts > 0) && (
+            <Panel title="Reparto" description={t("Escaneos de la app de reparto: carga al vehículo, intentos y entrega con firma y foto.")}>
+              {rows([
+                [t("Cargada al vehículo"), s.loadedAt ? `${s.loadedAt.toLocaleString("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${s.loadedBy}` : ""],
+                [t("Intentos sin entregar"), s.attempts ? String(s.attempts) : ""],
+                [t("Entregada"), s.deliveredAt ? `${s.deliveredAt.toLocaleString("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${s.deliveredBy ? ` · ${s.deliveredBy}` : ""}` : ""],
+                [t("Recibió"), s.receiverName],
+              ])}
+              {s.proof && (
+                <div className="grid gap-4 border-t p-5 sm:grid-cols-2">
+                  <figure>
+                    <a href={`/api/envios/${s.id}/evidencia?tipo=foto`} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/envios/${s.id}/evidencia?tipo=foto`} alt={t("Foto de la entrega")} className="aspect-[4/3] w-full rounded-lg border object-cover" />
+                    </a>
+                    <figcaption className="mt-1 text-xs text-muted-foreground">{t("Foto de la entrega")}</figcaption>
+                  </figure>
+                  <figure>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/envios/${s.id}/evidencia?tipo=firma`} alt={t("Firma de quien recibió")} className="aspect-[4/3] w-full rounded-lg border bg-white object-contain" />
+                    <figcaption className="mt-1 text-xs text-muted-foreground">{t("Firma de {v0}", { v0: s.receiverName || t("quien recibió") })}</figcaption>
+                  </figure>
+                </div>
+              )}
+            </Panel>
+          )}
           <Panel
             title="Destinatario"
             action={!locked && <RecipientDialog action={updateRecipient.bind(null, s.id)} value={{ destName: s.destName, destCompany: s.destCompany, destEmail: s.destEmail, destPhone: s.destPhone, destStreet: s.destStreet, destNumber: s.destNumber, destColony: s.destColony, destCity: s.destCity, destState: s.destState, destZip: s.destZip, destRef: s.destRef }} />}
@@ -115,6 +148,19 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
         </div>
 
         <aside className="space-y-6">
+          <Panel title="Avisar al destinatario" description={t("Abre WhatsApp con el mensaje y el link de rastreo ya escritos; solo da Enviar.")} bodyClassName="space-y-3 p-5">
+            <a href={wa} target="_blank" rel="noreferrer" className="btn-kurier w-full">
+              <MessageCircle className="size-4" /> {t("Enviar por WhatsApp")}
+            </a>
+            <div className="flex items-center gap-1.5">
+              <input readOnly value={url} aria-label={t("Link de rastreo")} className="input h-8 min-w-0 flex-1 font-mono text-xs" />
+              <CopyButton value={url} label={t("Copiar link")} />
+              <a href={url} target="_blank" rel="noreferrer" aria-label={t("Abrir rastreo")} className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                <ExternalLink className="size-4" />
+              </a>
+            </div>
+            <p className="text-[11px] text-muted-foreground">{t("El mensaje cambia con el estatus: manda uno al generar, otro al salir a ruta y otro al entregar.")}</p>
+          </Panel>
           <Panel title="Estatus" bodyClassName="flex flex-wrap gap-2 p-5">
             {(NEXT[s.status] ?? []).map((st) => (
               <Form key={st} action={setShipmentStatus.bind(null, s.id, st)}>

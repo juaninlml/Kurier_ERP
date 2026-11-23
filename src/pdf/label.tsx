@@ -91,7 +91,7 @@ const INK = "#000";
 const line = { borderBottomWidth: 1, borderBottomColor: INK } as const;
 const small = { fontSize: 6, letterSpacing: 0.2 } as const;
 
-function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; of: number }) {
+function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: number; of: number; trackUrl?: string }) {
   const borough = (sh.borough || sh.destCity || "").toUpperCase();
   const street = [sh.destStreet, sh.destNumber].filter(Boolean).join(" ");
   const colony = [sh.destColony && `Col. ${sh.destColony}`, sh.borough && `Alc. ${sh.borough}`].filter(Boolean).join(", ");
@@ -149,7 +149,7 @@ function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; 
 
         {/* QR y número de guía */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingVertical: 5, ...line }}>
-          <QR value={sh.tracking} size={74} />
+          <QR value={trackUrl || sh.tracking} size={74} />
           <View style={{ flex: 1, marginLeft: 8 }}>
             <Text style={small}>GUÍA</Text>
             <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold" }}>{sh.tracking}</Text>
@@ -165,7 +165,7 @@ function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; 
                 <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>Entrega a domicilio · {sh.serviceLevel === "DIA_SIGUIENTE" ? "día siguiente" : "mismo día"}</Text>
               </>
             )}
-            <Text style={{ fontSize: 6, marginTop: 2 }}>Escanea al entregar: foto y firma</Text>
+            <Text style={{ fontSize: 6, marginTop: 2 }}>Escanea para rastrear · al entregar: foto y firma</Text>
           </View>
         </View>
 
@@ -211,7 +211,7 @@ function Label({ s, sh, n, of }: { s: CompanySettings; sh: Shipment; n: number; 
   );
 }
 
-export function ShipmentLabelPdf({ s, sh, sheet }: { s: CompanySettings; sh: Shipment; sheet?: boolean }) {
+export function ShipmentLabelPdf({ s, sh, sheet, trackUrl }: { s: CompanySettings; sh: Shipment; sheet?: boolean; trackUrl?: string }) {
   const pages = Array.from({ length: Math.max(1, sh.packages) }, (_, i) => i + 1);
   const dash = { borderStyle: "dashed", borderColor: "#888", position: "absolute" } as const;
   return (
@@ -221,7 +221,7 @@ export function ShipmentLabelPdf({ s, sh, sheet }: { s: CompanySettings; sh: Shi
           // Hoja carta horizontal (792 × 612): la guía al centro con líneas de corte
           <Page key={n} size="LETTER" orientation="landscape" style={{ position: "relative" }}>
             <View style={{ position: "absolute", left: 252, top: 90 }}>
-              <Label s={s} sh={sh} n={n} of={pages.length} />
+              <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} />
             </View>
             <View style={{ ...dash, left: 0, right: 0, top: 90, borderTopWidth: 0.6 }} />
             <View style={{ ...dash, left: 0, right: 0, top: 522, borderTopWidth: 0.6 }} />
@@ -233,7 +233,7 @@ export function ShipmentLabelPdf({ s, sh, sheet }: { s: CompanySettings; sh: Shi
           </Page>
         ) : (
           <Page key={n} size={[288, 432]}>
-            <Label s={s} sh={sh} n={n} of={pages.length} />
+            <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} />
           </Page>
         ),
       )}

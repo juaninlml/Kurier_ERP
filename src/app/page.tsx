@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -21,6 +22,8 @@ const RECENT_SELECT = { id: true, folio: true, issueDate: true, status: true, to
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ sinpermiso?: string }> }) {
   const [t, lang, settings, sp, me] = await Promise.all([getT(), getLang(), getSettings(), searchParams, getSessionUser()]);
   // El aviso solo aplica a roles con secciones restringidas (nunca a la cuenta maestra ni a administradores)
+  // El repartidor solo usa la app de reparto
+  if (me?.role === "REPARTIDOR") redirect("/reparto");
   const showNoAccess = !!sp.sinpermiso && !!me && !canManageUsers(me.role);
   const locale = localeOf(lang);
   const { from, to } = parseRange();

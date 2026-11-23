@@ -761,6 +761,13 @@ model Shipment {
   client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
   packageType   String          @default("CAJA") // SOBRE | CAJA
   serviceLevel  String          @default("MISMO_DIA") // MISMO_DIA | DIA_SIGUIENTE
+  // Reparto: escaneo al cargar el vehículo y al entregar (con firma y foto)
+  loadedAt      DateTime?
+  loadedBy      String          @default("")
+  attempts      Int             @default(0) // intentos de entrega fallidos
+  receiverName  String          @default("") // quién recibió
+  deliveredBy   String          @default("")
+  proof         ShipmentProof?
   // Origen (remitente)
   originName    String
   originCompany String          @default("")
@@ -906,4 +913,17 @@ model Budget {
   amount   Float
 
   @@unique([year, month, type, category])
+}
+
+/// Evidencia de entrega: firma (PNG) y foto (JPEG) tomadas por el repartidor al entregar.
+/// Aparte de Shipment para no cargar las imágenes en listas.
+model ShipmentProof {
+  id            Int      @id @default(autoincrement())
+  shipmentId    Int      @unique
+  shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  signature     Bytes
+  signatureMime String   @default("image/png")
+  photo         Bytes
+  photoMime     String   @default("image/jpeg")
+  createdAt     DateTime @default(now())
 }

@@ -42,3 +42,6 @@ export const SHIPMENT_STATUS: Record<string, string> = {
   ENTREGADA: "Entregada",
   CANCELADA: "Cancelada",
 };
+
+/** Motivos de un intento de entrega fallido (app de reparto). */
+export const FAIL_REASONS = ["No había quién recibiera", "Domicilio cerrado", "Dirección incorrecta o incompleta", "Rechazó el paquete", "Zona insegura o sin acceso", "Otro"] as const;
