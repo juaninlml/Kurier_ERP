@@ -9,6 +9,7 @@ import {
   BarChart3,
   Building2,
   Truck,
+  PackageCheck,
   Receipt,
   Landmark,
   Target,
@@ -36,7 +37,6 @@ import {
   Users,
   Wallet,
   type LucideIcon,
-  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { href: "/facturas/importar", label: "Importar del WMS", icon: FileUp },
       { href: "/ordenes", label: "Órdenes diarias", icon: PackageOpen },
       { href: "/ordenes/insumos", label: "Insumos de empaque", icon: Boxes },
-      { href: "/envios", label: "Envíos última milla", icon: Truck },
+      { href: "/envios", label: "Envíos última milla", icon: PackageCheck },
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/servicios", label: "Tarifario", icon: Tags },
     ],

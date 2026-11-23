@@ -31,6 +31,7 @@ export type ModuleId =
   | "cotizaciones"
   | "facturas"
   | "ordenes"
+  | "envios"
   | "clientes"
   | "tarifario"
   | "contabilidad"
@@ -49,6 +50,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/cotizaciones", "cotizaciones"],
   ["/facturas", "facturas"],
   ["/ordenes", "ordenes"],
+  ["/envios", "envios"],
   ["/clientes", "clientes"],
   ["/servicios", "tarifario"],
   ["/contabilidad/conciliacion", "conciliacion"],
@@ -65,6 +67,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/api/pdf/factura", "facturas"],
   ["/api/pdf/estado-cuenta", "clientes"],
   ["/api/pdf/ordenes", "ordenes"],
+  ["/api/pdf/guia", "envios"],
   ["/api/pdf/tarifario", "tarifario"],
   ["/api/pdf/reporte", "contabilidad"],
   ["/api/pdf/nomina", "nomina"],
@@ -73,7 +76,7 @@ const ROUTES: [string, ModuleId][] = [
 
 type Access = "write" | "read";
 const ALL: ModuleId[] = [
-  "inicio", "cotizaciones", "facturas", "ordenes", "clientes", "tarifario", "contabilidad", "conciliacion",
+  "inicio", "cotizaciones", "facturas", "ordenes", "envios", "clientes", "tarifario", "contabilidad", "conciliacion",
   "proveedores", "cxp", "nomina", "usuarios", "configuracion", "bitacora", "perfil", "general",
 ];
 const every = (a: Access, except: ModuleId[] = []) =>
@@ -101,6 +104,7 @@ const ACCESS: Record<Role, Partial<Record<ModuleId, Access>>> = {
     cotizaciones: "write",
     clientes: "write",
     ordenes: "write",
+    envios: "write",
     tarifario: "read",
     facturas: "read",
     perfil: "write",
@@ -133,6 +137,7 @@ export const MODULE_LABEL: Record<string, string> = {
   cotizaciones: "Cotizaciones",
   facturas: "Facturas",
   ordenes: "Órdenes",
+  envios: "Envíos",
   clientes: "Clientes",
   tarifario: "Tarifario",
   contabilidad: "Contabilidad",

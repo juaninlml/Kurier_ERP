@@ -16,7 +16,7 @@ const who = async () => {
 /** Cotización para el formulario (no guarda nada). */
 export async function quoteShipment(input: { zip: string; borough?: string; clientId?: number | null }): Promise<LastMileQuote> {
   try {
-    await assertSignedIn();
+    await assertSignedIn("envios");
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
@@ -29,7 +29,7 @@ type AddressInput = Partial<Record<(typeof ADDRESS_FIELDS)[number] | "alias", st
 /** Guarda (o actualiza, si ya existe la misma) una dirección en la libreta. */
 export async function saveShipAddress(kind: "ORIGEN" | "DESTINO", input: AddressInput): Promise<{ ok: true; id: number } | { error: string }> {
   try {
-    await assertSignedIn();
+    await assertSignedIn("envios");
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -218,7 +218,7 @@ async function deleteShipAddressImpl(id: number) {
   revalidatePath("/envios/nuevo");
 }
 
-export const createShipment = safe(createShipmentImpl);
-export const updateRecipient = safe(updateRecipientImpl);
-export const setShipmentStatus = safe(setShipmentStatusImpl);
-export const deleteShipAddress = safe(deleteShipAddressImpl);
+export const createShipment = safe(createShipmentImpl, "envios", "createShipmentImpl");
+export const updateRecipient = safe(updateRecipientImpl, "envios", "updateRecipientImpl");
+export const setShipmentStatus = safe(setShipmentStatusImpl, "envios", "setShipmentStatusImpl");
+export const deleteShipAddress = safe(deleteShipAddressImpl, "envios", "deleteShipAddressImpl");
