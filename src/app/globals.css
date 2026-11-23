@@ -803,3 +803,35 @@ html.kiosk-mode body {
   .kiosk-in, .kiosk-meal-out, .kiosk-meal-back, .kiosk-out { animation: none; }
   .kiosk-ring { opacity: 0; }
 }
+
+/* ───── Reparto: aviso de escaneo ───── */
+@keyframes rp-tint {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes rp-card {
+  0% { opacity: 0; transform: scale(0.7); }
+  14% { opacity: 1; transform: scale(1.05); }
+  24% { transform: scale(1); }
+  82% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+@keyframes rp-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.45); color: var(--color-emerald-600, #059669); }
+  100% { transform: scale(1); }
+}
+@keyframes rp-slide {
+  from { opacity: 0; transform: translateY(-10px); background: color-mix(in oklab, #10b981 18%, transparent); }
+  to { opacity: 1; transform: none; }
+}
+.rp-tint { animation: rp-tint linear both; }
+.rp-card { animation: rp-card cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rp-bump { display: inline-block; animation: rp-bump 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.rp-slide { animation: rp-slide 600ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .rp-card, .rp-bump, .rp-slide { animation: none; }
+  .rp-tint { animation-name: rp-tint; }
+}

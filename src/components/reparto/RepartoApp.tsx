@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, Camera, CheckCircle2, CircleX, Loader2, MapPin, PackageCheck, Phone, Truck, Undo2 } from "lucide-react";
 import { confirmDelivery, failedAttempt, lookupDelivery, scanLoad, type DeliveryInfo } from "@/app/actions/reparto";
 import { FAIL_REASONS } from "@/lib/lastmile-zones";
 import { Scanner } from "./Scanner";
+import { ScanFlash, type Flash } from "./ScanFlash";
+import { playSound, unlockAudio, type Feedback } from "./feedback";
 import { SignaturePad, type SignatureHandle } from "./SignaturePad";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,21 @@ export function RepartoApp({ driver }: { driver: string }) {
   const [current, setCurrent] = useState<DeliveryInfo | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
+  const [flash, setFlash] = useState<Flash | null>(null);
+  const notify = (kind: Feedback, title: string, sub?: string) => {
+    playSound(kind);
+    setFlash({ kind, title, sub, seq: Date.now() });
+  };
+  // El navegador solo deja sonar después del primer toque o tecla
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   const onLoad = (code: string) =>
     start(async () => {
@@ -41,7 +58,9 @@ export function RepartoApp({ driver }: { driver: string }) {
           : { key: Date.now(), ok: false, text: r.error },
         ...l,
       ]);
-      if (!r.ok) navigator.vibrate?.([60, 60, 60]);
+      if (!r.ok) notify("error", "No se cargó", r.error);
+      else if (r.again) notify("repeat", "Ya estaba cargada", `${r.info.tracking} · ${r.info.destName}`);
+      else notify("ok", "Cargada al vehículo", `${r.info.tracking} · ${r.info.borough} · Zona ${r.info.zone}`);
     });
 
   const onDeliverScan = (code: string) =>
@@ -49,14 +68,17 @@ export function RepartoApp({ driver }: { driver: string }) {
       setError("");
       setDone("");
       const r = await lookupDelivery(code);
-      if (r.ok) setCurrent(r.info);
-      else {
+      if (r.ok) {
+        setCurrent(r.info);
+        notify("ok", "Guía encontrada", `${r.info.destName} · ${r.info.borough}`);
+      } else {
         setError(r.error);
-        navigator.vibrate?.([60, 60, 60]);
+        notify(/ya fue entregada/.test(r.error) ? "repeat" : "error", /ya fue entregada/.test(r.error) ? "Ya estaba entregada" : "No se encontró", r.error);
       }
     });
 
-  const loadedOk = loads.filter((l) => l.ok).length;
+  // Paquetes distintos cargados (un re-escaneo no suma)
+  const loadedOk = new Set(loads.filter((l) => l.ok).map((l) => l.text)).size;
 
   return (
     <div className="mx-auto max-w-md space-y-4 pb-10">
@@ -96,14 +118,14 @@ export function RepartoApp({ driver }: { driver: string }) {
           <section aria-live="polite" className="card overflow-hidden">
             <header className="flex items-center justify-between border-b px-4 py-2.5 text-sm">
               <span className="font-semibold">Cargados en esta sesión</span>
-              <span className="tabular-nums text-muted-foreground">{loadedOk}</span>
+              <span key={loadedOk} className="rp-bump text-lg font-bold tabular-nums">{loadedOk}</span>
             </header>
             {loads.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">Escanea el QR o el código de barras de cada guía.</p>
             ) : (
               <ul className="max-h-80 divide-y overflow-y-auto">
-                {loads.map((l) => (
-                  <li key={l.key} className="flex items-start gap-2.5 px-4 py-2.5 text-sm">
+                {loads.map((l, i) => (
+                  <li key={l.key} className={cn("flex items-start gap-2.5 px-4 py-2.5 text-sm", i === 0 && "rp-slide")}>
                     {l.ok ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <CircleX className="mt-0.5 size-4 shrink-0 text-rose-600" />}
                     <div className="min-w-0">
                       <div className={cn("font-medium", l.ok ? "font-mono" : "text-rose-700 dark:text-rose-300")}>{l.text}</div>
@@ -119,10 +141,12 @@ export function RepartoApp({ driver }: { driver: string }) {
         <Delivery
           info={current}
           onCancel={() => setCurrent(null)}
-          onDone={(msg) => {
+          onDone={(msg, kind, title) => {
             setCurrent(null);
             setDone(msg);
+            notify(kind, title, msg);
           }}
+          onError={(msg) => notify("error", "Falta algo", msg)}
         />
       ) : (
         <>
@@ -139,11 +163,22 @@ export function RepartoApp({ driver }: { driver: string }) {
           )}
         </>
       )}
+      <ScanFlash flash={flash} />
     </div>
   );
 }
 
-function Delivery({ info, onCancel, onDone }: { info: DeliveryInfo; onCancel: () => void; onDone: (msg: string) => void }) {
+function Delivery({
+  info,
+  onCancel,
+  onDone,
+  onError,
+}: {
+  info: DeliveryInfo;
+  onCancel: () => void;
+  onDone: (msg: string, kind: Feedback, title: string) => void;
+  onError: (msg: string) => void;
+}) {
   const sig = useRef<SignatureHandle>(null);
   const [signed, setSigned] = useState(false);
   const [receiver, setReceiver] = useState(info.destName);
@@ -158,26 +193,36 @@ function Delivery({ info, onCancel, onDone }: { info: DeliveryInfo; onCancel: ()
     start(async () => {
       setError("");
       const signature = await sig.current?.toBlob();
-      if (!signed || !signature) return setError("Pide la firma de quien recibe.");
-      if (!photo) return setError("Toma la foto de la entrega.");
+      if (!signed || !signature) {
+        setError("Pide la firma de quien recibe.");
+        return onError("Pide la firma de quien recibe.");
+      }
+      if (!photo) {
+        setError("Toma la foto de la entrega.");
+        return onError("Toma la foto de la entrega.");
+      }
       const fd = new FormData();
       fd.set("tracking", info.tracking);
       fd.set("receiverName", receiver);
       fd.set("signature", new File([signature], "firma.png", { type: "image/png" }));
       fd.set("photo", new File([photo.blob], "entrega.jpg", { type: "image/jpeg" }));
       const r = await confirmDelivery(fd);
-      if (r.ok) {
-        navigator.vibrate?.(150);
-        onDone(`Guía ${r.tracking} entregada a ${receiver}.`);
-      } else setError(r.error);
+      if (r.ok) onDone(`Guía ${r.tracking} entregada a ${receiver}.`, "delivered", "¡Entregado!");
+      else {
+        setError(r.error);
+        onError(r.error);
+      }
     });
 
   const sendFail = () =>
     start(async () => {
       setError("");
       const r = await failedAttempt(info.tracking, reason, note);
-      if (r.ok) onDone(`Intento ${r.attempts} registrado para ${info.tracking}. El paquete sigue en ruta.`);
-      else setError(r.error);
+      if (r.ok) onDone(`Intento ${r.attempts} registrado para ${info.tracking}. El paquete sigue en ruta.`, "attempt", `Intento ${r.attempts} registrado`);
+      else {
+        setError(r.error);
+        onError(r.error);
+      }
     });
 
   return (

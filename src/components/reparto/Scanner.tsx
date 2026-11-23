@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff, ScanBarcode } from "lucide-react";
+import { playSound } from "./feedback";
 
 type Detector = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 type DetectorCtor = new (opts: { formats: string[] }) => Detector;
@@ -45,10 +46,12 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
         buf = "";
         if (code.length >= MIN_LEN) {
           e.preventDefault();
-          if (human) setNotice("La guía no se puede escribir a mano: usa el escáner o la cámara.");
+          if (human) {
+            setNotice("La guía no se puede escribir a mano: usa el escáner o la cámara.");
+            playSound("error");
+          }
           else if (!pausedRef.current) {
             setNotice("");
-            navigator.vibrate?.(80);
             cb.current(code);
           }
         }
@@ -95,7 +98,6 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
               // El mismo código no se repite en 3 segundos (evita dobles escaneos)
               if (code && (code !== last.current.code || Date.now() - last.current.at > 3000)) {
                 last.current = { code, at: Date.now() };
-                navigator.vibrate?.(80);
                 cb.current(code);
               }
             } catch {}
