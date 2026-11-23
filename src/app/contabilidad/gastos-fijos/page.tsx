@@ -15,6 +15,7 @@ import type { FixedExpense } from "@prisma/client";
 import { getT } from "@/lib/i18n/server";
 import { Tr } from "@/components/Tr";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   return { title: (await getT())("Gastos fijos y punto de equilibrio") };
@@ -35,7 +36,7 @@ async function ExpenseFields({ e }: { e?: FixedExpense }) {
         </select>
       </Field>
       <Field label="Monto *">
-        <input name="amount" type="number" step="0.01" min="0" required defaultValue={e?.amount} className="input text-right" />
+        <NumberField name="amount" required defaultValue={e?.amount} className="input text-right" />
       </Field>
       <Field label="Frecuencia">
         <select name="frequency" defaultValue={e?.frequency ?? "MENSUAL"} className="input">

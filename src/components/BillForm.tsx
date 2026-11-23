@@ -7,6 +7,7 @@ import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { useT } from "./I18nProvider";
 
+import { NumberField, parseNumber } from "./NumberField";
 export type BillSupplier = { id: number; name: string; category: string; creditDays: number };
 export type BillValues = {
   supplierId: number | null;
@@ -72,7 +73,7 @@ export function BillForm({
     if (!dueTouched) setDueDate(addDaysIso(v, supplier?.creditDays ?? 0));
   };
   const calcTax = () => {
-    const a = Number(total) || 0;
+    const a = parseNumber(total);
     setTax(((a * defaultTaxRate) / (100 + defaultTaxRate)).toFixed(2));
   };
 
@@ -146,7 +147,7 @@ export function BillForm({
         </label>
         <label className="block">
           <span className="label">{t("Total (con IVA) *")}</span>
-          <input name="total" type="number" step="0.01" min="0.01" required value={total} onChange={(e) => setTotal(e.target.value)} className="input text-right tabular-nums" />
+          <NumberField name="total" required value={total} onValueChange={(_, x) => setTotal(x)} className="input text-right tabular-nums" />
         </label>
         <label className="block">
           <span className="label flex justify-between">
@@ -155,7 +156,7 @@ export function BillForm({
               {t("calcular")} {defaultTaxRate}%
             </button>
           </span>
-          <input name="tax" type="number" step="0.01" min="0" value={tax} onChange={(e) => setTax(e.target.value)} className="input text-right tabular-nums" />
+          <NumberField name="tax" value={tax} onValueChange={(_, x) => setTax(x)} className="input text-right tabular-nums" />
         </label>
         <label className="block sm:col-span-2 lg:col-span-4">
           <span className="label">{t("Notas internas")}</span>

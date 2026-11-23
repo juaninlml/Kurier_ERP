@@ -15,6 +15,7 @@ import { PAYMENT_METHODS } from "@/lib/constants";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/lib/i18n/server";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 
 export default async function BillPage({ params }: { params: Promise<{ id: string }> }) {
@@ -171,7 +172,7 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
                 <Tr>Se registra automáticamente como egreso en contabilidad.</Tr>
               </p>
               <Field label="Monto">
-                <input name="amount" type="number" step="0.01" min="0.01" max={balance} defaultValue={balance} required className="input text-right tabular-nums" />
+                <NumberField name="amount" defaultValue={balance} required className="input text-right tabular-nums" />
               </Field>
               <Field label="Fecha">
                 <input name="date" type="date" defaultValue={toInputDate(now)} required className="input" />

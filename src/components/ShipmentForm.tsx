@@ -11,6 +11,7 @@ import { useT } from "./I18nProvider";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
+import { NumberField } from "./NumberField";
 export type SavedAddress = {
   id: number;
   kind: string;
@@ -201,7 +202,7 @@ export function ShipmentForm({
               </label>
               <label className="block">
                 <span className="label">{t("Pago contra entrega")}</span>
-                <input name="cod" type="number" min="0" step="0.01" value={pkg.cod} onChange={(e) => setPkg({ ...pkg, cod: e.target.value })} className="input text-right tabular-nums" placeholder="$0.00" />
+                <NumberField name="cod" value={pkg.cod} onValueChange={(_, x) => setPkg({ ...pkg, cod: x })} className="input text-right tabular-nums" placeholder="$0.00" />
               </label>
             </div>
             <label className="block">

@@ -4,6 +4,7 @@ import { UNITS } from "@/lib/constants";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
 
+import { NumberField } from "./NumberField";
 /** Campos del formulario de servicio (alta y edición). */
 export async function ServiceFields({ sv, sections, defaultTaxRate }: { sv?: Service; sections: string[]; defaultTaxRate: number }) {
   const t = await getT();
@@ -25,7 +26,7 @@ export async function ServiceFields({ sv, sections, defaultTaxRate }: { sv?: Ser
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Precio unitario (sin IVA)">
-          <input name="unitPrice" type="number" step="0.01" min="0" defaultValue={sv?.unitPrice || ""} className="input" />
+          <NumberField name="unitPrice" defaultValue={sv?.unitPrice} className="input text-right" />
         </Field>
         <Field label="Unidad de cobro">
           <input name="unit" list="units-list" defaultValue={sv?.unit ?? "Orden"} className="input" />

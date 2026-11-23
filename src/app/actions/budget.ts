@@ -24,7 +24,7 @@ async function saveBudgetImpl(year: number, month: number, fd: FormData) {
     const key = k.slice(2);
     if (!valid.has(key)) continue;
     const [type, category] = key.split("|");
-    const raw = String(v).trim();
+    const raw = String(v).replace(/,/g, "").trim();
     const amount = raw === "" ? 0 : round2(Number(raw));
     if (!Number.isFinite(amount) || amount < 0) throw new Error(`Monto inválido en ${category}.`);
     const where = { year_month_type_category: { year, month, type, category } };

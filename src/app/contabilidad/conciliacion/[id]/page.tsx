@@ -13,6 +13,7 @@ import { formatDate, formatMoney, round2 } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 
 const VIEWS = ["pendientes", "conciliados", "ignorados", "todos"] as const;
@@ -202,7 +203,7 @@ export default async function StatementPage({ params, searchParams }: { params: 
                                   ))}
                                 </select>
                               )}
-                              <input name="tax" type="number" step="0.01" min="0" defaultValue={0} aria-label={t("IVA incluido")} placeholder={t("IVA incluido")} className="input h-8 text-right text-xs tabular-nums" />
+                              <NumberField name="tax" defaultValue={0} aria-label={t("IVA incluido")} placeholder={t("IVA incluido")} className="input h-8 text-right text-xs tabular-nums" />
                               <input name="description" defaultValue={l.description} maxLength={200} aria-label={t("Concepto")} className="input h-8 text-xs sm:col-span-2" />
                               <SubmitButton className="btn-primary h-8 text-xs sm:col-span-2" pendingText={t("Registrando…")}>
                                 {t("Registrar y conciliar")}

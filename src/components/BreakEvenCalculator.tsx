@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField } from "./NumberField";
 export type BreakEvenInputs = {
   beOrderRate: number;
   beShippingCost: number;
@@ -59,14 +60,12 @@ export function BreakEvenCalculator({
     <label className="block">
       <span className="label">{t(label)}</span>
       <div className="relative">
-        <input
+        <NumberField
           name={k}
-          type="number"
-          min="0"
-          step={opts.step ?? "0.01"}
+          decimals={opts.step === "1" ? 0 : 2}
           className={cn("input text-right", opts.suffix && "pr-9")}
-          value={(v[k] as number) || ""}
-          onChange={(e) => set(k, Number(e.target.value) || 0)}
+          value={(v[k] as number) || 0}
+          onValueChange={(n) => set(k, n)}
         />
         {opts.suffix && <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">{opts.suffix}</span>}
       </div>

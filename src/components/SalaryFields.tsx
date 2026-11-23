@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField } from "./NumberField";
 /** Salario semanal + jornada, con el desglose a diario y por hora mientras se escribe. */
 export function SalaryFields({ weekly, workDays, hoursPerDay, weeklyBonus }: { weekly?: number; workDays?: number; hoursPerDay?: number; weeklyBonus?: number }) {
   const t = useT();
@@ -17,7 +18,7 @@ export function SalaryFields({ weekly, workDays, hoursPerDay, weeklyBonus }: { w
     <>
       <label className="block">
         <span className="label"><Tr>Salario semanal *</Tr></span>
-        <input name="weeklySalary" type="number" step="0.01" min="0" required value={w || ""} onChange={(e) => setW(Number(e.target.value) || 0)} className="input text-right" />
+        <NumberField name="weeklySalary" required value={w} onValueChange={(n) => setW(n)} className="input text-right" />
       </label>
       <label className="block">
         <span className="label"><Tr>Jornada</Tr></span>
@@ -32,7 +33,7 @@ export function SalaryFields({ weekly, workDays, hoursPerDay, weeklyBonus }: { w
       </label>
       <label className="block">
         <span className="label"><Tr>Bono fijo semanal</Tr></span>
-        <input name="weeklyBonus" type="number" step="0.01" min="0" defaultValue={weeklyBonus || ""} className="input text-right" />
+        <NumberField name="weeklyBonus" defaultValue={weeklyBonus} className="input text-right" />
         <span className="mt-1 block text-xs text-muted-foreground"><Tr>Puntualidad, asistencia… (opcional)</Tr></span>
       </label>
       <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-center text-sm md:col-span-3">

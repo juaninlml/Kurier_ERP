@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 export const numv = (fd: FormData, k: string, def = 0) => {
-  const v = fd.get(k);
+  // Los campos de cantidades muestran separador de miles ("1,234.50"): se quitan las comas
+  const v = typeof fd.get(k) === "string" ? String(fd.get(k)).replace(/,/g, "").trim() : fd.get(k);
   if (v === null || v === "") return def;
   const n = Number(v);
   if (!Number.isFinite(n)) throw new Error(`Valor numérico inválido en ${k}`);

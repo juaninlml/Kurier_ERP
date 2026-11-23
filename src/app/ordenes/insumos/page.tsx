@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   return { title: (await getT())("Insumos de empaque") };
@@ -499,7 +500,7 @@ function MoneyInput({ name, label, value }: { name: string; label: string; value
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[11px] text-muted-foreground">
         {label} $
       </span>
-      <input name={name} type="number" step="0.01" min="0" defaultValue={value || ""} placeholder="0.00" className="input h-8 w-32 pl-14 text-right tabular-nums" />
+      <NumberField name={name} defaultValue={value} placeholder="0.00" className="input h-8 w-32 pl-14 text-right tabular-nums" />
     </label>
   );
 }

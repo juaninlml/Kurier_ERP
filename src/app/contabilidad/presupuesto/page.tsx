@@ -11,6 +11,7 @@ import { requestLocale } from "@/lib/request-lang";
 import { getT } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   return { title: (await getT())("Presupuesto") };
@@ -117,11 +118,8 @@ function BudgetTable({ title, rows, good, t }: { title: string; rows: BudgetRow[
                 <tr key={r.category}>
                   <td className="font-medium">{t(r.category)}</td>
                   <td className="py-1.5 text-right">
-                    <input
+                    <NumberField
                       name={`b:${r.type}|${r.category}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
                       defaultValue={r.budget || ""}
                       placeholder="0.00"
                       aria-label={t("Presupuesto de {v0}", { v0: t(r.category) })}

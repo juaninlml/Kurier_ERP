@@ -12,6 +12,7 @@ import { groupByOrg, type OrgPosition } from "@/lib/org";
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField } from "./NumberField";
 export type EditorLine = {
   id: number;
   employeeId: number;
@@ -116,17 +117,11 @@ export function PayrollEditor({
       {readOnly ? (
         <div className="py-1.5 text-sm tabular-nums">{opts.money ? (l[key] ? formatMoney(l[key]) : "—") : formatNumber(l[key])}</div>
       ) : (
-        <input
-          type="number"
-          min="0"
-          step={opts.money ? "0.01" : key === "overtimeHours" ? "any" : "0.5"}
+        <NumberField
+          decimals={2}
           className={cn("input h-8 text-right tabular-nums", opts.warn && "border-amber-500")}
-          value={l[key] || ""}
-          onChange={(e) =>
-            update(l.id, {
-              [key]: Number(e.target.value) || 0,
-            } as Partial<EditorLine>)
-          }
+          value={l[key]}
+          onValueChange={(n) => update(l.id, { [key]: n } as Partial<EditorLine>)}
         />
       )}
       {opts.hint && <span className="mt-0.5 block text-[10px] text-muted-foreground">{opts.hint}</span>}

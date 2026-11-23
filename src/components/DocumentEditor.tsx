@@ -11,6 +11,7 @@ import { parseVolumes, scenarioTable, type PerOrderRow } from "@/lib/quote-extra
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField } from "./NumberField";
 const SCALING_UNITS = ["orden", "pedido", "guía", "guia", "pieza", "envío", "envio"];
 
 type ClientOpt = { id: number; name: string; brandId?: number | null };
@@ -439,15 +440,15 @@ export function DocumentEditor({
                   <input className="input" list="units" value={l.unit ?? ""} onChange={(e) => update(i, { unit: e.target.value })} />
                 </Cell>
                 <Cell label={t("Cant.")}>
-                  <input type="number" step="any" min="0" className="input text-right" value={l.quantity || ""} onChange={(e) => update(i, { quantity: num(e.target.value) })} />
+                  <NumberField decimals={3} className="input text-right" value={l.quantity} onValueChange={(n) => update(i, { quantity: n })} />
                 </Cell>
                 {l.atCost ? (
                   <Cell label={t("Importe al costo")}>
-                    <input type="number" step="0.01" min="0" className="input text-right" value={l.amount || ""} onChange={(e) => update(i, { amount: num(e.target.value) })} />
+                    <NumberField className="input text-right" value={l.amount ?? 0} onValueChange={(n) => update(i, { amount: n })} />
                   </Cell>
                 ) : (
                   <Cell label={t("P. unitario")}>
-                    <input type="number" step="0.01" min="0" className="input text-right" value={l.unitPrice || ""} onChange={(e) => update(i, { unitPrice: num(e.target.value) })} />
+                    <NumberField className="input text-right" value={l.unitPrice} onValueChange={(n) => update(i, { unitPrice: n })} />
                   </Cell>
                 )}
                 <Cell label={t("Desc. %")}>
@@ -573,13 +574,10 @@ export function DocumentEditor({
                     value={r.label}
                     onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                   />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                  <NumberField
                     className="input text-right"
-                    value={r.amount || ""}
-                    onChange={(e) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: num(e.target.value) } : x)))}
+                    value={r.amount}
+                    onValueChange={(n) => setPerOrder((p) => p.map((x, j) => (j === i ? { ...x, amount: n } : x)))}
                   />
                   <button type="button" title={t("Quitar")} aria-label={t("Quitar")} className="inline-grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerOrder((p) => p.filter((_, j) => j !== i))}>
                     <Trash2 className="size-4" />
@@ -589,14 +587,11 @@ export function DocumentEditor({
             </div>
             <label className="mt-3 block">
               <span className="label"><Tr>Comisión de guía para la columna “Con guía de Kurier” (0 = no se muestra)</Tr></span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
+              <NumberField
                 name="perOrderFee"
                 className="input w-40 text-right"
-                value={perOrderFee || ""}
-                onChange={(e) => setPerOrderFee(num(e.target.value))}
+                value={perOrderFee}
+                onValueChange={(n) => setPerOrderFee(n)}
               />
             </label>
           </div>
@@ -610,7 +605,7 @@ export function DocumentEditor({
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="label"><Tr>Pedidos del costo estimado</Tr></span>
-                <input type="number" min="0" step="1" name="baseVolume" className="input text-right" value={baseVolume || ""} onChange={(e) => setBaseVolume(num(e.target.value))} />
+                <NumberField decimals={0} name="baseVolume" className="input text-right" value={baseVolume} onValueChange={(n) => setBaseVolume(n)} />
               </label>
               <label className="block">
                 <span className="label"><Tr>Volúmenes a comparar</Tr></span>

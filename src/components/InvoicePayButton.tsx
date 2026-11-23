@@ -8,6 +8,7 @@ import { useT } from "./I18nProvider";
 import { formatMoney } from "@/lib/money";
 import { PAYMENT_METHODS } from "@/lib/constants";
 
+import { NumberField } from "./NumberField";
 /** Botón de lista para registrar un pago sin entrar al documento (facturas y cuentas por pagar; abre un cuadro de diálogo). */
 export function InvoicePayButton({
   action,
@@ -67,7 +68,7 @@ export function InvoicePayButton({
         >
           <label className="block">
             <span className="label">{t("Monto")}</span>
-            <input name="amount" type="number" step="0.01" min="0.01" max={balance} defaultValue={balance} required className="input text-right tabular-nums" />
+            <NumberField name="amount" defaultValue={balance} required className="input text-right tabular-nums" />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">

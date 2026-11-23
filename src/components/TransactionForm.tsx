@@ -8,6 +8,7 @@ import { Form } from "./Form";
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField, parseNumber } from "./NumberField";
 type Tx = {
   type: string;
   category: string;
@@ -46,7 +47,7 @@ export function TransactionForm({
   const categories = type === "INGRESO" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   const calcTax = () => {
-    const a = Number(amount) || 0;
+    const a = parseNumber(amount);
     setTax(((a * defaultTaxRate) / (100 + defaultTaxRate)).toFixed(2));
   };
 
@@ -85,7 +86,7 @@ export function TransactionForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="label"><Tr>Monto total (con IVA)</Tr></span>
-          <input name="amount" type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="input" />
+          <NumberField name="amount" required value={amount} onValueChange={(_, x) => setAmount(x)} className="input text-right tabular-nums" />
         </label>
         <label className="block">
           <span className="label flex justify-between">
@@ -94,7 +95,7 @@ export function TransactionForm({
               <Tr>calcular</Tr> {defaultTaxRate}%
             </button>
           </span>
-          <input name="tax" type="number" step="0.01" min="0" value={tax} onChange={(e) => setTax(e.target.value)} className="input" />
+          <NumberField name="tax" value={tax} onValueChange={(_, x) => setTax(x)} className="input text-right tabular-nums" />
         </label>
       </div>
       <label className="block">
@@ -116,7 +117,7 @@ export function TransactionForm({
         </label>
         <label className="block">
           <span className="label"><Tr>Referencia</Tr></span>
-          <input name="reference" defaultValue={tx.reference} className="input" />
+          <input name="reference" defaultValue={tx.reference} className="input text-right tabular-nums" />
         </label>
       </div>
       {/* Ingreso: quién pagó (cliente). Egreso: a quién se le pagó (proveedor). */}

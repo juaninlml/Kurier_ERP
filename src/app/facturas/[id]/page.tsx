@@ -15,6 +15,7 @@ import { Tr } from "@/components/Tr";
 import { getLang, getT } from "@/lib/i18n/server";
 import { docText } from "@/lib/i18n/doc-text";
 
+import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -168,7 +169,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <h2 className="font-semibold"><Tr>Registrar pago</Tr></h2>
               <p className="text-xs text-muted-foreground"><Tr>Se registra automáticamente como ingreso en contabilidad.</Tr></p>
               <Field label="Monto">
-                <input name="amount" type="number" step="0.01" min="0.01" max={balance} defaultValue={balance} required className="input" />
+                <NumberField name="amount" defaultValue={balance} required className="input text-right tabular-nums" />
               </Field>
               <Field label="Fecha">
                 <input name="date" type="date" defaultValue={toInputDate(new Date())} required className="input" />

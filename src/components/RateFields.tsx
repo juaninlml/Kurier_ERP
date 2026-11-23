@@ -7,6 +7,7 @@ import { Field } from "./kit";
 import { Tr } from "@/components/Tr";
 import { useT } from "@/components/I18nProvider";
 
+import { NumberField } from "./NumberField";
 export type ServicePick = {
   id: number;
   code: string;
@@ -94,7 +95,7 @@ export function RateFields({ rate, services, wmsConcepts }: { rate?: ClientRate;
       </Field>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Precio (sin IVA)">
-          <input name="unitPrice" type="number" step="0.01" min="0" disabled={v.atCost} className="input text-right" value={v.unitPrice || ""} onChange={(e) => set({ unitPrice: Number(e.target.value) || 0 })} />
+          <NumberField name="unitPrice" disabled={v.atCost} className="input text-right" value={v.unitPrice} onValueChange={(n) => set({ unitPrice: n })} />
         </Field>
         <Field label="Unidad">
           <input name="unit" list="rate-units" className="input" value={v.unit} onChange={(e) => set({ unit: e.target.value })} />
