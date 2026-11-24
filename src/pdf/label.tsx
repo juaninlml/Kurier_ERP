@@ -30,7 +30,7 @@ function code128(text: string) {
   return [104, ...values, check, 106].map((v) => C128[v]).join("");
 }
 
-function Barcode({ value, width, height }: { value: string; width: number; height: number }) {
+export function Barcode({ value, width, height }: { value: string; width: number; height: number }) {
   const pattern = code128(value);
   const modules = [...pattern].reduce((a, d) => a + Number(d), 0);
   const unit = width / modules;
@@ -48,7 +48,7 @@ function Barcode({ value, width, height }: { value: string; width: number; heigh
   );
 }
 
-function QR({ value, size }: { value: string; size: number }) {
+export function QR({ value, size }: { value: string; size: number }) {
   const qr = QRCode.create(value, { errorCorrectionLevel: "M" });
   const n = qr.modules.size;
   let d = "";
@@ -65,7 +65,7 @@ function QR({ value, size }: { value: string; size: number }) {
  * Símbolo de Kurier Kido (núcleo, órbita que pasa por delante y por detrás, y satélite) en negro,
  * para impresión térmica: mismo trazo que el logo de la app (src/components/KidoLogo.tsx).
  */
-function KidoMark({ size }: { size: number }) {
+export function KidoMark({ size }: { size: number }) {
   return (
     <Svg width={size} height={size} viewBox="-32 -32 64 64">
       <Path d="M -25.3 6.6 A 26 9.5 -22 0 1 25.3 -6.6" fill="none" stroke="#000" strokeWidth={3.6} strokeLinecap="round" />

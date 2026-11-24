@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, Camera, CheckCircle2, CircleX, Loader2, MapPin, PackageCheck, Phone, Truck, Undo2 } from "lucide-react";
-import { confirmDelivery, failedAttempt, lookupDelivery, scanLoad, type DeliveryInfo } from "@/app/actions/reparto";
+import { AlertTriangle, Boxes, Camera, CheckCircle2, Loader2, Lock, MapPin, PackageCheck, Phone, ScanLine, Truck, Undo2, X } from "lucide-react";
+import {
+  cancelEmptyLoad,
+  closeLoad,
+  confirmDelivery,
+  failedAttempt,
+  finishMyLoad,
+  lookupDelivery,
+  removeFromLoad,
+  scanLoad,
+  startLoad,
+  type DeliveryInfo,
+  type LoadState,
+} from "@/app/actions/reparto";
 import { FAIL_REASONS } from "@/lib/lastmile-zones";
 import { Scanner } from "./Scanner";
 import { ScanFlash, type Flash } from "./ScanFlash";
@@ -10,8 +22,6 @@ import { playSound, unlockAudio, type Feedback } from "./feedback";
 import { SignaturePad, type SignatureHandle } from "./SignaturePad";
 import { cn } from "@/lib/utils";
 
-type Mode = "cargar" | "entregar";
-type LoadItem = { key: number; ok: boolean; text: string; sub?: string };
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
 /** Reduce la foto (máx. 1600 px, JPEG) antes de subirla: las fotos del celular pesan varios MB. */
@@ -25,11 +35,46 @@ async function compress(file: File): Promise<Blob> {
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("No se pudo procesar la foto."))), "image/jpeg", 0.8));
 }
 
-/** App de reparto: escanear al cargar el vehículo y al entregar (firma + foto) o registrar un intento fallido. */
-export function RepartoApp({ driver }: { driver: string }) {
-  const [mode, setMode] = useState<Mode>("cargar");
+/** Pasos del flujo: 1 almacenamiento · 2 paquetes · 3 entregar. */
+function Steps({ step }: { step: 1 | 2 | 3 }) {
+  const steps = ["Almacenamiento", "Paquetes", "Entregar"];
+  return (
+    <ol className="grid grid-cols-[1.35fr_1fr_1fr] gap-1" aria-label="Pasos">
+      {steps.map((label, i) => {
+        const n = (i + 1) as 1 | 2 | 3;
+        const state = n < step ? "done" : n === step ? "now" : "next";
+        return (
+          <li
+            key={label}
+            aria-current={state === "now" ? "step" : undefined}
+            className={cn(
+              "flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 text-xs font-semibold",
+              state === "now" && "bg-primary text-primary-foreground",
+              state === "done" && "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200",
+              state === "next" && "bg-muted text-muted-foreground",
+            )}
+          >
+            <span className={cn("grid size-5 shrink-0 place-items-center rounded-full text-[11px]", state === "now" ? "bg-primary-foreground/20" : "bg-background/70")}>
+              {state === "done" ? <CheckCircle2 className="size-3.5" /> : n}
+            </span>
+            <span className="truncate">{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * App de reparto, un solo flujo guiado:
+ *   1. Escanear la etiqueta del almacenamiento del transporte.
+ *   2. Escanear los paquetes que van dentro y cerrar la carga.
+ *   3. Entregar (bloqueado aquí hasta terminar la ruta): escanear la guía → firma → foto → confirmar.
+ * El estado vive en el servidor: recargar o cambiar de teléfono no lo pierde.
+ */
+export function RepartoApp({ driver, initialLoad }: { driver: string; initialLoad: LoadState | null }) {
+  const [load, setLoad] = useState<LoadState | null>(initialLoad);
   const [pending, start] = useTransition();
-  const [loads, setLoads] = useState<LoadItem[]>([]);
   const [current, setCurrent] = useState<DeliveryInfo | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
@@ -49,122 +94,318 @@ export function RepartoApp({ driver }: { driver: string }) {
     };
   }, []);
 
-  const onLoad = (code: string) =>
+  const clear = () => {
+    setError("");
+    setDone("");
+  };
+
+  // ── Paso 1: almacenamiento ──
+  const onStorage = (code: string) =>
     start(async () => {
-      const r = await scanLoad(code);
-      setLoads((l) => [
-        r.ok
-          ? { key: Date.now(), ok: true, text: r.info.tracking, sub: `${r.again ? "Ya estaba en ruta · " : ""}${r.info.destName} · ${r.info.borough} · Z${r.info.zone}` }
-          : { key: Date.now(), ok: false, text: r.error },
-        ...l,
-      ]);
-      if (!r.ok) notify("error", "No se cargó", r.error);
-      else if (r.again) notify("repeat", "Ya estaba cargada", `${r.info.tracking} · ${r.info.destName}`);
-      else notify("ok", "Cargada al vehículo", `${r.info.tracking} · ${r.info.borough} · Zona ${r.info.zone}`);
+      clear();
+      const r = await startLoad(code);
+      if (r.ok) {
+        setLoad(r.load);
+        notify("ok", "Almacenamiento listo", `${r.load.storageName} · ahora escanea los paquetes`);
+      } else {
+        setError(r.error);
+        notify("error", "No se abrió la carga", r.error);
+      }
     });
 
+  // ── Paso 2: paquetes ──
+  const onPackage = (code: string) =>
+    start(async () => {
+      clear();
+      const r = await scanLoad(code);
+      if (!r.ok) {
+        setError(r.error);
+        return notify("error", "No se cargó", r.error);
+      }
+      setLoad((l) => (l && !l.items.some((i) => i.id === r.info.id) ? { ...l, items: [r.info, ...l.items] } : l));
+      if (r.again) notify("repeat", "Ya estaba en esta carga", `${r.info.tracking} · ${r.info.destName}`);
+      else notify("ok", "Cargado", `${r.info.tracking} · ${r.info.borough} · Zona ${r.info.zone}`);
+    });
+
+  const onRemove = (item: DeliveryInfo) =>
+    start(async () => {
+      clear();
+      const r = await removeFromLoad(item.id);
+      if (r.ok) setLoad((l) => (l ? { ...l, items: l.items.filter((i) => i.id !== item.id) } : l));
+      else setError(r.error);
+    });
+
+  const onClose = () => {
+    if (!load) return;
+    if (!window.confirm(`¿Cerrar la carga con ${load.items.length} paquete(s)?\n\nDespués ya no podrás cargar más: la app quedará solo en Entrega hasta que termines la ruta.`)) return;
+    start(async () => {
+      clear();
+      const r = await closeLoad();
+      if (r.ok) {
+        setLoad(r.load);
+        notify("ok", "Carga cerrada", "Ahora escanea la guía de cada paquete al entregarlo");
+      } else {
+        setError(r.error);
+        notify("error", "No se cerró", r.error);
+      }
+    });
+  };
+
+  const onCancelEmpty = () =>
+    start(async () => {
+      clear();
+      const r = await cancelEmptyLoad();
+      if (r.ok) setLoad(null);
+      else setError(r.error);
+    });
+
+  // ── Paso 3: entregar ──
   const onDeliverScan = (code: string) =>
     start(async () => {
-      setError("");
-      setDone("");
+      clear();
       const r = await lookupDelivery(code);
       if (r.ok) {
         setCurrent(r.info);
         notify("ok", "Guía encontrada", `${r.info.destName} · ${r.info.borough}`);
       } else {
         setError(r.error);
-        notify(/ya fue entregada/.test(r.error) ? "repeat" : "error", /ya fue entregada/.test(r.error) ? "Ya estaba entregada" : "No se encontró", r.error);
+        const repeat = /ya fue entregada/.test(r.error);
+        notify(repeat ? "repeat" : "error", repeat ? "Ya estaba entregada" : "No se puede entregar", r.error);
       }
     });
 
-  // Paquetes distintos cargados (un re-escaneo no suma)
-  const loadedOk = new Set(loads.filter((l) => l.ok).map((l) => l.text)).size;
+  const onFinish = () => {
+    if (!load) return;
+    const left = load.items.filter((i) => i.status === "EN_RUTA").length;
+    const msg = left
+      ? `Quedan ${left} paquete(s) sin entregar.\n\nAl terminar regresan al almacén: entrégalos ahí. ¿Terminar la ruta?`
+      : "¿Terminar la ruta? Todos los paquetes quedaron entregados.";
+    if (!window.confirm(msg)) return;
+    start(async () => {
+      clear();
+      const r = await finishMyLoad();
+      if (r.ok) {
+        setLoad(null);
+        setCurrent(null);
+        setDone(r.returned ? `Ruta terminada. ${r.returned} paquete(s) regresan al almacén.` : "Ruta terminada. ¡Todo entregado!");
+        notify("delivered", "Ruta terminada", r.returned ? `${r.returned} paquete(s) regresan al almacén` : "Todo entregado");
+      } else {
+        setError(r.error);
+        notify("error", "No se terminó", r.error);
+      }
+    });
+  };
+
+  const step: 1 | 2 | 3 = !load ? 1 : load.status === "CARGANDO" ? 2 : 3;
+  const delivered = load ? load.items.filter((i) => i.status === "ENTREGADA").length : 0;
+  const total = load?.items.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-md space-y-4 pb-10">
-      <div>
-        <h1 className="text-xl font-semibold">Reparto</h1>
-        <p className="text-sm text-muted-foreground">{driver}</p>
+    <div className="mx-auto max-w-md space-y-4 pb-28">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Reparto</h1>
+          <p className="text-sm text-muted-foreground">{driver}</p>
+        </div>
+        {load && (
+          <div className="text-right">
+            <p className="flex items-center justify-end gap-1 text-sm font-semibold">
+              {step === 3 && <Lock className="size-3.5 text-muted-foreground" aria-label="Bloqueado en entrega" />}
+              {load.storageName}
+            </p>
+            <p className="font-mono text-xs text-muted-foreground">{load.storageCode}</p>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Modo">
-        {(
-          [
-            ["cargar", "Cargar vehículo", Truck],
-            ["entregar", "Entregar", PackageCheck],
-          ] as const
-        ).map(([m, label, Icon]) => (
-          <button
-            key={m}
-            type="button"
-            role="tab"
-            aria-selected={mode === m}
-            onClick={() => {
-              setMode(m);
-              setCurrent(null);
-              setError("");
-              setDone("");
-            }}
-            className={cn("flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold", mode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
-          >
-            <Icon className="size-4" /> {label}
-          </button>
-        ))}
-      </div>
+      <Steps step={step} />
 
-      {mode === "cargar" ? (
+      {done && (
+        <p role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+          <CheckCircle2 className="size-5 shrink-0" /> {done}
+        </p>
+      )}
+
+      {step === 1 && (
         <>
-          <Scanner onCode={onLoad} paused={pending} hint="Escanea cada paquete al subirlo al vehículo" />
+          <Instruction icon={Boxes} title="Escanea el almacenamiento" text="Escanea la etiqueta AL-… de la jaula o caja del transporte donde vas a cargar." />
+          <Scanner onCode={onStorage} paused={pending} hint="Etiqueta del almacenamiento" />
+        </>
+      )}
+
+      {step === 2 && load && (
+        <>
+          <Instruction icon={ScanLine} title={`Escanea los paquetes de ${load.storageName}`} text="Escanea cada paquete al meterlo. Cuando termines, cierra la carga." />
+          <Scanner onCode={onPackage} paused={pending} hint="Guía de cada paquete" />
           <section aria-live="polite" className="card overflow-hidden">
             <header className="flex items-center justify-between border-b px-4 py-2.5 text-sm">
-              <span className="font-semibold">Cargados en esta sesión</span>
-              <span key={loadedOk} className="rp-bump text-lg font-bold tabular-nums">{loadedOk}</span>
+              <span className="font-semibold">En esta carga</span>
+              <span key={total} className="rp-bump text-lg font-bold tabular-nums">{total}</span>
             </header>
-            {loads.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-muted-foreground">Escanea el QR o el código de barras de cada guía.</p>
+            {total === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-muted-foreground">Aún no hay paquetes. Escanea la guía de cada uno.</p>
             ) : (
               <ul className="max-h-80 divide-y overflow-y-auto">
-                {loads.map((l, i) => (
-                  <li key={l.key} className={cn("flex items-start gap-2.5 px-4 py-2.5 text-sm", i === 0 && "rp-slide")}>
-                    {l.ok ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <CircleX className="mt-0.5 size-4 shrink-0 text-rose-600" />}
-                    <div className="min-w-0">
-                      <div className={cn("font-medium", l.ok ? "font-mono" : "text-rose-700 dark:text-rose-300")}>{l.text}</div>
-                      {l.sub && <div className="truncate text-xs text-muted-foreground">{l.sub}</div>}
+                {load.items.map((it, i) => (
+                  <li key={it.id} className={cn("flex items-center gap-2.5 px-4 py-2.5 text-sm", i === 0 && "rp-slide")}>
+                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono font-medium">{it.tracking}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {it.destName} · {it.borough} · Z{it.zone}
+                      </div>
                     </div>
+                    <button type="button" onClick={() => onRemove(it)} disabled={pending} className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={`Bajar ${it.tracking} de la carga`}>
+                      <X className="size-4" />
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
         </>
-      ) : current ? (
-        <Delivery
-          info={current}
-          onCancel={() => setCurrent(null)}
-          onDone={(msg, kind, title) => {
-            setCurrent(null);
-            setDone(msg);
-            notify(kind, title, msg);
-          }}
-          onError={(msg) => notify("error", "Falta algo", msg)}
-        />
-      ) : (
-        <>
-          {done && (
-            <p role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              <CheckCircle2 className="size-5 shrink-0" /> {done}
-            </p>
-          )}
-          <Scanner onCode={onDeliverScan} paused={pending} hint="Escanea la guía del paquete que vas a entregar" />
-          {error && (
-            <p role="alert" className="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error}
-            </p>
-          )}
-        </>
+      )}
+
+      {step === 3 && load && (
+        current ? (
+          <Delivery
+            info={current}
+            onCancel={() => setCurrent(null)}
+            onDone={(msg, kind, title, patch) => {
+              setLoad((l) => (l ? { ...l, items: l.items.map((i) => (i.id === current.id ? { ...i, ...patch } : i)) } : l));
+              setCurrent(null);
+              setDone(msg);
+              notify(kind, title, msg);
+            }}
+            onError={(msg) => notify("error", "Falta algo", msg)}
+          />
+        ) : (
+          <>
+            <section className="card p-4">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-semibold">Entregados</span>
+                <span className="text-lg font-bold tabular-nums">
+                  {delivered} <span className="text-sm font-medium text-muted-foreground">de {total}</span>
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={delivered}>
+                <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${total ? (delivered / total) * 100 : 0}%` }} />
+              </div>
+              <ol className="mt-3 grid grid-cols-4 gap-1 text-center text-[11px] leading-tight text-muted-foreground">
+                {["Escanea la guía", "Pide la firma", "Toma la foto", "Confirma"].map((s, i) => (
+                  <li key={s} className="rounded-md bg-muted px-1 py-1.5">
+                    <span className="block font-bold text-foreground">{i + 1}</span>
+                    {s}
+                  </li>
+                ))}
+              </ol>
+            </section>
+            <Scanner onCode={onDeliverScan} paused={pending} hint="Escanea la guía del paquete que vas a entregar" />
+            <Manifest items={load.items} />
+          </>
+        )
+      )}
+
+      {error && (
+        <p role="alert" className="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error}
+        </p>
+      )}
+
+      {/* Acción principal de cada paso, siempre a la mano */}
+      {step === 2 && load && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <div className="mx-auto max-w-md">
+            {total > 0 ? (
+              <button type="button" onClick={onClose} disabled={pending} className="btn-kurier h-12 w-full text-base">
+                {pending ? <Loader2 className="size-5 animate-spin" /> : <Truck className="size-5" />} Cerrar carga ({total})
+              </button>
+            ) : (
+              <button type="button" onClick={onCancelEmpty} disabled={pending} className="btn-secondary h-12 w-full">
+                <Undo2 className="size-4" /> Cambiar de almacenamiento
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {step === 3 && load && !current && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <div className="mx-auto max-w-md">
+            <button type="button" onClick={onFinish} disabled={pending} className={cn("h-12 w-full text-base", delivered === total ? "btn-kurier" : "btn-secondary")}>
+              {pending ? <Loader2 className="size-5 animate-spin" /> : <PackageCheck className="size-5" />} Terminar ruta
+            </button>
+          </div>
+        </div>
       )}
       <ScanFlash flash={flash} />
     </div>
+  );
+}
+
+function Instruction({ icon: Icon, title, text }: { icon: typeof Boxes; title: string; text: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border bg-card p-4">
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <Icon className="size-5" />
+      </span>
+      <div>
+        <h2 className="font-semibold">{title}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Lista de la carga en reparto: primero lo pendiente. Tocar un paquete muestra su dirección. */
+function Manifest({ items }: { items: DeliveryInfo[] }) {
+  const rank = (i: DeliveryInfo) => (i.status === "EN_RUTA" ? (i.attempts ? 1 : 0) : 2);
+  const sorted = [...items].sort((a, b) => rank(a) - rank(b));
+  return (
+    <section className="card overflow-hidden">
+      <header className="border-b px-4 py-2.5 text-sm font-semibold">Tu carga</header>
+      <ul className="divide-y">
+        {sorted.map((it) => {
+          const delivered = it.status === "ENTREGADA";
+          return (
+            <li key={it.id}>
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-sm">
+                  {delivered ? (
+                    <CheckCircle2 className="size-5 shrink-0 text-emerald-600" aria-label="Entregado" />
+                  ) : it.attempts ? (
+                    <AlertTriangle className="size-5 shrink-0 text-amber-600" aria-label={`${it.attempts} intento(s)`} />
+                  ) : (
+                    <span className="size-5 shrink-0 rounded-full border-2 border-muted-foreground/40" aria-label="Pendiente" />
+                  )}
+                  <div className={cn("min-w-0 flex-1", delivered && "opacity-60")}>
+                    <div className="truncate font-medium">{it.destName}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {it.borough} · Z{it.zone} · <span className="font-mono">{it.tracking}</span>
+                      {it.attempts > 0 && !delivered ? ` · ${it.attempts} intento(s)` : ""}
+                    </div>
+                  </div>
+                  {it.cod > 0 && !delivered && <span className="rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-bold text-background">COBRAR</span>}
+                </summary>
+                <div className="space-y-2 px-4 pb-3 pl-11 text-sm">
+                  <p className="flex items-start gap-1.5">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> {it.address}
+                  </p>
+                  {it.destRef && <p className="text-muted-foreground">Ref: {it.destRef}</p>}
+                  {!delivered && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a href={`tel:${it.destPhone}`} className="btn-secondary h-9 text-xs">
+                        <Phone className="size-3.5" /> Llamar
+                      </a>
+                      <span className="text-xs text-muted-foreground">Para entregar, escanea su guía.</span>
+                    </div>
+                  )}
+                </div>
+              </details>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -176,7 +417,7 @@ function Delivery({
 }: {
   info: DeliveryInfo;
   onCancel: () => void;
-  onDone: (msg: string, kind: Feedback, title: string) => void;
+  onDone: (msg: string, kind: Feedback, title: string, patch: Partial<DeliveryInfo>) => void;
   onError: (msg: string) => void;
 }) {
   const sig = useRef<SignatureHandle>(null);
@@ -207,7 +448,7 @@ function Delivery({
       fd.set("signature", new File([signature], "firma.png", { type: "image/png" }));
       fd.set("photo", new File([photo.blob], "entrega.jpg", { type: "image/jpeg" }));
       const r = await confirmDelivery(fd);
-      if (r.ok) onDone(`Guía ${r.tracking} entregada a ${receiver}.`, "delivered", "¡Entregado!");
+      if (r.ok) onDone(`Guía ${r.tracking} entregada a ${receiver}.`, "delivered", "¡Entregado!", { status: "ENTREGADA" });
       else {
         setError(r.error);
         onError(r.error);
@@ -218,7 +459,7 @@ function Delivery({
     start(async () => {
       setError("");
       const r = await failedAttempt(info.tracking, reason, note);
-      if (r.ok) onDone(`Intento ${r.attempts} registrado para ${info.tracking}. El paquete sigue en ruta.`, "attempt", `Intento ${r.attempts} registrado`);
+      if (r.ok) onDone(`Intento ${r.attempts} registrado para ${info.tracking}. El paquete sigue en tu carga.`, "attempt", `Intento ${r.attempts} registrado`, { attempts: r.attempts });
       else {
         setError(r.error);
         onError(r.error);
@@ -295,7 +536,7 @@ function Delivery({
           </button>
           <div className="flex justify-between">
             <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-              <Undo2 className="size-4" /> Otra guía
+              <Undo2 className="size-4" /> Regresar a la lista
             </button>
             <button type="button" onClick={() => setView("fallo")} className="text-sm font-medium text-rose-700 dark:text-rose-300">
               No se pudo entregar

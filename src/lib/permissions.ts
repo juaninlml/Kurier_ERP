@@ -73,6 +73,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/api/pdf/estado-cuenta", "clientes"],
   ["/api/pdf/ordenes", "ordenes"],
   ["/api/pdf/guia", "envios"],
+  ["/api/pdf/almacenamiento", "envios"],
   ["/api/pdf/tarifario", "tarifario"],
   ["/api/pdf/reporte", "contabilidad"],
   ["/api/pdf/nomina", "nomina"],

@@ -181,3 +181,14 @@ export async function renderShipmentLabel(id: number, sheet = false, origin = ""
   const { ShipmentLabelPdf } = await import("./label");
   return { filename: `Guia_UltimaMilla_${sh.tracking}${sheet ? "_carta" : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} trackUrl={origin ? `${origin}/rastreo/${sh.tracking}` : ""} />) };
 }
+
+/** Etiquetas de almacenamiento: una (id) o todas las activas (sin id). */
+export async function renderStorageLabels(id?: number) {
+  const units = await prisma.storageUnit.findMany({ where: id ? { id } : { active: true }, orderBy: { name: "asc" } });
+  if (!units.length) return null;
+  const { StorageLabelPdf } = await import("./storage-label");
+  return {
+    filename: units.length === 1 ? `Almacenamiento_${units[0].code}.pdf` : "Almacenamientos.pdf",
+    buffer: await renderToBuffer(<StorageLabelPdf units={units} />),
+  };
+}

@@ -137,7 +137,7 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
       <div className="flex items-center gap-2">
         <p className="flex flex-1 items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-sm text-muted-foreground" aria-live="polite">
           <ScanBarcode className="size-5 shrink-0 text-primary" aria-hidden />
-          {paused ? "Procesando…" : "Lector listo: dispara el escáner o apunta la cámara a la guía."}
+          {paused ? "Procesando…" : `Lector listo: dispara el escáner o apunta la cámara${hint ? ` · ${hint.toLowerCase()}` : "."}`}
         </p>
         {supported && (
           <button type="button" onClick={() => setOn((x) => !x)} aria-label={on ? "Apagar cámara" : "Encender cámara"} className="btn-secondary h-11 px-3">

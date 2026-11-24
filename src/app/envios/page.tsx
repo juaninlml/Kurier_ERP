@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, MapPinned, MessageCircle, Plus, Truck } from "lucide-react";
+import { CalendarDays, MapPinned, MessageCircle, Plus, Truck, Boxes } from "lucide-react";
 import { siteOrigin, trackingUrl, whatsappLink, whatsappMessage } from "@/lib/tracking";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -44,9 +44,14 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
         title={t("Envíos última milla")}
         subtitle={t("Guías de entrega en la Ciudad de México, cotizadas por zona con el tarifario de última milla. Formato 4 × 6 para impresora térmica.")}
         actions={
-          <Link href="/envios/nuevo" className="btn-primary">
-            <Plus className="size-4" /> {t("Crear envío")}
-          </Link>
+          <>
+            <Link href="/envios/almacenamientos" className="btn-secondary">
+              <Boxes className="size-4" /> {t("Almacenamientos y rutas")}
+            </Link>
+            <Link href="/envios/nuevo" className="btn-primary">
+              <Plus className="size-4" /> {t("Crear envío")}
+            </Link>
+          </>
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">

@@ -765,6 +765,8 @@ model Shipment {
   loadedAt      DateTime?
   loadedBy      String          @default("")
   attempts      Int             @default(0) // intentos de entrega fallidos
+  loadId        Int? // carga de ruta (almacenamiento del transporte) en la que va o fue
+  load          RouteLoad?      @relation(fields: [loadId], references: [id], onDelete: SetNull)
   receiverName  String          @default("") // quién recibió
   deliveredBy   String          @default("")
   proof         ShipmentProof?
@@ -817,6 +819,7 @@ model Shipment {
 
   @@index([createdAt])
   @@index([clientId, createdAt])
+  @@index([loadId])
 }
 
 /// Bitácora de una guía: creación, correcciones de destinatario y cambios de estatus.
@@ -926,4 +929,34 @@ model ShipmentProof {
   photo         Bytes
   photoMime     String   @default("image/jpeg")
   createdAt     DateTime @default(now())
+}
+
+/// Almacenamiento del transporte (jaula, caja o compartimento de la camioneta) con su código impreso.
+/// El repartidor lo escanea primero y luego los paquetes que van dentro.
+model StorageUnit {
+  id        Int         @id @default(autoincrement())
+  code      String      @unique // AL-XXXX-XXXX (va en la etiqueta: QR y código de barras)
+  name      String // "Jaula 1 · NP300"
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  loads     RouteLoad[]
+}
+
+/// Carga de ruta: un repartidor llena un almacenamiento, lo cierra y sale a entregar.
+/// status: CARGANDO (escaneando paquetes) | EN_REPARTO (cerrada: la app solo deja entregar) | TERMINADA
+model RouteLoad {
+  id         Int         @id @default(autoincrement())
+  storageId  Int
+  storage    StorageUnit @relation(fields: [storageId], references: [id], onDelete: Restrict)
+  driverId   Int
+  driverName String      @default("")
+  status     String      @default("CARGANDO")
+  startedAt  DateTime    @default(now())
+  closedAt   DateTime?
+  finishedAt DateTime?
+  finishedBy String      @default("") // quién la terminó (el repartidor o un administrador)
+  shipments  Shipment[]
+
+  @@index([driverId, status])
+  @@index([storageId, status])
 }
