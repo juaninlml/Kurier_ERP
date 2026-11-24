@@ -16,6 +16,7 @@ import {
   type LoadState,
 } from "@/app/actions/reparto";
 import { FAIL_REASONS } from "@/lib/lastmile-zones";
+import { DEPOT } from "@/lib/route-order";
 import { Scanner } from "./Scanner";
 import { ScanFlash, type Flash } from "./ScanFlash";
 import { playSound, unlockAudio, type Feedback } from "./feedback";
@@ -294,6 +295,9 @@ export function RepartoApp({ driver, initialLoad }: { driver: string; initialLoa
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={delivered}>
                 <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${total ? (delivered / total) * 100 : 0}%` }} />
               </div>
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPin className="size-3.5 shrink-0" /> Ruta calculada saliendo de {DEPOT.short}
+              </p>
               <ol className="mt-3 grid grid-cols-4 gap-1 text-center text-[11px] leading-tight text-muted-foreground">
                 {["Escanea la guía", "Pide la firma", "Toma la foto", "Confirma"].map((s, i) => (
                   <li key={s} className="rounded-md bg-muted px-1 py-1.5">
