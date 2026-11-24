@@ -197,6 +197,8 @@ export function RepartoApp({ driver, initialLoad }: { driver: string; initialLoa
   };
 
   const step: 1 | 2 | 3 = !load ? 1 : load.status === "CARGANDO" ? 2 : 3;
+  const route = load ? routeOrder(load.items) : [];
+  const nextStop = route.find((i) => i.status === "EN_RUTA" && !i.attempts) ?? route.find((i) => i.status === "EN_RUTA") ?? null;
   const delivered = load ? load.items.filter((i) => i.status === "ENTREGADA").length : 0;
   const total = load?.items.length ?? 0;
 
@@ -270,6 +272,7 @@ export function RepartoApp({ driver, initialLoad }: { driver: string; initialLoa
         current ? (
           <Delivery
             info={current}
+            expected={nextStop && nextStop.id !== current.id ? nextStop : null}
             onCancel={() => setCurrent(null)}
             onDone={(msg, kind, title, patch) => {
               setLoad((l) => (l ? { ...l, items: l.items.map((i) => (i.id === current.id ? { ...i, ...patch } : i)) } : l));
@@ -300,8 +303,9 @@ export function RepartoApp({ driver, initialLoad }: { driver: string; initialLoa
                 ))}
               </ol>
             </section>
-            <Scanner onCode={onDeliverScan} paused={pending} hint="Escanea la guía del paquete que vas a entregar" />
-            <Manifest items={load.items} />
+            <NextStop stop={nextStop} total={total} />
+            <Scanner onCode={onDeliverScan} paused={pending} hint={nextStop ? `Escanea la guía de la parada ${nextStop.seq ?? ""}`.trim() : "Escanea la guía del paquete que vas a entregar"} />
+            <Manifest items={route} nextId={nextStop?.id ?? null} />
           </>
         )
       )}
@@ -356,37 +360,101 @@ function Instruction({ icon: Icon, title, text }: { icon: typeof Boxes; title: s
   );
 }
 
-/** Lista de la carga en reparto: primero lo pendiente. Tocar un paquete muestra su dirección. */
-function Manifest({ items }: { items: DeliveryInfo[] }) {
-  const rank = (i: DeliveryInfo) => (i.status === "EN_RUTA" ? (i.attempts ? 1 : 0) : 2);
-  const sorted = [...items].sort((a, b) => rank(a) - rank(b));
+/** Paradas en orden de entrega (número de parada; las que aún no lo tienen, al final). */
+function routeOrder(items: DeliveryInfo[]) {
+  return [...items].sort((a, b) => (a.seq ?? 1e9) - (b.seq ?? 1e9) || a.id - b.id);
+}
+
+/** Número de parada en un círculo; palomita si ya se entregó. */
+function StopBadge({ it, next }: { it: DeliveryInfo; next?: boolean }) {
+  if (it.status === "ENTREGADA")
+    return (
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" aria-label={`Parada ${it.seq ?? ""} entregada`}>
+        <CheckCircle2 className="size-5" />
+      </span>
+    );
+  return (
+    <span
+      className={cn(
+        "grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums",
+        next ? "bg-primary text-primary-foreground" : it.attempts ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200" : "bg-muted text-foreground",
+      )}
+      aria-label={`Parada ${it.seq ?? ""}`}
+    >
+      {it.seq ?? "·"}
+    </span>
+  );
+}
+
+/** "Siguiente entrega": a dónde ir ahora. Cambia sola al entregar o registrar un intento. */
+function NextStop({ stop, total }: { stop: DeliveryInfo | null; total: number }) {
+  if (!stop)
+    return (
+      <section className="flex items-center gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <CheckCircle2 className="size-6 shrink-0" />
+        <div>
+          <h2 className="font-semibold">¡Terminaste las entregas!</h2>
+          <p className="text-sm opacity-80">Regresa al almacén y toca “Terminar ruta”.</p>
+        </div>
+      </section>
+    );
+  return (
+    <section className="rp-slide overflow-hidden rounded-xl border-2 border-primary bg-card" key={stop.id} aria-live="polite">
+      <header className="flex items-center justify-between bg-primary px-4 py-2 text-primary-foreground">
+        <span className="text-sm font-semibold">{stop.attempts ? "Reintentar entrega" : "Siguiente entrega"}</span>
+        <span className="text-sm font-bold tabular-nums">
+          Parada {stop.seq ?? "—"} <span className="font-medium opacity-80">de {total}</span>
+        </span>
+      </header>
+      <div className="space-y-2 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg leading-tight font-semibold">{stop.destName}</h2>
+          {stop.cod > 0 && <span className="shrink-0 rounded-md bg-foreground px-2 py-1 text-xs font-bold text-background">COBRAR {money(stop.cod)}</span>}
+        </div>
+        <p className="flex items-start gap-1.5 text-sm">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> {stop.address}
+        </p>
+        {stop.destRef && <p className="pl-5.5 text-sm text-muted-foreground">Ref: {stop.destRef}</p>}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <a href={`tel:${stop.destPhone}`} className="btn-secondary h-10 text-sm">
+            <Phone className="size-4" /> Llamar
+          </a>
+          <span className="rounded-md bg-muted px-2 py-1.5 text-xs">
+            {stop.borough} · Z{stop.zone}
+          </span>
+          {stop.attempts > 0 && <span className="rounded-md bg-amber-100 px-2 py-1.5 text-xs text-amber-900">{stop.attempts} intento(s)</span>}
+        </div>
+        <p className="text-xs text-muted-foreground">Al llegar, escanea la guía de este paquete.</p>
+      </div>
+    </section>
+  );
+}
+
+/** La ruta completa en orden de entrega. Tocar una parada muestra su dirección. */
+function Manifest({ items, nextId }: { items: DeliveryInfo[]; nextId: number | null }) {
   return (
     <section className="card overflow-hidden">
-      <header className="border-b px-4 py-2.5 text-sm font-semibold">Tu carga</header>
-      <ul className="divide-y">
-        {sorted.map((it) => {
+      <header className="border-b px-4 py-2.5 text-sm font-semibold">Tu ruta en orden</header>
+      <ol className="divide-y">
+        {items.map((it) => {
           const delivered = it.status === "ENTREGADA";
+          const next = it.id === nextId;
           return (
-            <li key={it.id}>
+            <li key={it.id} className={cn(next && "bg-primary/5")}>
               <details className="group">
-                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-sm">
-                  {delivered ? (
-                    <CheckCircle2 className="size-5 shrink-0 text-emerald-600" aria-label="Entregado" />
-                  ) : it.attempts ? (
-                    <AlertTriangle className="size-5 shrink-0 text-amber-600" aria-label={`${it.attempts} intento(s)`} />
-                  ) : (
-                    <span className="size-5 shrink-0 rounded-full border-2 border-muted-foreground/40" aria-label="Pendiente" />
-                  )}
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm">
+                  <StopBadge it={it} next={next} />
                   <div className={cn("min-w-0 flex-1", delivered && "opacity-60")}>
-                    <div className="truncate font-medium">{it.destName}</div>
+                    <div className={cn("truncate font-medium", delivered && "line-through decoration-1")}>{it.destName}</div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {it.borough} · Z{it.zone} · <span className="font-mono">{it.tracking}</span>
+                      {it.borough} · CP {it.address.match(/CP (\d{5})/)?.[1] ?? ""} · <span className="font-mono">{it.tracking}</span>
                       {it.attempts > 0 && !delivered ? ` · ${it.attempts} intento(s)` : ""}
                     </div>
                   </div>
-                  {it.cod > 0 && !delivered && <span className="rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-bold text-background">COBRAR</span>}
+                  {next && <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold text-primary-foreground">AHORA</span>}
+                  {!next && it.cod > 0 && !delivered && <span className="shrink-0 rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-bold text-background">COBRAR</span>}
                 </summary>
-                <div className="space-y-2 px-4 pb-3 pl-11 text-sm">
+                <div className="space-y-2 px-4 pb-3 pl-15 text-sm">
                   <p className="flex items-start gap-1.5">
                     <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> {it.address}
                   </p>
@@ -404,18 +472,21 @@ function Manifest({ items }: { items: DeliveryInfo[] }) {
             </li>
           );
         })}
-      </ul>
+      </ol>
     </section>
   );
 }
 
 function Delivery({
   info,
+  expected,
   onCancel,
   onDone,
   onError,
 }: {
   info: DeliveryInfo;
+  /** La parada que tocaba según la ruta, si se escaneó otra. */
+  expected: DeliveryInfo | null;
   onCancel: () => void;
   onDone: (msg: string, kind: Feedback, title: string, patch: Partial<DeliveryInfo>) => void;
   onError: (msg: string) => void;
@@ -468,10 +539,21 @@ function Delivery({
 
   return (
     <div className="space-y-4">
+      {expected && (
+        <p role="status" className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Esta es la parada <b>{info.seq ?? "—"}</b>. Según tu ruta tocaba la <b>{expected.seq ?? "—"}</b> ({expected.destName}). Puedes entregarla de todos modos.
+          </span>
+        </p>
+      )}
       <section className="card p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="font-mono text-xs text-muted-foreground">{info.tracking}</p>
+            <p className="font-mono text-xs text-muted-foreground">
+              {info.seq ? `Parada ${info.seq} · ` : ""}
+              {info.tracking}
+            </p>
             <h2 className="text-lg font-semibold">{info.destName}</h2>
           </div>
           <span className="rounded-md bg-foreground px-2 py-1 text-xs font-bold text-background">Z{info.zone}</span>

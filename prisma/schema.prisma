@@ -765,6 +765,7 @@ model Shipment {
   loadedAt      DateTime?
   loadedBy      String          @default("")
   attempts      Int             @default(0) // intentos de entrega fallidos
+  routeSeq      Int? // orden de entrega dentro de su carga (1 = primera parada); se calcula al cerrar la carga
   loadId        Int? // carga de ruta (almacenamiento del transporte) en la que va o fue
   load          RouteLoad?      @relation(fields: [loadId], references: [id], onDelete: SetNull)
   receiverName  String          @default("") // quién recibió

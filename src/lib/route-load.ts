@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { prisma } from "./db";
+import { orderStops } from "./route-order";
 
 /*
  * Cargas de ruta. Flujo del repartidor en /reparto:
@@ -52,4 +53,24 @@ export async function finishRouteLoad(loadId: number, by: string) {
     prisma.routeLoad.update({ where: { id: loadId }, data: { status: "TERMINADA", finishedAt: new Date(), finishedBy: by } }),
   ]);
   return { returned: pending.length, load };
+}
+
+/**
+ * Calcula y guarda el orden de entrega (routeSeq 1…n) de las guías de una carga.
+ * Sale del almacén: el CP de la empresa en Configuración. Ver src/lib/route-order.ts.
+ */
+export async function assignRouteOrder(loadId: number) {
+  const [stops, settings] = await Promise.all([
+    prisma.shipment.findMany({
+      where: { loadId },
+      select: { id: true, destZip: true, borough: true, destColony: true, destStreet: true, destNumber: true },
+    }),
+    prisma.companySettings.findUnique({ where: { id: 1 }, select: { zip: true } }),
+  ]);
+  const order = orderStops(
+    stops.map((s) => ({ id: s.id, zip: s.destZip, borough: s.borough, colony: s.destColony, street: s.destStreet, number: s.destNumber })),
+    settings?.zip ?? "",
+  );
+  await prisma.$transaction(order.map((id, i) => prisma.shipment.update({ where: { id }, data: { routeSeq: i + 1 } })));
+  return order.length;
 }

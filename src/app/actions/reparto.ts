@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { writeAudit } from "@/lib/audit";
 import { normalizeTracking } from "@/lib/tracking";
 import { FAIL_REASONS, SERVICE_LEVELS, serviceLevelOf } from "@/lib/lastmile-zones";
-import { ACTIVE_LOAD, finishRouteLoad, storageCodeFrom } from "@/lib/route-load";
+import { ACTIVE_LOAD, assignRouteOrder, finishRouteLoad, storageCodeFrom } from "@/lib/route-load";
 
 /*
  * App de reparto (/reparto), un solo flujo guiado (ver src/lib/route-load.ts):
@@ -47,6 +47,8 @@ export type DeliveryInfo = {
   service: string;
   attempts: number;
   content: string;
+  /** Número de parada en el orden de entrega (null mientras se carga). */
+  seq: number | null;
 };
 
 /** Estado de la carga del repartidor (lo que dibuja la app). */
@@ -77,6 +79,7 @@ const select = {
   attempts: true,
   content: true,
   loadId: true,
+  routeSeq: true,
 } as const;
 
 function info(s: Record<string, unknown>): DeliveryInfo {
@@ -96,6 +99,7 @@ function info(s: Record<string, unknown>): DeliveryInfo {
     service: SERVICE_LEVELS[serviceLevelOf(x.serviceLevel)],
     attempts: x.attempts,
     content: x.content,
+    seq: (s.routeSeq as number | null) ?? null,
   };
 }
 
@@ -119,9 +123,17 @@ async function activeLoadOf(driverId: number) {
 async function loadState(loadId: number): Promise<LoadState | null> {
   const l = await prisma.routeLoad.findUnique({
     where: { id: loadId },
-    include: { storage: { select: { name: true, code: true } }, shipments: { select, orderBy: [{ zone: "asc" }, { borough: "asc" }, { id: "asc" }] } },
+    include: {
+      storage: { select: { name: true, code: true } },
+      shipments: { select, orderBy: [{ routeSeq: { sort: "asc", nulls: "last" } }, { loadedAt: "desc" }, { id: "desc" }] },
+    },
   });
   if (!l || l.status === "TERMINADA") return null;
+  // Rutas cerradas antes de que existiera el orden de entrega: se calcula la primera vez
+  if (l.status === "EN_REPARTO" && l.shipments.some((s) => s.routeSeq == null)) {
+    await assignRouteOrder(l.id);
+    return loadState(loadId);
+  }
   return { id: l.id, status: l.status as LoadState["status"], storageName: l.storage.name, storageCode: l.storage.code, items: l.shipments.map(info) };
 }
 
@@ -187,6 +199,7 @@ export async function scanLoad(code: string): Promise<{ ok: true; info: Delivery
       data: {
         status: "EN_RUTA",
         loadId: load.id,
+        routeSeq: null, // el orden se calcula al cerrar la carga
         loadedAt: new Date(),
         loadedBy: name,
         events: { create: { kind: "CARGA", detail: `Cargada en ${load.storage.name} · ${s.status === "EN_RUTA" ? "En ruta" : "Generada → En ruta"}`, by: name } },
@@ -210,7 +223,7 @@ export async function removeFromLoad(shipmentId: number): Promise<{ ok: true } |
     if (!s || s.loadId !== load.id) throw new Error("Ese paquete no está en tu carga.");
     await prisma.shipment.update({
       where: { id: s.id },
-      data: { status: "GENERADA", loadId: null, events: { create: { kind: "DESCARGA", detail: `Se bajó de ${load.storage.name} antes de salir`, by: name } } },
+      data: { status: "GENERADA", loadId: null, routeSeq: null, events: { create: { kind: "DESCARGA", detail: `Se bajó de ${load.storage.name} antes de salir`, by: name } } },
     });
     refresh(s.id);
     return { ok: true };
@@ -228,6 +241,8 @@ export async function closeLoad(): Promise<{ ok: true; load: LoadState } | { ok:
     const count = await prisma.shipment.count({ where: { loadId: load.id } });
     if (!count) throw new Error("Escanea al menos un paquete antes de cerrar la carga.");
     await prisma.routeLoad.update({ where: { id: load.id }, data: { status: "EN_REPARTO", closedAt: new Date() } });
+    // Orden de entrega: 1.ª, 2.ª… parada (ver src/lib/route-order.ts)
+    await assignRouteOrder(load.id);
     await writeAudit({ user: me, module: "reparto", fnName: "closeLoad", args: [load.id], note: { summary: `Cerró ${load.storage.name} con ${count} paquete(s) y salió a reparto` }, href: "/envios/almacenamientos" }).catch(() => {});
     refresh();
     return { ok: true, load: (await loadState(load.id))! };
