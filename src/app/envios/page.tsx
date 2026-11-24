@@ -60,7 +60,7 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
         <Stat label="Por zona (mes)" value={`${zone(1)} · ${zone(2)}`} hint={t("Zona 1 · Zona 2")} icon={MapPinned} />
       </div>
       <section className="card overflow-hidden">
-        <FilterBar basePath="/envios" q={q} status={status} statuses={SHIPMENT_STATUSES} counts={counts} placeholder="Buscar guía, destinatario, CP o cliente" />
+        <FilterBar basePath="/envios" q={q} status={status} statuses={SHIPMENT_STATUSES} counts={counts} placeholder={t("Buscar guía, destinatario, CP o cliente")} />
         {list.length === 0 ? (
           <Empty icon={Truck} action={<Link href="/envios/nuevo" className="btn-primary"><Plus className="size-4" /> {t("Crear envío")}</Link>}>
             {q || status ? t("No hay guías con ese filtro.") : t("Aún no hay guías de última milla.")}

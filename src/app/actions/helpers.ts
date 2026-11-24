@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UserError } from "@/lib/user-error";
 
 export const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 export const numv = (fd: FormData, k: string, def = 0) => {
@@ -6,7 +7,7 @@ export const numv = (fd: FormData, k: string, def = 0) => {
   const v = typeof fd.get(k) === "string" ? String(fd.get(k)).replace(/,/g, "").trim() : fd.get(k);
   if (v === null || v === "") return def;
   const n = Number(v);
-  if (!Number.isFinite(n)) throw new Error(`Valor numérico inválido en ${k}`);
+  if (!Number.isFinite(n)) throw new UserError("Valor numérico inválido en {v0}", { v0: k });
   return n;
 };
 

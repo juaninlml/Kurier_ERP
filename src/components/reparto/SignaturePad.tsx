@@ -2,11 +2,13 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Eraser } from "lucide-react";
+import { useT } from "../I18nProvider";
 
 export type SignatureHandle = { toBlob: () => Promise<Blob | null>; isEmpty: () => boolean; clear: () => void };
 
 /** Recuadro para firmar con el dedo (o stylus). Exporta la firma como PNG con fondo blanco. */
 export const SignaturePad = forwardRef<SignatureHandle, { onChange?: (empty: boolean) => void }>(function SignaturePad({ onChange }, ref) {
+  const t = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [empty, setEmpty] = useState(true);
@@ -49,7 +51,7 @@ export const SignaturePad = forwardRef<SignatureHandle, { onChange?: (empty: boo
       <div className="relative">
         <canvas
           ref={canvas}
-          aria-label="Recuadro de firma"
+          aria-label={t("Recuadro de firma")}
           className="h-44 w-full touch-none rounded-xl border-2 border-dashed border-input bg-white"
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -75,10 +77,10 @@ export const SignaturePad = forwardRef<SignatureHandle, { onChange?: (empty: boo
           onPointerUp={() => (drawing.current = false)}
           onPointerCancel={() => (drawing.current = false)}
         />
-        {empty && <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-slate-400">Firma aquí</span>}
+        {empty && <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-slate-400">{t("Firma aquí")}</span>}
       </div>
       <button type="button" onClick={clear} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary">
-        <Eraser className="size-3.5" /> Borrar firma
+        <Eraser className="size-3.5" /> {t("Borrar firma")}
       </button>
     </div>
   );

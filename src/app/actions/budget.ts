@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auditNote } from "@/lib/audit";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { formatMoney, round2 } from "@/lib/money";
+import { UserError } from "@/lib/user-error";
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -26,7 +27,7 @@ async function saveBudgetImpl(year: number, month: number, fd: FormData) {
     const [type, category] = key.split("|");
     const raw = String(v).replace(/,/g, "").trim();
     const amount = raw === "" ? 0 : round2(Number(raw));
-    if (!Number.isFinite(amount) || amount < 0) throw new Error(`Monto inválido en ${category}.`);
+    if (!Number.isFinite(amount) || amount < 0) throw new UserError("Monto inválido en {v0}.", { v0: category });
     const where = { year_month_type_category: { year, month, type, category } };
     if (amount === 0) ops.push(prisma.budget.deleteMany({ where: { year, month, type, category } }));
     else ops.push(prisma.budget.upsert({ where, create: { year, month, type, category, amount }, update: { amount } }));

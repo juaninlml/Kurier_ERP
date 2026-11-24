@@ -12,6 +12,7 @@ import { decryptSecret, encryptSecret, newSecret, verifyCode } from "@/lib/totp"
 import { autoCloseShifts, localParts, nextAction, PUNCH_LABEL, PUNCH_TYPES, toMin, validAlternatives, zonedTime, type PunchType } from "@/lib/attendance";
 import { LATES_PER_REST, monthLates } from "@/lib/incidents";
 import { numv, str } from "./helpers";
+import { UserError } from "@/lib/user-error";
 
 const KIOSK_COOKIE = "kurier_kiosk";
 const sha = (t: string) => createHash("sha256").update(t).digest("hex");
@@ -259,7 +260,7 @@ async function authorizeOvertimeImpl(fd: FormData) {
   if (!employeeId || !DATE.test(workDate)) throw new Error("Elige el empleado y el día.");
   if (!HHMM.test(until)) throw new Error("Indica hasta qué hora (HH:MM).");
   const e = await prisma.employee.findUniqueOrThrow({ where: { id: employeeId } });
-  if (toMin(until) <= toMin(e.scheduleEnd)) throw new Error(`La hora debe ser después de su salida (${e.scheduleEnd}).`);
+  if (toMin(until) <= toMin(e.scheduleEnd)) throw new UserError("La hora debe ser después de su salida ({v0}).", { v0: e.scheduleEnd });
   await prisma.overtimeAuth.upsert({
     where: { employeeId_workDate: { employeeId, workDate } },
     create: { employeeId, workDate, until, note: str(fd, "note"), approvedById: user.id },

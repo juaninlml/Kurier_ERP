@@ -9,12 +9,13 @@ import { addDays, formatMoney, fromInputDate, round2 } from "@/lib/money";
 import { auditNote } from "@/lib/audit";
 import { EXPENSE_CATEGORIES } from "@/lib/constants";
 import { numv, str } from "./helpers";
+import { UserError } from "@/lib/user-error";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateInput(fd: FormData, k: string, label: string) {
   const v = str(fd, k);
-  if (!DATE_RE.test(v)) throw new Error(`Escribe una fecha válida en ${label}.`);
+  if (!DATE_RE.test(v)) throw new UserError("Escribe una fecha válida en {v0}.", { v0: label });
   return fromInputDate(v);
 }
 
@@ -76,7 +77,7 @@ async function updateBillImpl(id: number, fd: FormData) {
   if (bill._count.payments > 0) {
     // Con pagos registrados solo se corrigen datos que no cambian lo ya pagado.
     if (data.supplierId !== bill.supplierId) throw new Error("No se puede cambiar el proveedor: ya tiene pagos registrados.");
-    if (data.total < bill.paidTotal - 0.005) throw new Error(`El total no puede ser menor a lo ya pagado (${bill.paidTotal.toFixed(2)}).`);
+    if (data.total < bill.paidTotal - 0.005) throw new UserError("El total no puede ser menor a lo ya pagado ({v0}).", { v0: bill.paidTotal.toFixed(2) });
   }
   await prisma.$transaction(async (tx) => {
     await tx.supplierBill.update({ where: { id }, data });
@@ -93,7 +94,7 @@ async function addBillPaymentImpl(billId: number, fd: FormData) {
   const bill = await prisma.supplierBill.findUniqueOrThrow({ where: { id: billId }, include: { supplier: { select: { name: true } } } });
   if (bill.status === "CANCELADA") throw new Error("La cuenta está cancelada.");
   const balance = round2(bill.total - bill.paidTotal);
-  if (amount > balance + 0.005) throw new Error(`El pago excede el saldo pendiente (${balance.toFixed(2)}).`);
+  if (amount > balance + 0.005) throw new UserError("El pago excede el saldo pendiente ({v0}).", { v0: balance.toFixed(2) });
   const date = dateInput(fd, "date", "Fecha");
   const method = str(fd, "method") || "Transferencia";
   const reference = str(fd, "reference");

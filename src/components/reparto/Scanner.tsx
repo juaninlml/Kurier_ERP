@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff, ScanBarcode } from "lucide-react";
 import { playSound } from "./feedback";
+import { useT } from "../I18nProvider";
 
 type Detector = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 type DetectorCtor = new (opts: { formats: string[] }) => Detector;
@@ -16,6 +17,9 @@ type DetectorCtor = new (opts: { formats: string[] }) => Detector;
 const SCAN_GAP = 50; // ms máximos entre caracteres de un escáner (una persona tarda más de 80–100 ms)
 const MIN_LEN = 8;
 export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => void; paused?: boolean; hint?: string }) {
+  const t = useT();
+  const tRef = useRef(t);
+  tRef.current = t;
   const video = useRef<HTMLVideoElement>(null);
   const [on, setOn] = useState(true);
   const [error, setError] = useState("");
@@ -47,7 +51,7 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
         if (code.length >= MIN_LEN) {
           e.preventDefault();
           if (human) {
-            setNotice("La guía no se puede escribir a mano: usa el escáner o la cámara.");
+            setNotice(tRef.current("La guía no se puede escribir a mano: usa el escáner o la cámara."));
             playSound("error");
           }
           else if (!pausedRef.current) {
@@ -106,7 +110,7 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
         };
         tick();
       } catch {
-        setError("No se pudo abrir la cámara. Revisa el permiso de cámara del navegador para este sitio.");
+        setError(tRef.current("No se pudo abrir la cámara. Revisa el permiso de cámara del navegador para este sitio."));
       }
     })();
     return () => {
@@ -123,7 +127,7 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
           <video ref={video} playsInline muted className="aspect-[4/3] w-full object-cover" />
           {/* Marco de enfoque */}
           <div aria-hidden className="pointer-events-none absolute inset-[18%] rounded-xl border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.35)]" />
-          {paused && <div className="absolute inset-0 grid place-items-center bg-black/55 text-sm font-medium text-white">Procesando…</div>}
+          {paused && <div className="absolute inset-0 grid place-items-center bg-black/55 text-sm font-medium text-white">{t("Procesando…")}</div>}
           {hint && !paused && <p className="absolute right-0 bottom-2 left-0 text-center text-xs font-medium text-white drop-shadow">{hint}</p>}
         </div>
       )}
@@ -131,16 +135,16 @@ export function Scanner({ onCode, paused, hint }: { onCode: (code: string) => vo
       {error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{error}</p>}
       {supported === false && (
         <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-          Este navegador no puede leer códigos con la cámara (en iPhone pasa con Safari). Usa el escáner del PDA o una pistola lectora.
+          {t("Este navegador no puede leer códigos con la cámara (en iPhone pasa con Safari). Usa el escáner del PDA o una pistola lectora.")}
         </p>
       )}
       <div className="flex items-center gap-2">
         <p className="flex flex-1 items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-sm text-muted-foreground" aria-live="polite">
           <ScanBarcode className="size-5 shrink-0 text-primary" aria-hidden />
-          {paused ? "Procesando…" : `Lector listo: dispara el escáner o apunta la cámara${hint ? ` · ${hint.toLowerCase()}` : "."}`}
+          {paused ? t("Procesando…") : `${t("Lector listo: dispara el escáner o apunta la cámara")}${hint ? ` · ${hint.toLowerCase()}` : "."}`}
         </p>
         {supported && (
-          <button type="button" onClick={() => setOn((x) => !x)} aria-label={on ? "Apagar cámara" : "Encender cámara"} className="btn-secondary h-11 px-3">
+          <button type="button" onClick={() => setOn((x) => !x)} aria-label={on ? t("Apagar cámara") : t("Encender cámara")} className="btn-secondary h-11 px-3">
             {on ? <CameraOff className="size-4" /> : <Camera className="size-4" />}
           </button>
         )}

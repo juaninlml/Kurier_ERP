@@ -6,8 +6,11 @@ import { assertSignedIn } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
 import { writeAudit } from "@/lib/audit";
 import { normalizeTracking } from "@/lib/tracking";
+import { getT } from "@/lib/i18n/server";
+import { translateError } from "@/lib/user-error";
 import { FAIL_REASONS, SERVICE_LEVELS, serviceLevelOf } from "@/lib/lastmile-zones";
 import { ACTIVE_LOAD, assignRouteOrder, finishRouteLoad, storageCodeFrom } from "@/lib/route-load";
+import { UserError } from "@/lib/user-error";
 
 /*
  * App de reparto (/reparto), un solo flujo guiado (ver src/lib/route-load.ts):
@@ -30,7 +33,11 @@ async function driver() {
   return { me, name: me.name || me.email };
 }
 
-const fail = (e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : "No se pudo completar. Intenta de nuevo." });
+/** Error para la app, en el idioma del repartidor. */
+async function fail(e: unknown) {
+  const t = await getT();
+  return { ok: false as const, error: translateError(e, t) ?? t("No se pudo completar. Intenta de nuevo.") };
+}
 
 export type DeliveryInfo = {
   id: number;
@@ -108,7 +115,7 @@ async function findShipment(code: string) {
   const tracking = trackingFrom(code);
   if (!tracking) throw new Error("No se reconoce el código. Escanea el QR o el código de barras de la guía Kurier.");
   const s = await prisma.shipment.findUnique({ where: { tracking }, select });
-  if (!s) throw new Error(`No existe la guía ${tracking}.`);
+  if (!s) throw new UserError("No existe la guía {v0}.", { v0: tracking });
   return s;
 }
 
@@ -166,16 +173,16 @@ export async function startLoad(code: string): Promise<{ ok: true; load: LoadSta
       throw new Error("No se reconoce el código. Escanea la etiqueta AL-… del almacenamiento.");
     }
     const unit = await prisma.storageUnit.findUnique({ where: { code: storageCode } });
-    if (!unit) throw new Error(`No existe el almacenamiento ${storageCode}. Pide que lo den de alta en Envíos → Almacenamientos.`);
-    if (!unit.active) throw new Error(`El almacenamiento ${unit.name} está desactivado.`);
+    if (!unit) throw new UserError("No existe el almacenamiento {v0}. Pide que lo den de alta en Envíos → Almacenamientos.", { v0: storageCode });
+    if (!unit.active) throw new UserError("El almacenamiento {v0} está desactivado.", { v0: unit.name });
     const other = await prisma.routeLoad.findFirst({ where: { storageId: unit.id, status: { in: ACTIVE_LOAD } }, select: { driverName: true } });
-    if (other) throw new Error(`${unit.name} ya lo está usando ${other.driverName}. Escanea otro almacenamiento.`);
+    if (other) throw new UserError("{v0} ya lo está usando {v1}. Escanea otro almacenamiento.", { v0: unit.name, v1: other.driverName });
     const load = await prisma.routeLoad.create({ data: { storageId: unit.id, driverId: me.id, driverName: name } });
     await writeAudit({ user: me, module: "reparto", fnName: "startLoad", args: [load.id], note: { summary: `Abrió la carga de ${unit.name}` }, href: "/envios/almacenamientos" }).catch(() => {});
     refresh();
     return { ok: true, load: (await loadState(load.id))! };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -187,12 +194,12 @@ export async function scanLoad(code: string): Promise<{ ok: true; info: Delivery
     if (!load) throw new Error("Primero escanea la etiqueta del almacenamiento.");
     if (load.status !== "CARGANDO") throw new Error("La carga ya está cerrada: ahora solo puedes entregar.");
     const s = await findShipment(code);
-    if (s.status === "CANCELADA") throw new Error(`La guía ${s.tracking} está cancelada: no la cargues.`);
-    if (s.status === "ENTREGADA") throw new Error(`La guía ${s.tracking} ya fue entregada.`);
+    if (s.status === "CANCELADA") throw new UserError("La guía {v0} está cancelada: no la cargues.", { v0: s.tracking });
+    if (s.status === "ENTREGADA") throw new UserError("La guía {v0} ya fue entregada.", { v0: s.tracking });
     if (s.loadId === load.id) return { ok: true, info: info(s), again: true };
     if (s.loadId) {
       const other = await prisma.routeLoad.findUnique({ where: { id: s.loadId }, include: { storage: { select: { name: true } } } });
-      if (other && other.status !== "TERMINADA") throw new Error(`La guía ${s.tracking} ya va en ${other.storage.name} (${other.driverName}).`);
+      if (other && other.status !== "TERMINADA") throw new UserError("La guía {v0} ya va en {v1} ({v2}).", { v0: s.tracking, v1: other.storage.name, v2: other.driverName });
     }
     await prisma.shipment.update({
       where: { id: s.id },
@@ -209,7 +216,7 @@ export async function scanLoad(code: string): Promise<{ ok: true; info: Delivery
     refresh(s.id);
     return { ok: true, info: info({ ...s, status: "EN_RUTA" }), again: false };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -228,7 +235,7 @@ export async function removeFromLoad(shipmentId: number): Promise<{ ok: true } |
     refresh(s.id);
     return { ok: true };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -247,7 +254,7 @@ export async function closeLoad(): Promise<{ ok: true; load: LoadState } | { ok:
     refresh();
     return { ok: true, load: (await loadState(load.id))! };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -262,7 +269,7 @@ export async function cancelEmptyLoad(): Promise<{ ok: true } | { ok: false; err
     refresh();
     return { ok: true };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -271,7 +278,7 @@ async function assertInMyRoute(meId: number, s: { tracking: string; loadId: numb
   const load = await activeLoadOf(meId);
   if (!load) throw new Error("Primero carga tu almacenamiento y ciérralo; después podrás entregar.");
   if (load.status !== "EN_REPARTO") throw new Error("Cierra la carga antes de entregar.");
-  if (s.loadId !== load.id) throw new Error(`La guía ${s.tracking} no va en tu carga (${load.storage.name}).`);
+  if (s.loadId !== load.id) throw new UserError("La guía {v0} no va en tu carga ({v1}).", { v0: s.tracking, v1: load.storage.name });
   return load;
 }
 
@@ -281,11 +288,11 @@ export async function lookupDelivery(code: string): Promise<{ ok: true; info: De
     const { me } = await driver();
     const s = await findShipment(code);
     await assertInMyRoute(me.id, s);
-    if (s.status === "CANCELADA") throw new Error(`La guía ${s.tracking} está cancelada.`);
-    if (s.status === "ENTREGADA") throw new Error(`La guía ${s.tracking} ya fue entregada.`);
+    if (s.status === "CANCELADA") throw new UserError("La guía {v0} está cancelada.", { v0: s.tracking });
+    if (s.status === "ENTREGADA") throw new UserError("La guía {v0} ya fue entregada.", { v0: s.tracking });
     return { ok: true, info: info(s) };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -293,9 +300,9 @@ const MAX_IMAGE = 2_500_000; // bytes (la app comprime la foto a ~1600 px antes 
 
 async function imageOf(fd: FormData, key: string, kinds: string[], label: string) {
   const f = fd.get(key);
-  if (!(f instanceof File) || f.size === 0) throw new Error(`Falta ${label}.`);
-  if (!kinds.includes(f.type)) throw new Error(`${label[0].toUpperCase()}${label.slice(1)}: formato no válido.`);
-  if (f.size > MAX_IMAGE) throw new Error(`${label[0].toUpperCase()}${label.slice(1)} es muy pesada; vuelve a tomarla.`);
+  if (!(f instanceof File) || f.size === 0) throw new UserError("Falta {v0}.", { v0: label });
+  if (!kinds.includes(f.type)) throw new UserError("Formato no válido en {v0}.", { v0: label });
+  if (f.size > MAX_IMAGE) throw new UserError("Pesa demasiado {v0}; vuelve a tomarla.", { v0: label });
   return { bytes: Buffer.from(await f.arrayBuffer()), mime: f.type };
 }
 
@@ -305,8 +312,8 @@ export async function confirmDelivery(fd: FormData): Promise<{ ok: true; trackin
     const { me, name } = await driver();
     const s = await findShipment(String(fd.get("tracking") ?? ""));
     await assertInMyRoute(me.id, s);
-    if (s.status === "ENTREGADA") throw new Error(`La guía ${s.tracking} ya fue entregada.`);
-    if (s.status === "CANCELADA") throw new Error(`La guía ${s.tracking} está cancelada.`);
+    if (s.status === "ENTREGADA") throw new UserError("La guía {v0} ya fue entregada.", { v0: s.tracking });
+    if (s.status === "CANCELADA") throw new UserError("La guía {v0} está cancelada.", { v0: s.tracking });
     const receiver = String(fd.get("receiverName") ?? "").trim();
     if (receiver.length < 2) throw new Error("Escribe el nombre de quien recibe.");
     const signature = await imageOf(fd, "signature", ["image/png"], "la firma");
@@ -332,7 +339,7 @@ export async function confirmDelivery(fd: FormData): Promise<{ ok: true; trackin
     refresh(s.id);
     return { ok: true, tracking: s.tracking };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -342,7 +349,7 @@ export async function failedAttempt(tracking: string, reason: string, note: stri
     const { me, name } = await driver();
     const s = await findShipment(tracking);
     await assertInMyRoute(me.id, s);
-    if (s.status === "ENTREGADA" || s.status === "CANCELADA") throw new Error(`La guía ${s.tracking} ya no está en reparto.`);
+    if (s.status === "ENTREGADA" || s.status === "CANCELADA") throw new UserError("La guía {v0} ya no está en reparto.", { v0: s.tracking });
     if (!(FAIL_REASONS as readonly string[]).includes(reason)) throw new Error("Elige el motivo.");
     if (reason === "Otro" && !note.trim()) throw new Error("Escribe qué pasó.");
     const attempts = s.attempts + 1;
@@ -354,7 +361,7 @@ export async function failedAttempt(tracking: string, reason: string, note: stri
     refresh(s.id);
     return { ok: true, attempts };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }
 
@@ -369,6 +376,6 @@ export async function finishMyLoad(): Promise<{ ok: true; returned: number } | {
     refresh();
     return { ok: true, returned };
   } catch (e) {
-    return fail(e);
+    return await fail(e);
   }
 }

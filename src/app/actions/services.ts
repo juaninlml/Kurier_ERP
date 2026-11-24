@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { numv, str } from "./helpers";
+import { UserError } from "@/lib/user-error";
 
 function serviceData(fd: FormData) {
   const code = str(fd, "code").toUpperCase();
@@ -34,7 +35,7 @@ async function ensureSection(name: string) {
 
 async function createServiceImpl(fd: FormData) {
   const data = serviceData(fd);
-  if (await prisma.service.findUnique({ where: { code: data.code } })) throw new Error(`Ya existe un servicio con la clave ${data.code}.`);
+  if (await prisma.service.findUnique({ where: { code: data.code } })) throw new UserError("Ya existe un servicio con la clave {v0}.", { v0: data.code });
   await ensureSection(data.section);
   const last = await prisma.service.aggregate({ _max: { sortOrder: true } });
   await prisma.service.create({ data: { ...data, sortOrder: (last._max.sortOrder ?? 0) + 1 } });

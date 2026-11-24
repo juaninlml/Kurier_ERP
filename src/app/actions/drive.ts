@@ -5,6 +5,7 @@ import { safe } from "@/lib/safe-action";
 import { requireAdmin } from "@/lib/current-user";
 import { driveConfigured } from "@/lib/drive";
 import { archiveNow, syncPending } from "@/lib/archive";
+import { UserError } from "@/lib/user-error";
 
 /** Sube a Drive un lote de documentos pendientes (sin copia, con error o modificados). */
 async function syncDriveImpl() {
@@ -12,7 +13,7 @@ async function syncDriveImpl() {
   if (!driveConfigured()) throw new Error("Google Drive no está configurado en las variables de entorno.");
   const r = await syncPending(15);
   revalidatePath("/configuracion");
-  if (r.done === 0 && r.failed > 0) throw new Error(`No se pudo subir ningún documento (${r.failed} con error). Revisa el detalle abajo.`);
+  if (r.done === 0 && r.failed > 0) throw new UserError("No se pudo subir ningún documento ({v0} con error). Revisa el detalle abajo.", { v0: r.failed });
 }
 
 /** Vuelve a subir un documento (botón junto a "Ver en Drive"). */

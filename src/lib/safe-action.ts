@@ -2,6 +2,8 @@ import { unstable_rethrow } from "next/navigation";
 import { getSessionUser } from "./current-user";
 import { canWrite, READ_ONLY_MESSAGE, type ModuleId } from "./permissions";
 import { redirectHref, withAuditNote, writeAudit } from "./audit";
+import { getT } from "./i18n/server";
+import { translateError } from "./user-error";
 
 export type ActionResult = { error: string } | void;
 
@@ -50,7 +52,10 @@ function wrap<A extends unknown[]>(fn: (...args: A) => Promise<unknown>, module:
       const href = redirectHref(e);
       if (href && module) await writeAudit({ user, module, fnName, args, note, href });
       unstable_rethrow(e);
-      return { error: toMessage(e) };
+      // En el idioma del usuario (los mensajes con datos variables vienen como UserError)
+      const t = await getT().catch(() => null);
+      if (t && !(e as { name?: string })?.name?.startsWith("PrismaClient")) return { error: translateError(e, t) ?? t(toMessage(e)) };
+      return { error: t ? t(toMessage(e)) : toMessage(e) };
     }
     if (module) await writeAudit({ user, module, fnName, args, note });
   };

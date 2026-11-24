@@ -12,6 +12,7 @@ import { nextFolio } from "@/lib/settings";
 import { numv, parseItems, str } from "./helpers";
 import { queueArchive } from "@/lib/archive";
 import { brandPrefix } from "@/lib/brands";
+import { UserError } from "@/lib/user-error";
 
 function header(fd: FormData) {
   const clientId = numv(fd, "clientId");
@@ -55,7 +56,7 @@ function folioInput(fd: FormData) {
 
 async function assertFolioFree(db: Pick<Prisma.TransactionClient, "invoice">, folio: string, exceptId?: number) {
   const dup = await db.invoice.findFirst({ where: { folio, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
-  if (dup) throw new Error(`Ya existe una factura con el folio ${folio}.`);
+  if (dup) throw new UserError("Ya existe una factura con el folio {v0}.", { v0: folio });
 }
 
 async function createInvoiceImpl(fd: FormData) {
@@ -68,11 +69,11 @@ async function createInvoiceImpl(fd: FormData) {
   const inv = await prisma.$transaction(async (tx) => {
     if (ordersWeek) {
       const dup = await tx.invoice.findFirst({ where: { clientId: h.clientId, ordersWeek, status: { not: "CANCELADA" } } });
-      if (dup) throw new Error(`Las órdenes de esa semana ya se facturaron en ${dup.folio}.`);
+      if (dup) throw new UserError("Las órdenes de esa semana ya se facturaron en {v0}.", { v0: dup.folio });
     }
     if (importId) {
       const imp = await tx.wmsImport.findUnique({ where: { id: importId } });
-      if (imp?.status === "FACTURADO") throw new Error(`El estado de cobro ${imp.folio} ya se facturó.`);
+      if (imp?.status === "FACTURADO") throw new UserError("El estado de cobro {v0} ya se facturó.", { v0: imp.folio });
     }
     if (custom) await assertFolioFree(tx, custom);
     // Folio capturado (serie propia del cliente) o el consecutivo automático
@@ -114,7 +115,7 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
   const inv = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { client: true } });
   if (inv.status === "CANCELADA") throw new Error("La factura está cancelada.");
   const balance = round2(inv.total - inv.paidTotal);
-  if (amount > balance + 0.005) throw new Error(`El pago excede el saldo pendiente (${balance.toFixed(2)}).`);
+  if (amount > balance + 0.005) throw new UserError("El pago excede el saldo pendiente ({v0}).", { v0: balance.toFixed(2) });
   const date = fromInputDate(str(fd, "date"));
   const method = str(fd, "method") || "Transferencia";
   const reference = str(fd, "reference");

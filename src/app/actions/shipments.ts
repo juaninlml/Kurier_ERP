@@ -7,6 +7,7 @@ import { assertSignedIn, safe } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
 import { newTracking, quoteLastMile, SERVICE_LEVELS, serviceLevelOf, SHIPMENT_STATUS, ZIP_RE, type LastMileQuote } from "@/lib/lastmile";
 import { numv, str } from "./helpers";
+import { UserError } from "@/lib/user-error";
 
 const who = async () => {
   const me = await getCurrentUser();
@@ -48,10 +49,10 @@ export async function saveShipAddress(kind: "ORIGEN" | "DESTINO", input: Address
 function phoneOf(raw: string, required: boolean, label: string) {
   const digits = raw.replace(/\D/g, "").replace(/^52(?=\d{10}$)/, "");
   if (!digits) {
-    if (required) throw new Error(`Escribe el teléfono de ${label}.`);
+    if (required) throw new UserError("Escribe el teléfono de {v0}.", { v0: label });
     return "";
   }
-  if (digits.length !== 10) throw new Error(`El teléfono de ${label} debe tener 10 dígitos.`);
+  if (digits.length !== 10) throw new UserError("El teléfono de {v0} debe tener 10 dígitos.", { v0: label });
   return digits;
 }
 
@@ -71,10 +72,10 @@ function addressOf(fd: FormData, p: "origin" | "dest") {
     Zip: g("Zip"),
     Ref: g("Ref"),
   };
-  if (!a.Name) throw new Error(`Escribe el nombre completo de ${label}.`);
-  if (!a.Street) throw new Error(`Escribe la calle de ${label}.`);
-  if (!ZIP_RE.test(a.Zip)) throw new Error(`El CP de ${label} debe tener 5 dígitos.`);
-  if (a.Email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.Email)) throw new Error(`Revisa el correo de ${label}.`);
+  if (!a.Name) throw new UserError("Escribe el nombre completo de {v0}.", { v0: label });
+  if (!a.Street) throw new UserError("Escribe la calle de {v0}.", { v0: label });
+  if (!ZIP_RE.test(a.Zip)) throw new UserError("El CP de {v0} debe tener 5 dígitos.", { v0: label });
+  if (a.Email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.Email)) throw new UserError("Revisa el correo de {v0}.", { v0: label });
   return Object.fromEntries(Object.entries(a).map(([k, v]) => [`${p}${k}`, v])) as Record<string, string>;
 }
 

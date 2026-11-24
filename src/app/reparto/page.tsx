@@ -1,9 +1,12 @@
 import { getCurrentUser } from "@/lib/current-user";
 import { getMyLoad } from "@/app/actions/reparto";
 import { RepartoApp } from "@/components/reparto/RepartoApp";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Reparto" };
+export async function generateMetadata() {
+  return { title: (await getT())("Reparto") };
+}
 
 /**
  * App de reparto para el celular del repartidor: almacenamiento → paquetes → cerrar carga → entregar.

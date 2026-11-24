@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { KidoMark } from "./KidoLogo";
 import { cn } from "@/lib/utils";
+import { Tr } from "./Tr";
 
 /** Marco de la página pública de rastreo (cubre la pantalla aunque haya sesión iniciada). */
 export function TrackingShell({ children, contact }: { children: React.ReactNode; contact?: string }) {
@@ -13,13 +14,19 @@ export function TrackingShell({ children, contact }: { children: React.ReactNode
             <p className="text-lg font-bold tracking-tight">
               kurier <span className="text-[#FF6A2B]">kido</span>
             </p>
-            <p className="text-[11px] text-white/70">Rastreo de envíos · CDMX</p>
+            <p className="text-[11px] text-white/70">
+              <Tr>Rastreo de envíos · CDMX</Tr>
+            </p>
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-lg px-4 py-6">
         <div className="overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">{children}</div>
-        {contact && <p className="mt-4 text-center text-xs text-muted-foreground">¿Dudas sobre tu entrega? {contact}</p>}
+        {contact && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            <Tr>¿Dudas sobre tu entrega?</Tr> {contact}
+          </p>
+        )}
       </main>
     </div>
   );
@@ -30,11 +37,11 @@ export function TrackingSearch({ className }: { className?: string }) {
   return (
     <form action="/rastreo" className={cn("flex gap-2", className)}>
       <label className="sr-only" htmlFor="guia">
-        Número de guía
+        <Tr>Número de guía</Tr>
       </label>
       <input id="guia" name="guia" required placeholder="LM-XXXX-XXXX" autoComplete="off" className="input h-10 flex-1 font-mono uppercase" />
       <button type="submit" className="btn-primary h-10">
-        <Search className="size-4" /> Rastrear
+        <Search className="size-4" /> <Tr>Rastrear</Tr>
       </button>
     </form>
   );

@@ -12,6 +12,7 @@ import { attendanceForPeriod } from "@/lib/attendance";
 import { syncPayrollIncidents } from "@/lib/incidents";
 import { getCurrentUser, requireAdmin } from "@/lib/current-user";
 import { numv, str } from "./helpers";
+import { UserError } from "@/lib/user-error";
 
 // ───────────── Gastos fijos ─────────────
 
@@ -270,14 +271,14 @@ async function savePayrollRunImpl(id: number, fd: FormData) {
   if (run.status !== "BORRADOR") throw new Error("La nómina ya está aprobada. Regrésala a borrador para editarla.");
   const [brandId, cfg] = await Promise.all([payrollBrand(fd), prisma.companySettings.findUnique({ where: { id: 1 }, select: { overtimeRate: true } })]);
   const parsed = z.array(lineSchema).safeParse(JSON.parse(str(fd, "lines") || "[]"));
-  if (!parsed.success) throw new Error(`Revisa los importes: ${parsed.error.issues[0]?.message ?? "datos inválidos"}.`);
+  if (!parsed.success) throw new UserError("Revisa los importes: {v0}.", { v0: parsed.error.issues[0]?.message ?? "datos inválidos" });
   const byId = new Map(run.lines.map((l) => [l.id, l]));
   let total = 0;
   const updates = parsed.data.map((l) => {
     const cur = byId.get(l.id);
     if (!cur) throw new Error("Renglón de nómina inválido.");
     if (l.absences + l.leaveDays > l.days) throw new Error("Las faltas y permisos sin goce no pueden ser más que los días a pagar.");
-    if (l.days > l.workDays) throw new Error(`Los días a pagar no pueden ser más que la jornada de ${l.workDays} días.`);
+    if (l.days > l.workDays) throw new UserError("Los días a pagar no pueden ser más que la jornada de {v0} días.", { v0: l.workDays });
     if (l.bonus > 0 && !l.bonusNote.trim()) throw new Error("Escribe el motivo de cada bono.");
     const weeklySalary = cur.weeklySalary || cur.dailySalary * cur.workDays;
     const overtime = overtimePay(l.overtimeHours, weeklySalary, l.workDays, cur.hoursPerDay, cfg?.overtimeRate ?? 2);
