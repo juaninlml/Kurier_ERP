@@ -192,3 +192,18 @@ export async function renderStorageLabels(id?: number) {
     buffer: await renderToBuffer(<StorageLabelPdf units={units} />),
   };
 }
+
+/** Hoja de salida de mercancía; `id` null = formato en blanco para llenar a mano. */
+export async function renderGoodsExit(id: number | null) {
+  const s = await getSettings();
+  const { GoodsExitPdf } = await import("./goods-exit");
+  if (id === null) {
+    return { filename: "Hoja_de_salida_en_blanco.pdf", buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ items: [] }} />) };
+  }
+  const e = await prisma.goodsExit.findUnique({ where: { id }, include: { client: { select: { name: true } }, items: { orderBy: { position: "asc" } } } });
+  if (!e) return null;
+  return {
+    filename: `Salida_${e.folio}_${slug(e.client.name)}.pdf`,
+    buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ ...e, client: e.client.name }} />),
+  };
+}

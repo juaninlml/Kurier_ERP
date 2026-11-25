@@ -34,6 +34,7 @@ export type ModuleId =
   | "facturas"
   | "ordenes"
   | "envios"
+  | "salidas"
   | "reparto"
   | "clientes"
   | "tarifario"
@@ -55,6 +56,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/ordenes", "ordenes"],
   ["/envios", "envios"],
   ["/reparto", "reparto"],
+  ["/salidas", "salidas"],
   ["/api/envios", "envios"],
   ["/clientes", "clientes"],
   ["/servicios", "tarifario"],
@@ -74,6 +76,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/api/pdf/ordenes", "ordenes"],
   ["/api/pdf/guia", "envios"],
   ["/api/pdf/almacenamiento", "envios"],
+  ["/api/pdf/salida", "salidas"],
   ["/api/pdf/tarifario", "tarifario"],
   ["/api/pdf/reporte", "contabilidad"],
   ["/api/pdf/nomina", "nomina"],
@@ -82,7 +85,7 @@ const ROUTES: [string, ModuleId][] = [
 
 type Access = "write" | "read";
 const ALL: ModuleId[] = [
-  "inicio", "cotizaciones", "facturas", "ordenes", "envios", "reparto", "clientes", "tarifario", "contabilidad", "conciliacion",
+  "inicio", "cotizaciones", "facturas", "ordenes", "envios", "salidas", "reparto", "clientes", "tarifario", "contabilidad", "conciliacion",
   "proveedores", "cxp", "nomina", "usuarios", "configuracion", "bitacora", "perfil", "general",
 ];
 const every = (a: Access, except: ModuleId[] = []) =>
@@ -148,6 +151,7 @@ export const MODULE_LABEL: Record<string, string> = {
   facturas: "Facturas",
   ordenes: "Órdenes",
   envios: "Envíos",
+  salidas: "Salidas de mercancía",
   reparto: "Reparto",
   clientes: "Clientes",
   tarifario: "Tarifario",

@@ -89,6 +89,7 @@ model Client {
   dailySupplies DailySupply[]
   dailyOrders   DailyOrder[]
   shipments     Shipment[]
+  goodsExits    GoodsExit[]
 }
 
 /// Proveedor de Kurier (renta, insumos de empaque, paquetería, servicios…). Los egresos de contabilidad se ligan a él.
@@ -963,4 +964,40 @@ model RouteLoad {
 
   @@index([driverId, status])
   @@index([storageId, status])
+}
+
+/// Salida de mercancía del almacén (outbound): cajas entregadas por SKU y piezas por caja. Genera la hoja de salida en PDF.
+model GoodsExit {
+  id          Int             @id @default(autoincrement())
+  folio       String          @unique // SAL-00001
+  date        String // yyyy-mm-dd (zona horaria de la empresa)
+  time        String          @default("") // hora de salida HH:MM
+  clientId    Int
+  client      Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  reference   String          @default("") // orden / referencia
+  carrier     String          @default("") // transportista
+  plates      String          @default("") // placas / unidad
+  driverName  String          @default("") // conductor que recibe
+  deliveredBy String          @default("") // quien entrega en almacén
+  notes       String          @default("")
+  createdBy   String          @default("")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       GoodsExitItem[]
+
+  @@index([clientId])
+  @@index([date])
+}
+
+model GoodsExitItem {
+  id           Int       @id @default(autoincrement())
+  exitId       Int
+  exit         GoodsExit @relation(fields: [exitId], references: [id], onDelete: Cascade)
+  position     Int       @default(0)
+  sku          String
+  boxes        Int // cajas entregadas
+  piecesPerBox Int // piezas por caja
+
+  @@index([exitId])
+  @@index([sku])
 }
