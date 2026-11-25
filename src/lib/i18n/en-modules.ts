@@ -1216,4 +1216,6 @@ export const enModules: Record<string, string> = {
   "quien recibió": "the recipient",
   "Toca para el siguiente registro": "Tap for the next check-in",
   "Toca la pantalla para el siguiente registro": "Tap the screen for the next check-in",
+  "Cómo llegar": "Directions",
+  "Ver ruta en Maps": "View route in Maps",
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, Boxes, Camera, CheckCircle2, Loader2, Lock, MapPin, PackageCheck, Phone, ScanLine, Truck, Undo2, X } from "lucide-react";
+import { AlertTriangle, Boxes, Camera, CheckCircle2, Loader2, Lock, Map as MapIcon, MapPin, Navigation, PackageCheck, Phone, ScanLine, Truck, Undo2, X } from "lucide-react";
 import {
   cancelEmptyLoad,
   closeLoad,
@@ -23,6 +23,29 @@ import { playSound, unlockAudio, type Feedback } from "./feedback";
 import { SignaturePad, type SignatureHandle } from "./SignaturePad";
 import { cn } from "@/lib/utils";
 import { useT } from "../I18nProvider";
+
+/**
+ * Google Maps con la ruta en coche hasta la dirección (en Android abre la app de Maps directo).
+ * Las guías aún no tienen coordenadas: se manda la dirección completa con la ciudad para que Maps la ubique.
+ */
+const place = (address: string) => `${address}, Ciudad de México, México`;
+const mapsUrl = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place(address))}&travelmode=driving`;
+/** Toda la ruta pendiente en orden, saliendo de la base (Maps acepta hasta 9 paradas intermedias). */
+const routeUrl = (stops: DeliveryInfo[]) => {
+  const list = stops.slice(0, 10);
+  const last = list[list.length - 1];
+  const via = list.slice(0, -1).map((x) => place(x.address)).join("|");
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(place(DEPOT.address))}&destination=${encodeURIComponent(place(last.address))}${via ? `&waypoints=${encodeURIComponent(via)}` : ""}&travelmode=driving`;
+};
+
+function MapsButton({ address, className, label }: { address: string; className?: string; label?: string }) {
+  const t = useT();
+  return (
+    <a href={mapsUrl(address)} target="_blank" rel="noreferrer" className={cn("btn-primary", className)}>
+      <Navigation className="size-4" /> {label ?? t("Cómo llegar")}
+    </a>
+  );
+}
 
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
@@ -420,11 +443,12 @@ function NextStop({ stop, total }: { stop: DeliveryInfo | null; total: number })
           <h2 className="text-lg leading-tight font-semibold">{stop.destName}</h2>
           {stop.cod > 0 && <span className="shrink-0 rounded-md bg-foreground px-2 py-1 text-xs font-bold text-background">{t("COBRAR")} {money(stop.cod)}</span>}
         </div>
-        <p className="flex items-start gap-1.5 text-sm">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> {stop.address}
-        </p>
+        <a href={mapsUrl(stop.address)} target="_blank" rel="noreferrer" className="flex items-start gap-1.5 text-sm underline-offset-2 hover:underline">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-primary" /> {stop.address}
+        </a>
         {stop.destRef && <p className="pl-5.5 text-sm text-muted-foreground">{t("Ref:")} {stop.destRef}</p>}
         <div className="flex flex-wrap items-center gap-2 pt-1">
+          <MapsButton address={stop.address} className="h-10 text-sm" />
           <a href={`tel:${stop.destPhone}`} className="btn-secondary h-10 text-sm">
             <Phone className="size-4" /> {t("Llamar")}
           </a>
@@ -444,7 +468,14 @@ function Manifest({ items, nextId }: { items: DeliveryInfo[]; nextId: number | n
   const t = useT();
   return (
     <section className="card overflow-hidden">
-      <header className="border-b px-4 py-2.5 text-sm font-semibold">{t("Tu ruta en orden")}</header>
+      <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-semibold">
+        {t("Tu ruta en orden")}
+        {items.some((x) => x.status !== "ENTREGADA") && (
+          <a href={routeUrl(items.filter((x) => x.status !== "ENTREGADA"))} target="_blank" rel="noreferrer" className="btn-secondary h-8 text-xs">
+            <MapIcon className="size-3.5" /> {t("Ver ruta en Maps")}
+          </a>
+        )}
+      </header>
       <ol className="divide-y">
         {items.map((it) => {
           const delivered = it.status === "ENTREGADA";
@@ -471,6 +502,7 @@ function Manifest({ items, nextId }: { items: DeliveryInfo[]; nextId: number | n
                   {it.destRef && <p className="text-muted-foreground">{t("Ref:")} {it.destRef}</p>}
                   {!delivered && (
                     <div className="flex flex-wrap items-center gap-2">
+                      <MapsButton address={it.address} className="h-9 text-xs" />
                       <a href={`tel:${it.destPhone}`} className="btn-secondary h-9 text-xs">
                         <Phone className="size-3.5" /> {t("Llamar")}
                       </a>
@@ -569,11 +601,12 @@ function Delivery({
           </div>
           <span className="rounded-md bg-foreground px-2 py-1 text-xs font-bold text-background">Z{info.zone}</span>
         </div>
-        <p className="mt-2 flex items-start gap-1.5 text-sm">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> {info.address}
-        </p>
+        <a href={mapsUrl(info.address)} target="_blank" rel="noreferrer" className="mt-2 flex items-start gap-1.5 text-sm underline-offset-2 hover:underline">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-primary" /> {info.address}
+        </a>
         {info.destRef && <p className="mt-1 pl-5.5 text-sm text-muted-foreground">{t("Ref:")} {info.destRef}</p>}
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <MapsButton address={info.address} className="h-9 text-xs" />
           <a href={`tel:${info.destPhone}`} className="btn-secondary h-9 text-xs">
             <Phone className="size-3.5" /> {t("Llamar")}
           </a>
