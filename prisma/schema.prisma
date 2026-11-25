@@ -753,70 +753,73 @@ model Brand {
 /// Guía de última milla (CDMX). status: GENERADA | EN_RUTA | ENTREGADA | CANCELADA.
 /// La zona sale de la alcaldía del CP destino; el precio, del tarifario (servicios UM-02 a UM-07) o la tarifa del cliente.
 model Shipment {
-  id            Int             @id @default(autoincrement())
-  tracking      String          @unique // LM-XXXX-XXXX (va en la guía, el QR y el código de barras)
-  reference     String          @default("") // KK-XXXX-XXXX-D
-  status        String          @default("GENERADA")
-  clientId      Int?
-  client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  packageType   String          @default("CAJA") // SOBRE | CAJA
-  serviceLevel  String          @default("MISMO_DIA") // MISMO_DIA | DIA_SIGUIENTE
+  id              Int             @id @default(autoincrement())
+  tracking        String          @unique // LM-XXXX-XXXX (va en la guía, el QR y el código de barras)
+  reference       String          @default("") // KK-XXXX-XXXX-D
+  status          String          @default("GENERADA")
+  clientId        Int?
+  client          Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  packageType     String          @default("CAJA") // SOBRE | CAJA
+  serviceLevel    String          @default("MISMO_DIA") // MISMO_DIA | DIA_SIGUIENTE
   // Reparto: escaneo al cargar el vehículo y al entregar (con firma y foto)
-  loadedAt      DateTime?
-  loadedBy      String          @default("")
-  attempts      Int             @default(0) // intentos de entrega fallidos
-  routeSeq      Int? // orden de entrega dentro de su carga (1 = primera parada); se calcula al cerrar la carga
-  loadId        Int? // carga de ruta (almacenamiento del transporte) en la que va o fue
-  load          RouteLoad?      @relation(fields: [loadId], references: [id], onDelete: SetNull)
-  receiverName  String          @default("") // quién recibió
-  deliveredBy   String          @default("")
-  proof         ShipmentProof?
+  loadedAt        DateTime?
+  loadedBy        String          @default("")
+  attempts        Int             @default(0) // intentos de entrega fallidos
+  routeSeq        Int? // orden de entrega dentro de su carga (1 = primera parada); se calcula al cerrar la carga
+  loadId          Int? // carga de ruta (almacenamiento del transporte) en la que va o fue
+  load            RouteLoad?      @relation(fields: [loadId], references: [id], onDelete: SetNull)
+  receiverName    String          @default("") // quién recibió
+  deliveredBy     String          @default("")
+  proof           ShipmentProof?
   // Origen (remitente)
-  originName    String
-  originCompany String          @default("")
-  originEmail   String          @default("")
-  originPhone   String          @default("")
-  originStreet  String
-  originNumber  String          @default("")
-  originColony  String          @default("")
-  originCity    String          @default("")
-  originState   String          @default("")
-  originZip     String
-  originRef     String          @default("")
-  originRfc     String          @default("")
+  originName      String
+  originCompany   String          @default("")
+  originEmail     String          @default("")
+  originPhone     String          @default("")
+  originStreet    String
+  originNumber    String          @default("")
+  originColony    String          @default("")
+  originCity      String          @default("")
+  originState     String          @default("")
+  originZip       String
+  originRef       String          @default("")
+  originRfc       String          @default("")
   // Destino (destinatario)
-  destName      String
-  destCompany   String          @default("")
-  destEmail     String          @default("")
-  destPhone     String
-  destStreet    String
-  destNumber    String          @default("")
-  destColony    String          @default("")
-  destCity      String          @default("")
-  destState     String          @default("")
-  destZip       String
-  destRef       String          @default("")
-  borough       String          @default("") // alcaldía destino
-  zone          Int             @default(0) // 1 o 2
+  destName        String
+  destCompany     String          @default("")
+  destEmail       String          @default("")
+  destPhone       String
+  destStreet      String
+  destNumber      String          @default("")
+  destColony      String          @default("")
+  destCity        String          @default("")
+  destState       String          @default("")
+  destZip         String
+  destRef         String          @default("")
+  destLocationUrl String          @default("") // link de ubicación que dio el cliente (Google Maps / WhatsApp)
+  destLat         Float? // coordenadas del destino tomadas de ese link
+  destLng         Float?
+  borough         String          @default("") // alcaldía destino
+  zone            Int             @default(0) // 1 o 2
   // Paquete
-  content       String          @default("")
-  lengthCm      Float           @default(0)
-  widthCm       Float           @default(0)
-  heightCm      Float           @default(0)
-  weightKg      Float           @default(0)
-  packages      Int             @default(1) // bultos de la parada
-  cod           Float           @default(0) // pago contra entrega
+  content         String          @default("")
+  lengthCm        Float           @default(0)
+  widthCm         Float           @default(0)
+  heightCm        Float           @default(0)
+  weightKg        Float           @default(0)
+  packages        Int             @default(1) // bultos de la parada
+  cod             Float           @default(0) // pago contra entrega
   // Cobro
-  price         Float           @default(0) // por parada, sin IVA
-  priceLabel    String          @default("")
-  route         String          @default("")
-  stop          String          @default("")
-  notes         String          @default("")
-  createdBy     String          @default("")
-  deliveredAt   DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  events        ShipmentEvent[]
+  price           Float           @default(0) // por parada, sin IVA
+  priceLabel      String          @default("")
+  route           String          @default("")
+  stop            String          @default("")
+  notes           String          @default("")
+  createdBy       String          @default("")
+  deliveredAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  events          ShipmentEvent[]
 
   @@index([createdAt])
   @@index([clientId, createdAt])

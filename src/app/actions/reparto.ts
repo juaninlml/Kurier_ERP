@@ -56,6 +56,9 @@ export type DeliveryInfo = {
   content: string;
   /** Número de parada en el orden de entrega (null mientras se carga). */
   seq: number | null;
+  /** Ubicación exacta que dio el cliente (si la hay). */
+  lat: number | null;
+  lng: number | null;
 };
 
 /** Estado de la carga del repartidor (lo que dibuja la app). */
@@ -87,6 +90,8 @@ const select = {
   content: true,
   loadId: true,
   routeSeq: true,
+  destLat: true,
+  destLng: true,
 } as const;
 
 function info(s: Record<string, unknown>): DeliveryInfo {
@@ -107,6 +112,8 @@ function info(s: Record<string, unknown>): DeliveryInfo {
     attempts: x.attempts,
     content: x.content,
     seq: (s.routeSeq as number | null) ?? null,
+    lat: (s.destLat as number | null) ?? null,
+    lng: (s.destLng as number | null) ?? null,
   };
 }
 

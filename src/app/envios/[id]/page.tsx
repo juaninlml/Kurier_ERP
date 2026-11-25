@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, FileText, MessageCircle, Printer } from "lucide-react";
+import { ExternalLink, FileText, LocateFixed, MessageCircle, Printer } from "lucide-react";
+import { mapsPointUrl } from "@/lib/geo-link";
 import { CopyButton } from "@/components/CopyButton";
 import { siteOrigin, trackingUrl, whatsappLink, whatsappMessage } from "@/lib/tracking";
 import { prisma } from "@/lib/db";
@@ -109,7 +110,7 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
           )}
           <Panel
             title="Destinatario"
-            action={!locked && <RecipientDialog action={updateRecipient.bind(null, s.id)} value={{ destName: s.destName, destCompany: s.destCompany, destEmail: s.destEmail, destPhone: s.destPhone, destStreet: s.destStreet, destNumber: s.destNumber, destColony: s.destColony, destCity: s.destCity, destState: s.destState, destZip: s.destZip, destRef: s.destRef }} />}
+            action={!locked && <RecipientDialog action={updateRecipient.bind(null, s.id)} value={{ destName: s.destName, destCompany: s.destCompany, destEmail: s.destEmail, destPhone: s.destPhone, destStreet: s.destStreet, destNumber: s.destNumber, destColony: s.destColony, destCity: s.destCity, destState: s.destState, destZip: s.destZip, destRef: s.destRef, destLocation: s.destLocationUrl }} />}
           >
             {rows([
               [t("Nombre"), s.destName],
@@ -120,6 +121,19 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
               [t("Alcaldía"), `${s.borough} · ${t("Zona {v0}", { v0: s.zone })}`],
               [t("Referencia"), s.destRef],
             ])}
+            <div className="flex flex-wrap items-center gap-2 border-t px-5 py-3 text-sm">
+              <LocateFixed className="size-4 text-muted-foreground" />
+              {s.destLat != null && s.destLng != null ? (
+                <>
+                  <span>{t("Ubicación del cliente")}:</span>
+                  <a href={mapsPointUrl({ lat: s.destLat, lng: s.destLng })} target="_blank" rel="noreferrer" className="font-mono text-primary hover:underline">
+                    {s.destLat}, {s.destLng}
+                  </a>
+                </>
+              ) : (
+                <span className="text-muted-foreground">{t("Sin ubicación del cliente: el repartidor se guía por la dirección escrita.")}</span>
+              )}
+            </div>
           </Panel>
           <div className="grid gap-6 md:grid-cols-2">
             <Panel title="Origen">

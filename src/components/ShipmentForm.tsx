@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Box, CalendarClock, Zap, Calculator, Eraser, Mail, MapPin, PackageCheck, Save, Truck } from "lucide-react";
-import { createShipment, quoteShipment, saveShipAddress } from "@/app/actions/shipments";
+import { Box, CalendarClock, Zap, Calculator, Eraser, Mail, MapPin, PackageCheck, Save, Truck, LocateFixed, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { checkLocation, createShipment, quoteShipment, saveShipAddress } from "@/app/actions/shipments";
+import { mapsPointUrl } from "@/lib/geo-link";
+import type { LocationResult } from "@/lib/location";
 import { BOROUGH_LIST, boroughOfZip, volumetricKg, zoneOf } from "@/lib/lastmile-zones";
 import type { LastMileQuote } from "@/lib/lastmile";
 import { Form } from "./Form";
@@ -48,6 +50,14 @@ export function ShipmentForm({
   const [origin, setOrigin] = useState<Addr>(defaultOrigin);
   const [dest, setDest] = useState<Addr>(EMPTY);
   const [borough, setBorough] = useState("");
+  // Link de ubicación que da el cliente (se corrobora con él y se pega aquí)
+  const [loc, setLoc] = useState("");
+  const [locCheck, setLocCheck] = useState<{ text: string; r: LocationResult } | null>(null);
+  const [checking, startCheck] = useTransition();
+  const verify = (text: string) =>
+    text.trim()
+      ? startCheck(async () => setLocCheck({ text, r: await checkLocation(text, effBorough) }))
+      : setLocCheck(null);
   const [clientId, setClientId] = useState(0);
   const [pkg, setPkg] = useState({ packageType: "CAJA", serviceLevel: "MISMO_DIA", content: "", lengthCm: "", widthCm: "", heightCm: "", weightKg: "", packages: "1", cod: "" });
   const [quote, setQuote] = useState<LastMileQuote | null>(null);
@@ -99,12 +109,17 @@ export function ShipmentForm({
           onChange={(a) => {
             setDest(a);
             if (a.zip !== dest.zip) setBorough("");
+            if (!a.street && !a.zip) {
+              setLoc("");
+              setLocCheck(null);
+            }
           }}
           saved={destinations}
           onSave={() => save("DESTINO", dest)}
           savedMsg={saved.DESTINO}
           saveName="saveDest"
           extra={
+            <>
             <label className="block sm:col-span-2">
               <span className="label">
                 {t("Alcaldía")} {zone ? <span className="ml-1 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-bold text-background">{t("ZONA {v0}", { v0: zone })}</span> : null}
@@ -119,6 +134,56 @@ export function ShipmentForm({
               </select>
               <span className="mt-1 block text-[11px] text-muted-foreground">{t("Sale del CP; cámbiala si la colonia pertenece a otra alcaldía.")}</span>
             </label>
+            <div className="sm:col-span-2">
+              <label htmlFor="destLocation" className="label flex items-center gap-1.5">
+                <LocateFixed className="size-3.5" /> {t("Link de ubicación (opcional)")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="destLocation"
+                  name="destLocation"
+                  value={loc}
+                  onChange={(e) => setLoc(e.target.value)}
+                  onBlur={() => loc.trim() && locCheck?.text !== loc && verify(loc)}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    if (text) setTimeout(() => verify(text.trim()), 0);
+                  }}
+                  placeholder="https://maps.app.goo.gl/…"
+                  autoComplete="off"
+                  className="input min-w-0 flex-1 font-mono text-xs"
+                />
+                <button type="button" onClick={() => verify(loc)} disabled={!loc.trim() || checking} className="btn-secondary shrink-0">
+                  {checking ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />} {t("Verificar")}
+                </button>
+              </div>
+              {locCheck && locCheck.text === loc ? (
+                locCheck.r.ok ? (
+                  <div className="mt-1.5 space-y-1 text-xs">
+                    <p className="flex flex-wrap items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                      {t("Ubicación lista")}: <span className="font-mono">{locCheck.r.lat}, {locCheck.r.lng}</span>
+                      <a href={mapsPointUrl(locCheck.r)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                        <ExternalLink className="size-3.5" /> {t("Ver en Maps")}
+                      </a>
+                    </p>
+                    {locCheck.r.warning && (
+                      <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> {t(locCheck.r.warning)}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p role="alert" className="mt-1.5 flex items-start gap-1.5 text-xs text-rose-700 dark:text-rose-300">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> {t(locCheck.r.error)}
+                  </p>
+                )
+              ) : (
+                <span className="mt-1 block text-[11px] text-muted-foreground">
+                  {t("El link de Maps o de la ubicación de WhatsApp que confirme el cliente. El repartidor llega directo al punto.")}
+                </span>
+              )}
+            </div>
+            </>
           }
         />
 

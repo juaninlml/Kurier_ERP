@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { assertSignedIn, safe } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
 import { newTracking, quoteLastMile, SERVICE_LEVELS, serviceLevelOf, SHIPMENT_STATUS, ZIP_RE, type LastMileQuote } from "@/lib/lastmile";
+import { resolveLocation, type LocationResult } from "@/lib/location";
 import { numv, str } from "./helpers";
 import { UserError } from "@/lib/user-error";
 
@@ -79,6 +80,25 @@ function addressOf(fd: FormData, p: "origin" | "dest") {
   return Object.fromEntries(Object.entries(a).map(([k, v]) => [`${p}${k}`, v])) as Record<string, string>;
 }
 
+/** Revisa el link de ubicación en el formulario (no guarda nada). */
+export async function checkLocation(text: string, borough: string): Promise<LocationResult> {
+  try {
+    await assertSignedIn("envios");
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  return resolveLocation(text, borough);
+}
+
+/** Ubicación del formulario: vacío = sin coordenadas; si hay link, debe traer coordenadas válidas. */
+async function locationOf(fd: FormData, borough: string) {
+  const url = str(fd, "destLocation").slice(0, 1000);
+  if (!url) return { destLocationUrl: "", destLat: null, destLng: null };
+  const r = await resolveLocation(url, borough);
+  if (!r.ok) throw new Error(r.error);
+  return { destLocationUrl: url, destLat: r.lat, destLng: r.lng };
+}
+
 /** Genera la guía: valida, vuelve a cotizar en el servidor y la guarda con su bitácora. */
 async function createShipmentImpl(fd: FormData) {
   const origin = addressOf(fd, "origin");
@@ -95,6 +115,7 @@ async function createShipmentImpl(fd: FormData) {
   if (packages < 1 || packages > 50) throw new Error("La cantidad de bultos debe estar entre 1 y 50.");
   const content = str(fd, "content");
   if (!content) throw new Error("Describe el contenido del paquete.");
+  const location = await locationOf(fd, quote.borough);
   const by = await who();
   const { tracking, reference } = await newTracking();
   const s = await prisma.shipment.create({
@@ -116,6 +137,7 @@ async function createShipmentImpl(fd: FormData) {
       destStreet: dest.destStreet,
       borough: quote.borough,
       zone: quote.zone,
+      ...location,
       content,
       lengthCm: pos("lengthCm", 300),
       widthCm: pos("widthCm", 300),
@@ -127,7 +149,7 @@ async function createShipmentImpl(fd: FormData) {
       priceLabel: quote.label,
       notes: str(fd, "notes"),
       createdBy: by,
-      events: { create: { kind: "CREADA", detail: `Guía generada · ${SERVICE_LEVELS[serviceLevelOf(str(fd, "serviceLevel"))]} · ${quote.label} · ${quote.borough}`, by } },
+      events: { create: { kind: "CREADA", detail: `Guía generada · ${SERVICE_LEVELS[serviceLevelOf(str(fd, "serviceLevel"))]} · ${quote.label} · ${quote.borough}${location.destLat != null ? " · con ubicación del cliente" : ""}`, by } },
     },
   });
   // Libreta de direcciones (opcional)
@@ -183,6 +205,20 @@ async function updateRecipientImpl(id: number, fd: FormData) {
       log.push(`${label}: «${before || "—"}» → «${v || "—"}»`);
     }
   }
+  // Link de ubicación: si cambia, se vuelven a tomar las coordenadas (vacío = sin ubicación)
+  const loc: { destLocationUrl?: string; destLat?: number | null; destLng?: number | null } = {};
+  const newUrl = str(fd, "destLocation").slice(0, 1000);
+  if (fd.has("destLocation") && newUrl !== s.destLocationUrl) {
+    if (newUrl) {
+      const r = await resolveLocation(newUrl, changes.destZip ? undefined : s.borough);
+      if (!r.ok) throw new Error(r.error);
+      Object.assign(loc, { destLocationUrl: newUrl, destLat: r.lat, destLng: r.lng });
+      log.push(s.destLocationUrl ? "Ubicación del cliente actualizada" : "Se agregó la ubicación del cliente");
+    } else {
+      Object.assign(loc, { destLocationUrl: "", destLat: null, destLng: null });
+      log.push("Se quitó la ubicación del cliente");
+    }
+  }
   if (!log.length) return;
   const extra: { borough?: string; zone?: number; price?: number; priceLabel?: string } = {};
   if (changes.destZip) {
@@ -193,7 +229,7 @@ async function updateRecipientImpl(id: number, fd: FormData) {
   }
   await prisma.shipment.update({
     where: { id },
-    data: { ...changes, ...extra, events: { create: { kind: "CORRECCION", detail: log.join(" · "), by: await who() } } },
+    data: { ...changes, ...extra, ...loc, events: { create: { kind: "CORRECCION", detail: log.join(" · "), by: await who() } } },
   });
   revalidatePath(`/envios/${id}`);
   revalidatePath("/envios");

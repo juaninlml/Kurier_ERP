@@ -6,7 +6,7 @@ import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { useT } from "./I18nProvider";
 
-type Dest = Record<"destName" | "destCompany" | "destEmail" | "destPhone" | "destStreet" | "destNumber" | "destColony" | "destCity" | "destState" | "destZip" | "destRef", string>;
+type Dest = Record<"destName" | "destCompany" | "destEmail" | "destPhone" | "destStreet" | "destNumber" | "destColony" | "destCity" | "destState" | "destZip" | "destRef" | "destLocation", string>;
 
 const FIELDS: [keyof Dest, string, { required?: boolean; type?: string }?][] = [
   ["destName", "Nombre", { required: true }],
@@ -20,6 +20,7 @@ const FIELDS: [keyof Dest, string, { required?: boolean; type?: string }?][] = [
   ["destState", "Estado"],
   ["destZip", "CP", { required: true }],
   ["destRef", "Referencia"],
+  ["destLocation", "Link de ubicación"],
 ];
 
 /** Corregir destinatario: solo se guardan los campos que cambian y queda en la bitácora. */
@@ -51,9 +52,9 @@ export function RecipientDialog({ action, value }: { action: (fd: FormData) => P
           className="grid gap-3 p-5 sm:grid-cols-2"
         >
           {FIELDS.map(([k, label, o]) => (
-            <label key={k} className="block">
+            <label key={k} className={k === "destLocation" ? "block sm:col-span-2" : "block"}>
               <span className="label">{t(label)}</span>
-              <input name={k} defaultValue={value[k]} required={o?.required} type={o?.type ?? "text"} inputMode={k === "destZip" ? "numeric" : undefined} maxLength={k === "destZip" ? 5 : undefined} className="input" />
+              <input name={k} defaultValue={value[k]} required={o?.required} type={o?.type ?? "text"} inputMode={k === "destZip" ? "numeric" : undefined} maxLength={k === "destZip" ? 5 : undefined} className={k === "destLocation" ? "input font-mono text-xs" : "input"} placeholder={k === "destLocation" ? "https://maps.app.goo.gl/…" : undefined} />
             </label>
           ))}
           <div className="flex justify-end gap-2 pt-2 sm:col-span-2">

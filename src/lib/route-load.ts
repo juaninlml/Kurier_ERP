@@ -62,9 +62,9 @@ export async function finishRouteLoad(loadId: number, by: string) {
 export async function assignRouteOrder(loadId: number) {
   const stops = await prisma.shipment.findMany({
     where: { loadId },
-    select: { id: true, destZip: true, borough: true, destColony: true, destStreet: true, destNumber: true },
+    select: { id: true, destZip: true, borough: true, destColony: true, destStreet: true, destNumber: true, destLat: true, destLng: true },
   });
-  const order = orderStops(stops.map((s) => ({ id: s.id, zip: s.destZip, borough: s.borough, colony: s.destColony, street: s.destStreet, number: s.destNumber })));
+  const order = orderStops(stops.map((s) => ({ id: s.id, zip: s.destZip, borough: s.borough, colony: s.destColony, street: s.destStreet, number: s.destNumber, lat: s.destLat, lng: s.destLng })));
   await prisma.$transaction(order.map((id, i) => prisma.shipment.update({ where: { id }, data: { routeSeq: i + 1 } })));
   return order.length;
 }
