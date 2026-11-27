@@ -73,13 +73,16 @@ function intToWords(n: number): string {
   return parts.join(" ");
 }
 
-export function amountInWords(amount: number): string {
+export function amountInWords(amount: number, currency = "MXN"): string {
   const total = round2(Math.abs(amount));
   const pesos = Math.floor(total);
   const centavos = Math.round((total - pesos) * 100);
   const words = intToWords(pesos).replace(/UNO$/, "UN");
   const de = pesos > 0 && pesos % 1_000_000 === 0 ? " DE" : "";
-  return `${words}${de} ${pesos === 1 ? "PESO" : "PESOS"} ${String(centavos).padStart(2, "0")}/100 M.N.`;
+  const cents = String(centavos).padStart(2, "0");
+  // Facturas en yuan/renminbi: "MIL DOSCIENTOS YUANES 50/100 CNY"
+  if (currency === "CNY") return `${words}${de} ${pesos === 1 ? "YUAN" : "YUANES"} ${cents}/100 CNY`;
+  return `${words}${de} ${pesos === 1 ? "PESO" : "PESOS"} ${cents}/100 M.N.`;
 }
 
 const EN_ONES = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
@@ -104,9 +107,10 @@ function enWords(n: number): string {
 }
 
 /** Importe con letra en inglés: "FIFTY-EIGHT THOUSAND ... PESOS 76/100 MXN". */
-export function amountInWordsEn(amount: number): string {
+export function amountInWordsEn(amount: number, currency = "MXN"): string {
   const total = round2(Math.abs(amount));
   const pesos = Math.floor(total);
   const cents = Math.round((total - pesos) * 100);
+  if (currency === "CNY") return `${enWords(pesos)} YUAN ${String(cents).padStart(2, "0")}/100 CNY`;
   return `${enWords(pesos)} ${pesos === 1 ? "PESO" : "PESOS"} ${String(cents).padStart(2, "0")}/100 MXN`;
 }

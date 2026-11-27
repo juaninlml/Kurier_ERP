@@ -1,3 +1,4 @@
+import { toMxn } from "@/lib/currency";
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -35,7 +36,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         }
       : undefined,
     orderBy: [{ active: "desc" }, { name: "asc" }],
-    include: { invoices: { where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true } } },
+    include: { invoices: { where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true, currency: true, exchangeRate: true } } },
   });
 
   return (
@@ -80,7 +81,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               </thead>
               <tbody>
                 {clients.map((c) => {
-                  const balance = c.invoices.reduce((a, i) => a + i.total - i.paidTotal, 0);
+                  const balance = c.invoices.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0);
                   return (
                     <tr key={c.id} className={c.active ? "" : "opacity-60"}>
                       <td>

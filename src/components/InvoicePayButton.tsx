@@ -5,7 +5,7 @@ import { HandCoins, X } from "lucide-react";
 import { Form } from "./Form";
 import { SubmitButton } from "./SubmitButton";
 import { useT } from "./I18nProvider";
-import { formatMoney } from "@/lib/money";
+import { formatCurrency } from "@/lib/currency";
 import { PAYMENT_METHODS } from "@/lib/constants";
 
 import { NumberField } from "./NumberField";
@@ -17,6 +17,7 @@ export function InvoicePayButton({
   balance,
   today,
   note,
+  currency = "MXN",
 }: {
   action: (fd: FormData) => Promise<unknown>;
   folio: string;
@@ -25,6 +26,8 @@ export function InvoicePayButton({
   today: string;
   /** Aviso bajo el formulario (por omisión: se registra como ingreso). Ya traducido. */
   note?: string;
+  /** Moneda del saldo (facturas en CNY: el monto se captura en yuanes). */
+  currency?: string;
 }) {
   const t = useT();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -50,7 +53,7 @@ export function InvoicePayButton({
           <div>
             <h2 className="font-semibold">{t("Registrar pago")}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {folio} · {client} · {t("Saldo")} <span className="font-medium text-foreground tabular-nums">{formatMoney(balance)}</span>
+              {folio} · {client} · {t("Saldo")} <span className="font-medium text-foreground tabular-nums">{formatCurrency(balance, currency)}</span>
             </p>
           </div>
           <button type="button" onClick={close} aria-label={t("Cerrar")} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted">
@@ -67,7 +70,7 @@ export function InvoicePayButton({
           className="space-y-3 px-5 py-4"
         >
           <label className="block">
-            <span className="label">{t("Monto")}</span>
+            <span className="label">{currency === "CNY" ? t("Monto (CNY)") : t("Monto")}</span>
             <NumberField name="amount" defaultValue={balance} required className="input text-right tabular-nums" />
           </label>
           <div className="grid grid-cols-2 gap-3">

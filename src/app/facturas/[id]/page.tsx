@@ -7,7 +7,8 @@ import { PageHeader, StatusBadge, Field } from "@/components/kit";
 import { DocumentView } from "@/components/DocumentView";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { SubmitButton } from "@/components/SubmitButton";
-import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
+import { formatDate, round2, toInputDate } from "@/lib/money";
+import { exchangeRateLabel, formatCurrency, toMxn } from "@/lib/currency";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { Form } from "@/components/Form";
 import { DriveButton } from "@/components/DriveButton";
@@ -36,6 +37,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const cancelled = inv.status === "CANCELADA";
   const late = !cancelled && balance > 0 && inv.dueDate < new Date();
   const editable = !cancelled && inv.payments.length === 0;
+  const cny = inv.currency === "CNY";
+  const money = (n: number) => formatCurrency(n, inv.currency);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -105,19 +108,40 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             discount={inv.discount}
             tax={inv.tax}
             total={inv.total}
+            currency={inv.currency}
             extra={
-              inv.paidTotal > 0 && (
+              <>
+                {cny && (
+                  <div className="mt-2 space-y-1 border-t border-dashed border-border pt-2 text-xs text-muted-foreground">
+                    <div className="font-medium uppercase tracking-wide"><Tr>Equivalente en MXN</Tr></div>
+                    <div className="flex justify-between">
+                      <dt><Tr>Subtotal sin IVA</Tr></dt>
+                      <dd className="tabular-nums">{formatCurrency(toMxn(inv.subtotal, inv))}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>IVA</dt>
+                      <dd className="tabular-nums">{formatCurrency(toMxn(inv.tax, inv))}</dd>
+                    </div>
+                    <div className="flex justify-between font-medium text-foreground">
+                      <dt><Tr>Total</Tr></dt>
+                      <dd className="tabular-nums">{formatCurrency(toMxn(inv.total, inv))}</dd>
+                    </div>
+                    <div>{exchangeRateLabel(inv.exchangeRate)}</div>
+                  </div>
+                )}
+                {inv.paidTotal > 0 && (
                 <>
                   <div className="flex justify-between pt-1 text-emerald-700">
                     <dt><Tr>Pagado</Tr></dt>
-                    <dd className="tabular-nums">{formatMoney(inv.paidTotal)}</dd>
+                    <dd className="tabular-nums">{money(inv.paidTotal)}</dd>
                   </div>
                   <div className="flex justify-between font-semibold text-kurier">
                     <dt><Tr>Saldo</Tr></dt>
-                    <dd className="tabular-nums">{formatMoney(balance)}</dd>
+                    <dd className="tabular-nums">{money(balance)}</dd>
                   </div>
                 </>
-              )
+                )}
+              </>
             }
           />
           {inv.notes && (
@@ -147,7 +171,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                       <td>{formatDate(p.date)}</td>
                       <td>{p.method}</td>
                       <td className="text-muted-foreground">{p.reference || "—"}</td>
-                      <td className="text-right tabular-nums">{formatMoney(p.amount)}</td>
+                      <td className="text-right tabular-nums">
+                        {money(p.amount)}
+                        {cny && <div className="text-xs text-muted-foreground">{formatCurrency(toMxn(p.amount, inv))} MXN</div>}
+                      </td>
                       <td className="text-right">
                         <Form action={deletePayment.bind(null, p.id)}>
                           <ConfirmButton message={t("¿Eliminar este pago? También se eliminará el ingreso en contabilidad.")} className="text-xs text-rose-600 hover:underline">
@@ -168,7 +195,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <Form action={addPayment.bind(null, inv.id)} className="card space-y-3 p-4">
               <h2 className="font-semibold"><Tr>Registrar pago</Tr></h2>
               <p className="text-xs text-muted-foreground"><Tr>Se registra automáticamente como ingreso en contabilidad.</Tr></p>
-              <Field label="Monto">
+              {cny && (
+                <p className="text-xs text-muted-foreground">
+                  {t("Monto en yuanes (CNY). En contabilidad entra en pesos con el tipo de cambio de la factura ({v0}).", { v0: exchangeRateLabel(inv.exchangeRate) })}
+                </p>
+              )}
+              <Field label={cny ? "Monto (CNY)" : "Monto"}>
                 <NumberField name="amount" defaultValue={balance} required className="input text-right tabular-nums" />
               </Field>
               <Field label="Fecha">

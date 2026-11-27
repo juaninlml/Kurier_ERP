@@ -1,3 +1,4 @@
+import { toMxn } from "@/lib/currency";
 import { getSessionUser } from "@/lib/current-user";
 import { prisma } from "@/lib/db";
 import { canRead, MODULE_LABEL, type ModuleId } from "@/lib/permissions";
@@ -46,8 +47,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     case "facturas": {
       const rows = await prisma.invoice.findMany({ where: between ? { issueDate: between } : {}, include: { client: { select: { name: true } } }, orderBy: { issueDate: "asc" } });
       csv = toCsv(
-        ["Folio", "Cliente", "Emisión", "Vencimiento", "Estatus", "Subtotal", "Descuento", "IVA", "Total", "Pagado", "Saldo", "Periodo"],
-        rows.map((r) => [r.folio, r.client.name, r.issueDate, r.dueDate, r.status, r.subtotal, r.discount, r.tax, r.total, r.paidTotal, r.status === "CANCELADA" ? 0 : round2(r.total - r.paidTotal), r.period]),
+        ["Folio", "Cliente", "Emisión", "Vencimiento", "Estatus", "Moneda", "Tipo de cambio (MXN por unidad)", "Subtotal", "Descuento", "IVA", "Total", "Pagado", "Saldo", "Total MXN", "Saldo MXN", "Periodo"],
+        rows.map((r) => {
+          const saldo = r.status === "CANCELADA" ? 0 : round2(r.total - r.paidTotal);
+          return [r.folio, r.client.name, r.issueDate, r.dueDate, r.status, r.currency, r.exchangeRate, r.subtotal, r.discount, r.tax, r.total, r.paidTotal, saldo, toMxn(r.total, r), toMxn(saldo, r), r.period];
+        }),
       );
       break;
     }

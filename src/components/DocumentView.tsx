@@ -1,4 +1,5 @@
 import { formatMoney, formatNumber } from "@/lib/money";
+import { formatCurrency } from "@/lib/currency";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import { Tr } from "@/components/Tr";
 
@@ -27,6 +28,7 @@ export function DocumentView({
   tax,
   total,
   extra,
+  currency = "MXN",
 }: {
   kind: "quote" | "invoice";
   items: Item[];
@@ -35,8 +37,11 @@ export function DocumentView({
   tax: number;
   total: number;
   extra?: React.ReactNode;
+  /** Moneda de la factura (MXN o CNY). */
+  currency?: string;
 }) {
   const isQuote = kind === "quote";
+  const money = (n: number) => formatCurrency(n, currency);
   const groups = isQuote ? groupBySection(items) : [["", items] as const];
 
   return (
@@ -69,11 +74,11 @@ export function DocumentView({
                     </td>
                     {!isQuote && (
                       <td className="whitespace-nowrap text-right tabular-nums">
-                        {i.priceText || (i.atCost ? <Tr>Variable (al costo)</Tr> : formatMoney(i.unitPrice))}
+                        {i.priceText || (i.atCost ? <Tr>Variable (al costo)</Tr> : money(i.unitPrice))}
                         {i.discountPct > 0 && <div className="text-xs text-muted-foreground">−{i.discountPct}%</div>}
                       </td>
                     )}
-                    <td className="whitespace-nowrap text-right font-medium tabular-nums">{i.amount ? formatMoney(i.amount) : "—"}</td>
+                    <td className="whitespace-nowrap text-right font-medium tabular-nums">{i.amount ? money(i.amount) : "—"}</td>
                   </tr>
                 ))}
               </Group>
@@ -86,21 +91,21 @@ export function DocumentView({
           {isQuote && <div className="label"><Tr>Costo mensual estimado</Tr></div>}
           <div className="flex justify-between">
             <dt className="text-muted-foreground"><Tr>Subtotal sin IVA</Tr></dt>
-            <dd className="tabular-nums">{formatMoney(subtotal)}</dd>
+            <dd className="tabular-nums">{money(subtotal)}</dd>
           </div>
           {discount > 0 && (
             <div className="flex justify-between">
               <dt className="text-muted-foreground"><Tr>Descuento</Tr></dt>
-              <dd className="tabular-nums">−{formatMoney(discount)}</dd>
+              <dd className="tabular-nums">−{money(discount)}</dd>
             </div>
           )}
           <div className="flex justify-between">
             <dt className="text-muted-foreground">IVA</dt>
-            <dd className="tabular-nums">{formatMoney(tax)}</dd>
+            <dd className="tabular-nums">{money(tax)}</dd>
           </div>
           <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
             <dt><Tr>{isQuote ? "Total estimado" : "Total a pagar"}</Tr></dt>
-            <dd className="tabular-nums text-kurier">{formatMoney(total)}</dd>
+            <dd className="tabular-nums text-kurier">{money(total)}</dd>
           </div>
           {extra}
         </dl>

@@ -11,6 +11,7 @@ import { clientOrdersSummary, DATE_RE, rangeLabel, weekOf } from "@/lib/orders";
 import { suppliesByMaterial } from "@/lib/supplies";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
+import { suggestedCnyRate } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -20,7 +21,7 @@ export async function generateMetadata() {
 export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ clientId?: string; quoteId?: string; importId?: string; ordenes?: string; semana?: string }> }) {
   const t = await getT();
   const { clientId, quoteId, importId, ordenes, semana } = await searchParams;
-  const [{ clients, services, clientRates, settings, brands }, folioByClient] = await Promise.all([editorData(), invoiceFolioSuggestions()]);
+  const [{ clients, services, clientRates, settings, brands }, folioByClient, fx] = await Promise.all([editorData(), invoiceFolioSuggestions(), suggestedCnyRate()]);
   const today = new Date();
   const base: DocumentDefaults = {
     clientId: clientId ? Number(clientId) : undefined,
@@ -149,6 +150,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
           submitLabel={t("Crear factura")}
           defaults={defaults}
           folioByClient={folioByClient}
+          fx={fx}
         />
       )}
     </div>

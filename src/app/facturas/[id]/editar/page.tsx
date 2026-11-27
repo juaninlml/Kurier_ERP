@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/kit";
 import { editorData, itemsForEditor } from "@/lib/editor-data";
 import { toInputDate } from "@/lib/money";
 import { getT } from "@/lib/i18n/server";
+import { suggestedCnyRate } from "@/lib/fx";
+import { currencyOf } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   });
   if (!inv) notFound();
   if (inv._count.payments > 0 || inv.status === "CANCELADA") redirect(`/facturas/${id}`);
-  const { clients, services, clientRates, settings, brands } = await editorData();
+  const [{ clients, services, clientRates, settings, brands }, fx] = await Promise.all([editorData(), suggestedCnyRate()]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -32,6 +34,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           brands={brands}
         defaultTaxRate={settings.defaultTaxRate}
         submitLabel={t("Guardar cambios")}
+        fx={fx}
         defaults={{
           clientId: inv.clientId,
           folio: inv.folio,
@@ -43,6 +46,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           volume: inv.volume,
           storage: inv.storage,
           terms: inv.terms,
+          currency: currencyOf(inv.currency),
+          exchangeRate: inv.exchangeRate,
           items: itemsForEditor(inv.items),
         }}
       />

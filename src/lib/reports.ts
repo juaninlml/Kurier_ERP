@@ -1,3 +1,4 @@
+import { toMxn } from "./currency";
 import { prisma } from "./db";
 import { round2 } from "./money";
 
@@ -78,7 +79,8 @@ export async function receivables(asOf = new Date()) {
     orderBy: { dueDate: "asc" },
   });
   const rows = invoices.map((inv) => {
-    const balance = round2(inv.total - inv.paidTotal);
+    // Saldo en MXN: las facturas en yuanes se convierten con su tipo de cambio guardado.
+    const balance = toMxn(inv.total - inv.paidTotal, inv);
     const days = Math.floor((asOf.getTime() - inv.dueDate.getTime()) / 86_400_000);
     const bucket: AgingBucket = days <= 0 ? "corriente" : days <= 30 ? "1-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
     return { ...inv, balance, daysOverdue: Math.max(0, days), bucket };

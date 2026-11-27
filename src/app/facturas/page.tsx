@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
 import { formatDate, formatMoney, round2, toInputDate } from "@/lib/money";
+import { formatCurrency, toMxn } from "@/lib/currency";
 import { addPayment } from "@/app/actions/invoices";
 import { InvoicePayButton } from "@/components/InvoicePayButton";
 import { INVOICE_STATUSES } from "@/lib/constants";
@@ -33,13 +34,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       orderBy: { id: "desc" },
       take: 200,
     }),
-    prisma.invoice.findMany({ where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true, dueDate: true } }),
+    prisma.invoice.findMany({ where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true, dueDate: true, currency: true, exchangeRate: true } }),
     prisma.invoice.groupBy({ by: ["status"], where: search, _count: true }),
     prisma.wmsImport.count({ where: { status: "PENDIENTE" } }),
   ]);
-  const receivable = round2(open.reduce((a, i) => a + i.total - i.paidTotal, 0));
+  // Las facturas en yuanes se suman en pesos con su tipo de cambio guardado (los totales siempre en MXN).
+  const receivable = round2(open.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0));
   const lateOpen = open.filter((i) => i.dueDate < now);
-  const overdue = round2(lateOpen.reduce((a, i) => a + i.total - i.paidTotal, 0));
+  const overdue = round2(lateOpen.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0));
   const counts: Record<string, number> = { ...Object.fromEntries(grouped.map((g) => [g.status, g._count])), VENCIDA: lateOpen.length };
 
   return (
@@ -121,14 +123,17 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                       <td>
                         <StatusBadge status={late ? "VENCIDA" : inv.status} />
                       </td>
-                      <td className="text-right tabular-nums">{formatMoney(inv.total)}</td>
-                      <td className="text-right font-medium tabular-nums">{balance > 0 ? formatMoney(balance) : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="text-right tabular-nums">
+                        {formatCurrency(inv.total, inv.currency)}
+                        {inv.currency === "CNY" && <div className="text-[11px] text-muted-foreground">CNY · {formatMoney(toMxn(inv.total, inv))} MXN</div>}
+                      </td>
+                      <td className="text-right font-medium tabular-nums">{balance > 0 ? formatCurrency(balance, inv.currency) : <span className="text-muted-foreground">—</span>}</td>
                       <td className="py-1 text-right">
                         <div className="flex items-center justify-end">
                           <PdfLink href={`/api/pdf/factura/${inv.id}`} />
                           <PdfLink href={`/api/pdf/factura/${inv.id}`} download />
                           {balance > 0 ? (
-                            <InvoicePayButton action={addPayment.bind(null, inv.id)} folio={inv.folio} client={inv.client.name} balance={balance} today={toInputDate(new Date())} />
+                            <InvoicePayButton action={addPayment.bind(null, inv.id)} folio={inv.folio} client={inv.client.name} balance={balance} currency={inv.currency} today={toInputDate(new Date())} />
                           ) : (
                             <span className="inline-block size-8" aria-hidden="true" />
                           )}

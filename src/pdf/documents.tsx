@@ -10,6 +10,7 @@ import { docText } from "@/lib/i18n/doc-text";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
+import { formatCurrency, exchangeRateLabel, toMxn } from "@/lib/currency";
 
 const PRICES_NOTE = "Todos los precios sin IVA, en pesos mexicanos (MXN)";
 const qtyLabel = (q: number, unit: string) => `${formatNumber(q)} ${unit.toLowerCase()}`;
@@ -211,6 +212,7 @@ const INVOICE_L = {
     taxes: "Impuestos", exempt: "Exento", totalInv: "Total factura", words: "Importe con letra:",
     payments: "Pagos recibidos", ref: "Ref.", payData: "Datos para pago", bank: "Banco", account: "Cuenta", clabe: "CLABE", beneficiary: "Beneficiario", reference: "Referencia de pago",
     cancelled: "CANCELADA", paidMark: "PAGADA",
+    cnyNote: "Importes en yuan / renminbi (CNY).", mxnEq: "Equivalente en pesos mexicanos (MXN)", rate: "Tipo de cambio",
   },
   en: {
     doc: "Invoice", subtitle: "Billing format · All prices exclude VAT, in Mexican pesos (MXN)", footer: "Invoice format",
@@ -221,6 +223,7 @@ const INVOICE_L = {
     taxes: "Taxes", exempt: "Exempt", totalInv: "Invoice total", words: "Total amount in words:",
     payments: "Payments received", ref: "Ref.", payData: "Payment details", bank: "Bank", account: "Account", clabe: "CLABE", beneficiary: "Beneficiary", reference: "Payment reference",
     cancelled: "CANCELLED", paidMark: "PAID",
+    cnyNote: "Amounts in Chinese yuan / renminbi (CNY).", mxnEq: "Equivalent in Mexican pesos (MXN)", rate: "Exchange rate",
   },
 } as const;
 
@@ -243,6 +246,9 @@ export function InvoicePdf({
   const date = (d: Date) => (en ? formatDateNum(d, "en-US") : formatDateNumEs(d));
   const balance = round2(invoice.total - invoice.paidTotal);
   const cl = invoice.client;
+  // Moneda de la factura: $ (MXN) o ¥ (CNY). En CNY se agrega el equivalente en pesos con el tipo de cambio guardado.
+  const cny = invoice.currency === "CNY";
+  const formatMoney = (n: number) => formatCurrency(n, invoice.currency);
 
   const rates = [...new Set(invoice.items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
   const totalsRows: { label: string; value: string }[] = [{ label: L.subtotal, value: formatMoney(invoice.subtotal) }];
@@ -265,7 +271,7 @@ export function InvoicePdf({
 
   return (
     <PdfDoc title={`${L.doc} ${invoice.folio} — ${cl.name}`}>
-      <CleanPage s={s} lang={lang} title={`${L.doc} ${invoice.folio}`} watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}>
+      <CleanPage s={s} lang={lang} title={`${L.doc} ${invoice.folio}${cny ? " (CNY)" : ""}`} watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}>
         <PartyBlock name={cl.legalName || cl.name} lines={[cl.legalName && cl.legalName !== cl.name ? cl.name : "", cl.rfc && `${L.rfc}: ${cl.rfc}`, cl.address]} />
 
         <InfoGrid
@@ -327,10 +333,16 @@ export function InvoicePdf({
           <TotalsBox
             s={s}
             rows={totalsRows}
-            total={{ label: invoice.paidTotal > 0 ? L.balance : L.total, value: formatMoney(due) }}
-            words={`${L.words}\n${en ? amountInWordsEn(due) : amountInWords(due)}`}
+            total={{ label: invoice.paidTotal > 0 ? L.balance : L.total, value: `${formatMoney(due)}${cny ? " CNY" : ""}` }}
+            words={`${L.words}\n${en ? amountInWordsEn(due, invoice.currency) : amountInWords(due, invoice.currency)}`}
           />
         </View>
+        {cny && (
+          <SmallNote
+            style={{ marginTop: 10 }}
+            text={`${L.cnyNote} ${L.mxnEq}: ${L.subtotal} ${formatCurrency(toMxn(invoice.subtotal, invoice))} · ${L.tax} ${formatCurrency(toMxn(invoice.tax, invoice))} · ${L.total} ${formatCurrency(toMxn(invoice.total, invoice))} MXN${invoice.paidTotal > 0 ? ` · ${L.balance} ${formatCurrency(toMxn(balance, invoice))} MXN` : ""}. ${L.rate}: ${exchangeRateLabel(invoice.exchangeRate)}.`}
+          />
+        )}
 
         <SmallNote text={x(s.invoiceDisclaimer)} style={{ marginTop: 14 }} />
       </CleanPage>
@@ -346,8 +358,10 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
   const c = palette(s);
   const now = new Date();
   const open = data.invoices.filter((i) => i.status === "PENDIENTE" || i.status === "PARCIAL");
-  const balance = round2(open.reduce((a, i) => a + i.total - i.paidTotal, 0));
-  const overdue = round2(open.filter((i) => i.dueDate < now).reduce((a, i) => a + i.total - i.paidTotal, 0));
+  // Saldos siempre en MXN: las facturas en yuanes se convierten con el tipo de cambio guardado en cada una.
+  const balance = round2(open.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0));
+  const overdue = round2(open.filter((i) => i.dueDate < now).reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0));
+  const hasCny = data.invoices.some((i) => i.currency === "CNY");
 
   return (
     <PdfDoc title={`Estado de cuenta ${data.client.name}`}>
@@ -383,9 +397,11 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
           rows={data.invoices.map((inv) => {
             const bal = round2(inv.total - inv.paidTotal);
             const late = bal > 0 && inv.dueDate < now;
-            return [inv.folio, formatDateNumEs(inv.issueDate), formatDateNumEs(inv.dueDate), late ? "Vencida" : STATUS_LABELS[inv.status], formatMoney(inv.total), formatMoney(inv.paidTotal), formatMoney(bal)];
+            const m = (n: number) => `${formatCurrency(n, inv.currency)}${inv.currency === "CNY" ? " CNY" : ""}`;
+            return [inv.folio, formatDateNumEs(inv.issueDate), formatDateNumEs(inv.dueDate), late ? "Vencida" : STATUS_LABELS[inv.status], m(inv.total), m(inv.paidTotal), m(bal)];
           })}
         />
+        {hasCny && <Note>Las facturas en yuanes (CNY) se muestran en su moneda; los saldos de arriba están en pesos (MXN) con el tipo de cambio guardado en cada factura.</Note>}
         {data.invoices.length === 0 && <Note>Sin facturas registradas.</Note>}
       </BrandedPage>
     </PdfDoc>

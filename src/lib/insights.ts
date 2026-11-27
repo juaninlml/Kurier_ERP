@@ -1,3 +1,4 @@
+import { toMxn } from "./currency";
 import { prisma } from "./db";
 import { round2 } from "./money";
 import { requestLocale } from "./request-lang";
@@ -74,17 +75,24 @@ export function lastMonthsRange(months = 12, now = new Date()) {
 
 /** Clientes con mayor facturación (sin canceladas) en el rango. */
 export async function topClients(from: Date, to: Date, take = 6) {
-  const groups = await prisma.invoice.groupBy({
-    by: ["clientId"],
+  // Se agrupa también por moneda y tipo de cambio para sumar todo en MXN (las facturas en CNY se convierten).
+  const rows = await prisma.invoice.groupBy({
+    by: ["clientId", "currency", "exchangeRate"],
     where: { issueDate: { gte: from, lte: to }, status: { not: "CANCELADA" } },
     _sum: { total: true },
     _count: { _all: true },
-    orderBy: { _sum: { total: "desc" } },
-    take,
   });
-  const clients = await prisma.client.findMany({ where: { id: { in: groups.map((g) => g.clientId) } }, select: { id: true, name: true } });
+  const byClient = new Map<number, { total: number; count: number }>();
+  for (const r of rows) {
+    const g = byClient.get(r.clientId) ?? { total: 0, count: 0 };
+    g.total += toMxn(r._sum.total ?? 0, r);
+    g.count += r._count._all;
+    byClient.set(r.clientId, g);
+  }
+  const groups = [...byClient.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, take);
+  const clients = await prisma.client.findMany({ where: { id: { in: groups.map(([id]) => id) } }, select: { id: true, name: true } });
   const name = new Map(clients.map((c) => [c.id, c.name]));
-  return groups.map((g) => ({ id: g.clientId, name: name.get(g.clientId) ?? "—", total: round2(g._sum.total ?? 0), count: g._count._all }));
+  return groups.map(([id, g]) => ({ id, name: name.get(id) ?? "—", total: round2(g.total), count: g.count }));
 }
 
 /** Cotizaciones agrupadas por estado (importe y número). */
@@ -114,7 +122,7 @@ export async function recentActivity(take = 10): Promise<ActivityItem[]> {
     prisma.invoice.findMany({
       orderBy: { createdAt: "desc" },
       take,
-      select: { id: true, folio: true, total: true, createdAt: true, client: { select: { name: true } } },
+      select: { id: true, folio: true, total: true, currency: true, exchangeRate: true, createdAt: true, client: { select: { name: true } } },
     }),
     prisma.quote.findMany({
       orderBy: { createdAt: "desc" },
@@ -124,7 +132,7 @@ export async function recentActivity(take = 10): Promise<ActivityItem[]> {
     prisma.payment.findMany({
       orderBy: { createdAt: "desc" },
       take,
-      select: { id: true, amount: true, createdAt: true, method: true, invoice: { select: { id: true, folio: true, client: { select: { name: true } } } } },
+      select: { id: true, amount: true, createdAt: true, method: true, invoice: { select: { id: true, folio: true, currency: true, exchangeRate: true, client: { select: { name: true } } } } },
     }),
     prisma.transaction.findMany({
       where: { paymentId: null },
@@ -146,7 +154,7 @@ export async function recentActivity(take = 10): Promise<ActivityItem[]> {
       at: i.createdAt,
       title: i.folio,
       detail: i.client.name,
-      amount: i.total,
+      amount: toMxn(i.total, i), // en MXN (facturas en CNY con su tipo de cambio)
       href: `/facturas/${i.id}`,
     })),
     ...quotes.map((q) => ({
@@ -164,7 +172,7 @@ export async function recentActivity(take = 10): Promise<ActivityItem[]> {
       at: p.createdAt,
       title: p.invoice.folio,
       detail: `${p.invoice.client.name} · ${p.method}`,
-      amount: p.amount,
+      amount: toMxn(p.amount, p.invoice),
       sign: 1 as const,
       href: `/facturas/${p.invoice.id}`,
     })),

@@ -1,3 +1,4 @@
+import { formatCurrency, toMxn } from "@/lib/currency";
 import { FileDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,8 +30,9 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
   const brandName = brands.length > 1 ? brands.find((b) => b.id === (client.brandId ?? 0))?.name : null;
 
   const open = client.invoices.filter((i) => i.status === "PENDIENTE" || i.status === "PARCIAL");
-  const balance = open.reduce((a, i) => a + i.total - i.paidTotal, 0);
-  const billed = client.invoices.filter((i) => i.status !== "CANCELADA").reduce((a, i) => a + i.total, 0);
+  // En MXN: las facturas en yuanes se convierten con su tipo de cambio guardado.
+  const balance = open.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0);
+  const billed = client.invoices.filter((i) => i.status !== "CANCELADA").reduce((a, i) => a + toMxn(i.total, i), 0);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -87,7 +89,10 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
                     <td>
                       <StatusBadge status={i.status} />
                     </td>
-                    <td className="text-right tabular-nums">{formatMoney(i.total)}</td>
+                    <td className="text-right tabular-nums">
+                      {formatCurrency(i.total, i.currency)}
+                      {i.currency === "CNY" && <span className="ml-1 text-[11px] text-muted-foreground">CNY</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

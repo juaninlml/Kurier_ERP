@@ -4,7 +4,8 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SubmitButton } from "./SubmitButton";
 import { computeLines, type LineInput } from "@/lib/totals";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, round2 } from "@/lib/money";
+import { CURRENCIES, CURRENCY_NAMES, formatCurrency, type Currency } from "@/lib/currency";
 import { UNITS } from "@/lib/constants";
 import { Form } from "./Form";
 import { parseVolumes, scenarioTable, type PerOrderRow } from "@/lib/quote-extras";
@@ -58,6 +59,9 @@ export type DocumentDefaults = {
   period?: string;
   volume?: string;
   storage?: string;
+  /** Moneda de la factura y tipo de cambio (MXN por 1 CNY). */
+  currency?: Currency;
+  exchangeRate?: number;
   items: LineInput[];
 };
 
@@ -107,6 +111,7 @@ export function DocumentEditor({
   submitLabel,
   brands = [],
   folioByClient = {},
+  fx = null,
 }: {
   action: (formData: FormData) => Promise<unknown>;
   clients: ClientOpt[];
@@ -121,6 +126,8 @@ export function DocumentEditor({
   brands?: BrandOpt[];
   /** Facturas: siguiente folio de la serie propia de cada cliente (sin serie: automático). */
   folioByClient?: Record<number, string>;
+  /** Facturas: tipo de cambio de referencia del día (MXN por 1 CNY) para sugerirlo; null = captura manual. */
+  fx?: { rate: number; date: string } | null;
 }) {
   const t = useT();
   const isQuote = kind === "quote";
@@ -138,6 +145,28 @@ export function DocumentEditor({
   const [folioTouched, setFolioTouched] = useState(!!defaults.folio);
   const [lines, setLines] = useState<LineInput[]>(defaults.items.length ? defaults.items : [emptyLine(defaultTaxRate)]);
   const [profile, setProfile] = useState<ProfileRow[]>(defaults.profile ?? []);
+
+  // Facturas: moneda (MXN o CNY) y tipo de cambio en pesos por 1 yuan.
+  const [currency, setCurrency] = useState<Currency>(defaults.currency ?? "MXN");
+  const [rate, setRate] = useState<number>(
+    defaults.currency === "CNY" && defaults.exchangeRate ? defaults.exchangeRate : (fx?.rate ?? 0),
+  );
+  // Moneda en la que están capturados los precios de los conceptos (al cambiar de moneda se ofrece convertirlos).
+  const [pricesIn, setPricesIn] = useState<Currency>(defaults.currency ?? "MXN");
+  const [convAmount, setConvAmount] = useState(0);
+  const [convFrom, setConvFrom] = useState<Currency>("MXN");
+  const convTo: Currency = convFrom === "MXN" ? "CNY" : "MXN";
+  const money = (n: number) => (isQuote ? formatMoney(n) : formatCurrency(n, currency));
+  const other: Currency = currency === "CNY" ? "MXN" : "CNY";
+  /** Importe de la moneda de la factura en la otra moneda. */
+  const toOther = (n: number) => (rate > 0 ? round2(currency === "CNY" ? n * rate : n / rate) : 0);
+  /** Importe de una moneda a otra con el tipo de cambio capturado. */
+  const convertPrice = (n: number, from: Currency, to: Currency) =>
+    from === to || !(rate > 0) ? n : round2(from === "MXN" ? n / rate : n * rate);
+  const convertLines = (from: Currency, to: Currency) =>
+    setLines((ls) =>
+      ls.map((l) => ({ ...l, unitPrice: convertPrice(l.unitPrice, from, to), amount: l.atCost ? convertPrice(l.amount ?? 0, from, to) : l.amount })),
+    );
 
   // En facturas solo cuentan los conceptos con cantidad (o importe al costo).
   const billable = (l: LineInput) => l.description.trim() && (isQuote || l.quantity > 0 || (l.atCost && (l.amount ?? 0) > 0));
@@ -176,7 +205,11 @@ export function DocumentEditor({
     });
   const addService = (id: string) => {
     const s = services.find((x) => String(x.id) === id);
-    if (s) append([fromService(s, isQuote ? 0 : 1)]);
+    if (!s) return;
+    const line = fromService(s, isQuote ? 0 : 1);
+    // El tarifario está en pesos: en una factura en yuanes el precio se convierte con el tipo de cambio.
+    if (!isQuote && currency === "CNY" && rate > 0) line.unitPrice = convertPrice(line.unitPrice, "MXN", "CNY");
+    append([line]);
   };
   const addSection = (name: string) => {
     const list = sections.find(([n]) => n === name)?.[1] ?? [];
@@ -341,6 +374,86 @@ export function DocumentEditor({
         )}
       </div>
 
+      {!isQuote && (
+        <div className="card space-y-4 p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="block">
+              <span className="label"><Tr>Moneda de la factura</Tr></span>
+              <select name="currency" className="input" value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {t(CURRENCY_NAMES[c])}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px] text-muted-foreground"><Tr>Yuan y renminbi son la misma moneda (CNY).</Tr></span>
+            </label>
+            <label className="block">
+              <span className="label">{currency === "CNY" ? t("Tipo de cambio (MXN por 1 CNY) *") : t("Tipo de cambio de referencia (MXN por 1 CNY)")}</span>
+              <NumberField
+                name="exchangeRate"
+                decimals={4}
+                required={currency === "CNY"}
+                className="input text-right"
+                value={rate}
+                onValueChange={(n) => setRate(n)}
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                {currency === "CNY"
+                  ? t("Se guarda en la factura. Los cobros se registran en contabilidad en pesos con este tipo de cambio.")
+                  : t("Solo para el convertidor; una factura en pesos no lo guarda.")}
+              </span>
+            </label>
+            <div className="flex flex-col justify-center gap-1 text-xs text-muted-foreground">
+              {fx ? (
+                <>
+                  <button type="button" className="btn-secondary w-fit" onClick={() => setRate(fx.rate)}>
+                    {t("Usar el del día: {v0}", { v0: fx.rate.toLocaleString("es-MX", { maximumFractionDigits: 4 }) })}
+                  </button>
+                  <span>{t("Referencia del Banco Central Europeo del {v0} (Frankfurter). Verifica con tu banco.", { v0: fx.date })}</span>
+                </>
+              ) : (
+                <span><Tr>No se pudo consultar el tipo de cambio del día; captúralo a mano.</Tr></span>
+              )}
+            </div>
+          </div>
+
+          {pricesIn !== currency && lines.some((l) => l.unitPrice > 0 || (l.atCost && (l.amount ?? 0) > 0)) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <span>{t("Los precios de los conceptos están en {v0}.", { v0: pricesIn })}</span>
+              <button
+                type="button"
+                className="btn-secondary h-7 px-2 text-xs"
+                disabled={!(rate > 0)}
+                onClick={() => {
+                  convertLines(pricesIn, currency);
+                  setPricesIn(currency);
+                }}
+              >
+                {t("Convertir precios de {v0} a {v1}", { v0: pricesIn, v1: currency })}
+              </button>
+              <button type="button" className="btn-secondary h-7 px-2 text-xs" onClick={() => setPricesIn(currency)}>
+                <Tr>Dejarlos como están</Tr>
+              </button>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-4">
+            <div className="label"><Tr>Convertidor de moneda</Tr></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <NumberField className="input w-40 text-right" value={convAmount} onValueChange={(n) => setConvAmount(n)} aria-label={t("Cantidad a convertir")} />
+              <select className="input w-auto" value={convFrom} onChange={(e) => setConvFrom(e.target.value as Currency)} aria-label={t("Moneda de origen")}>
+                <option value="MXN">MXN → CNY</option>
+                <option value="CNY">CNY → MXN</option>
+              </select>
+              <div className="text-sm font-medium tabular-nums">
+                = {rate > 0 ? `${formatCurrency(convertPrice(convAmount, convFrom, convTo), convTo)} ${convTo}` : t("Captura el tipo de cambio")}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isQuote && (
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
@@ -467,7 +580,7 @@ export function DocumentEditor({
                   <input type="number" step="any" min="0" className="input text-right" value={l.taxRate || ""} onChange={(e) => update(i, { taxRate: num(e.target.value) })} />
                 </Cell>
                 <Cell label={t("Importe")}>
-                  <div className="py-2 text-right text-sm font-medium tabular-nums">{formatMoney(lineAmount(l))}</div>
+                  <div className="py-2 text-right text-sm font-medium tabular-nums">{money(lineAmount(l))}</div>
                 </Cell>
                 <div className="flex items-end justify-end gap-1 pb-2">
                   <button type="button" title={t("Subir")} aria-label={t("Subir")} className="inline-grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => move(i, -1)}>
@@ -533,22 +646,40 @@ export function DocumentEditor({
             {isQuote && <div className="label"><Tr>Costo mensual estimado</Tr></div>}
             <div className="flex justify-between">
               <dt className="text-muted-foreground"><Tr>Subtotal sin IVA</Tr></dt>
-              <dd className="tabular-nums">{formatMoney(totals.subtotal)}</dd>
+              <dd className="tabular-nums">{money(totals.subtotal)}</dd>
             </div>
             {totals.discount > 0 && (
               <div className="flex justify-between">
                 <dt className="text-muted-foreground"><Tr>Descuento</Tr></dt>
-                <dd className="tabular-nums">−{formatMoney(totals.discount)}</dd>
+                <dd className="tabular-nums">−{money(totals.discount)}</dd>
               </div>
             )}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">IVA</dt>
-              <dd className="tabular-nums">{formatMoney(totals.tax)}</dd>
+              <dd className="tabular-nums">{money(totals.tax)}</dd>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
               <dt>{isQuote ? t("Total estimado") : t("Total a pagar")}</dt>
-              <dd className="tabular-nums text-kurier">{formatMoney(totals.total)}</dd>
+              <dd className="tabular-nums text-kurier">{money(totals.total)}</dd>
             </div>
+            {!isQuote && rate > 0 && (
+              <div className="mt-2 space-y-1 border-t border-dashed border-border pt-2 text-xs text-muted-foreground">
+                <div className="font-medium uppercase tracking-wide">{t("Equivalente en {v0}", { v0: other })}</div>
+                <div className="flex justify-between">
+                  <span><Tr>Subtotal sin IVA</Tr></span>
+                  <span className="tabular-nums">{formatCurrency(toOther(totals.subtotal), other)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IVA</span>
+                  <span className="tabular-nums">{formatCurrency(toOther(totals.tax), other)}</span>
+                </div>
+                <div className="flex justify-between font-medium text-foreground">
+                  <span><Tr>Total</Tr></span>
+                  <span className="tabular-nums">{formatCurrency(toOther(totals.total), other)}</span>
+                </div>
+                <div>{t("Tipo de cambio: 1 CNY = {v0} MXN", { v0: rate.toLocaleString("es-MX", { maximumFractionDigits: 4 }) })}</div>
+              </div>
+            )}
           </dl>
         </div>
       </div>

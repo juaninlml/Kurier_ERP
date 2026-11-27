@@ -1,3 +1,4 @@
+import { formatCurrency } from "@/lib/currency";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity } from "lucide-react";
@@ -37,10 +38,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     payables(),
     // Suma y conteo en la base (antes se traían todas las cotizaciones abiertas para sumarlas aquí)
     prisma.quote.aggregate({ where: { status: { in: ["BORRADOR", "ENVIADA", "ACEPTADA"] } }, _sum: { total: true }, _count: { _all: true } }),
-    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, select: RECENT_SELECT }),
+    prisma.invoice.findMany({ orderBy: { id: "desc" }, take: 6, select: { ...RECENT_SELECT, currency: true } }),
     prisma.quote
       .findMany({ orderBy: { id: "desc" }, take: 6, select: { ...RECENT_SELECT, prospectName: true } })
-      .then((qs) => qs.map((q) => ({ ...q, client: { name: q.client?.name ?? `${q.prospectName || t("Prospecto")} (${t("prospecto")})` } }))),
+      .then((qs) => qs.map((q) => ({ ...q, currency: "MXN", client: { name: q.client?.name ?? `${q.prospectName || t("Prospecto")} (${t("prospecto")})` } }))),
     flowSeries(year.from, year.to, locale),
     quotePipeline(),
     topClients(year.from, year.to),
@@ -264,7 +265,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                         <td>
                           <StatusBadge status={r.status} />
                         </td>
-                        <td className="text-right font-medium tabular-nums">{formatMoney(r.total)}</td>
+                        <td className="text-right font-medium tabular-nums">{formatCurrency(r.total, r.currency)}</td>
                       </tr>
                     ))}
                   </tbody>

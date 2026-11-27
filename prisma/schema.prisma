@@ -314,6 +314,8 @@ model Invoice {
   tax        Float         @default(0)
   total      Float         @default(0)
   paidTotal  Float         @default(0)
+  currency     String      @default("MXN") // MXN o CNY (yuan/renminbi); importes, pagos y saldo en esta moneda
+  exchangeRate Float       @default(1) // MXN por 1 unidad de la moneda (1 en MXN); contabilidad y reportes suman en MXN
   ordersWeek String        @default("") // lunes (yyyy-mm-dd) de la semana de órdenes diarias facturada como servicio logístico
   items      InvoiceItem[]
   payments   Payment[]

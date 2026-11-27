@@ -1,3 +1,4 @@
+import { toMxn } from "./currency";
 import { prisma } from "./db";
 import { round2 } from "./money";
 
@@ -32,7 +33,7 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 export async function profitability(from: Date, to: Date) {
   const [invoices, orders, supplies, expenses, clients] = await Promise.all([
     prisma.invoice.groupBy({
-      by: ["clientId"],
+      by: ["clientId", "currency", "exchangeRate"],
       where: { issueDate: { gte: from, lte: to }, status: { not: "CANCELADA" } },
       _sum: { subtotal: true, discount: true },
     }),
@@ -48,7 +49,9 @@ export async function profitability(from: Date, to: Date) {
     prisma.client.findMany({ select: { id: true, name: true } }),
   ]);
 
-  const revenue = new Map(invoices.map((i) => [i.clientId, (i._sum.subtotal ?? 0) - (i._sum.discount ?? 0)]));
+  // Ingreso en MXN: las facturas en yuanes se convierten con su tipo de cambio guardado.
+  const revenue = new Map<number, number>();
+  for (const i of invoices) revenue.set(i.clientId, (revenue.get(i.clientId) ?? 0) + toMxn((i._sum.subtotal ?? 0) - (i._sum.discount ?? 0), i));
   const orderQty = new Map(orders.map((o) => [o.clientId, o._sum.quantity ?? 0]));
   const supplyCost = new Map<number, number>();
   for (const s of supplies) supplyCost.set(s.clientId, (supplyCost.get(s.clientId) ?? 0) + s.quantity * s.material.unitCost);

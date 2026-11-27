@@ -6,18 +6,30 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { computeLines } from "@/lib/totals";
-import { formatMoney, fromInputDate, round2 } from "@/lib/money";
+import { fromInputDate, round2 } from "@/lib/money";
 import { auditNote } from "@/lib/audit";
 import { nextFolio } from "@/lib/settings";
 import { numv, parseItems, str } from "./helpers";
 import { queueArchive } from "@/lib/archive";
 import { brandPrefix } from "@/lib/brands";
 import { UserError } from "@/lib/user-error";
+import { currencyOf, exchangeRateLabel, formatCurrency, toMxn } from "@/lib/currency";
+
+/** Moneda de la factura y tipo de cambio (MXN por 1 CNY). En MXN el tipo de cambio es 1. */
+function currencyInput(fd: FormData) {
+  const currency = currencyOf(str(fd, "currency"));
+  if (currency === "MXN") return { currency, exchangeRate: 1 };
+  const exchangeRate = Math.round(numv(fd, "exchangeRate") * 10000) / 10000;
+  if (!(exchangeRate > 0)) throw new Error("Captura el tipo de cambio (pesos por 1 yuan).");
+  if (exchangeRate > 1000) throw new Error("El tipo de cambio no parece correcto: son pesos mexicanos por 1 yuan.");
+  return { currency, exchangeRate };
+}
 
 function header(fd: FormData) {
   const clientId = numv(fd, "clientId");
   if (!clientId) throw new Error("Selecciona un cliente.");
   return {
+    ...currencyInput(fd),
     clientId,
     issueDate: fromInputDate(str(fd, "issueDate")),
     dueDate: fromInputDate(str(fd, "secondDate")),
@@ -105,7 +117,7 @@ async function updateInvoiceImpl(id: number, fd: FormData) {
   ]);
   revalidateAll(id);
   queueArchive(`factura:${id}`);
-  auditNote(`Factura ${folio}: ${formatMoney(totals.total)}`, `/facturas/${id}`, id);
+  auditNote(`Factura ${folio}: ${formatCurrency(totals.total, h.currency)}`, `/facturas/${id}`, id);
   redirect(`/facturas/${id}`);
 }
 
@@ -115,12 +127,15 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
   const inv = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { client: true } });
   if (inv.status === "CANCELADA") throw new Error("La factura está cancelada.");
   const balance = round2(inv.total - inv.paidTotal);
-  if (amount > balance + 0.005) throw new UserError("El pago excede el saldo pendiente ({v0}).", { v0: balance.toFixed(2) });
+  if (amount > balance + 0.005) throw new UserError("El pago excede el saldo pendiente ({v0}).", { v0: formatCurrency(balance, inv.currency) });
   const date = fromInputDate(str(fd, "date"));
   const method = str(fd, "method") || "Transferencia";
   const reference = str(fd, "reference");
   // IVA proporcional contenido en el pago
   const taxShare = inv.total > 0 ? round2(amount * (inv.tax / inv.total)) : 0;
+  // El pago queda en la moneda de la factura; el movimiento de contabilidad, siempre en MXN.
+  const cny = inv.currency === "CNY";
+  const fxNote = cny ? ` (${formatCurrency(amount, "CNY")} CNY · ${exchangeRateLabel(inv.exchangeRate)})` : "";
 
   await prisma.$transaction(async (tx) => {
     const p = await tx.payment.create({
@@ -131,9 +146,9 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
         date,
         type: "INGRESO",
         category: "Cobro de facturas",
-        description: `Pago factura ${inv.folio} — ${inv.client.name}`,
-        amount,
-        tax: taxShare,
+        description: `Pago factura ${inv.folio} — ${inv.client.name}${fxNote}`,
+        amount: toMxn(amount, inv),
+        tax: toMxn(taxShare, inv),
         method,
         reference,
         clientId: inv.clientId,
@@ -144,11 +159,11 @@ async function addPaymentImpl(invoiceId: number, fd: FormData) {
   });
   revalidateAll(invoiceId);
   queueArchive(`factura:${invoiceId}`);
-  auditNote(`Cobro de ${formatMoney(amount)} a ${inv.folio} — ${inv.client.name}`, `/facturas/${invoiceId}`, invoiceId);
+  auditNote(`Cobro de ${formatCurrency(amount, inv.currency)} a ${inv.folio} — ${inv.client.name}`, `/facturas/${invoiceId}`, invoiceId);
 }
 
 async function deletePaymentImpl(paymentId: number) {
-  const p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { invoice: { select: { folio: true } } } });
+  const p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { invoice: { select: { folio: true, currency: true } } } });
   await prisma.$transaction(async (tx) => {
     await tx.transaction.deleteMany({ where: { paymentId } });
     await tx.payment.delete({ where: { id: paymentId } });
@@ -156,7 +171,7 @@ async function deletePaymentImpl(paymentId: number) {
   });
   revalidateAll(p.invoiceId);
   queueArchive(`factura:${p.invoiceId}`);
-  auditNote(`Eliminó el cobro de ${formatMoney(p.amount)} de ${p.invoice.folio}`, `/facturas/${p.invoiceId}`, p.invoiceId);
+  auditNote(`Eliminó el cobro de ${formatCurrency(p.amount, p.invoice.currency)} de ${p.invoice.folio}`, `/facturas/${p.invoiceId}`, p.invoiceId);
 }
 
 async function cancelInvoiceImpl(id: number) {
@@ -170,7 +185,7 @@ async function cancelInvoiceImpl(id: number) {
   revalidateAll(id);
   revalidatePath("/facturas/importar");
   queueArchive(`factura:${id}`);
-  auditNote(`Factura ${inv.folio} (${formatMoney(inv.total)})`, `/facturas/${id}`, id);
+  auditNote(`Factura ${inv.folio} (${formatCurrency(inv.total, inv.currency)})`, `/facturas/${id}`, id);
 }
 
 async function reactivateInvoiceImpl(id: number) {
