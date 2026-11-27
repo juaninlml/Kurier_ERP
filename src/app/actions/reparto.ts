@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { ensureGeo } from "@/lib/geocode";
 import { prisma } from "@/lib/db";
 import { assertSignedIn } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
@@ -221,6 +223,8 @@ export async function scanLoad(code: string): Promise<{ ok: true; info: Delivery
     });
     await writeAudit({ user: me, module: "envios", fnName: "scanLoad", args: [s.id], note: { summary: `Cargó ${s.tracking} en ${load.storage.name}` }, href: `/envios/${s.id}` }).catch(() => {});
     refresh(s.id);
+    // Ubica la dirección mientras se sigue cargando (así al cerrar la carga el orden sale al instante)
+    after(() => ensureGeo([s.id]).catch(() => {}));
     return { ok: true, info: info({ ...s, status: "EN_RUTA" }), again: false };
   } catch (e) {
     return await fail(e);

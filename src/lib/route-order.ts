@@ -3,13 +3,13 @@ import { boroughOfZip } from "./lastmile-zones";
 /*
  * Orden de entrega de las guías de una carga (sin dependencias de servidor; se puede probar solo).
  *
- * Hoy las guías no tienen coordenadas, así que cada parada se ubica en el centro aproximado de su
- * alcaldía y el recorrido se arma así:
- *   1. Las alcaldías se visitan por cercanía (vecino más cercano), saliendo siempre de la base
- *      (Castilla 262, Col. Álamos, Benito Juárez, CP 03400; ver DEPOT).
- *   2. Dentro de cada alcaldía, por código postal, colonia, calle y número.
- * Cuando una parada traiga lat/lng (geocodificación con OpenStreetMap, pendiente), se usa la distancia
- * real entre paradas y el recorrido se mejora con 2-opt; el resto del sistema no cambia.
+ * Cada parada se ubica con el mejor punto disponible:
+ *   1. El link de ubicación del cliente (exacto).
+ *   2. La ubicación aproximada de la dirección (OpenStreetMap, calle o CP; ver src/lib/geocode.ts).
+ *   3. El centro de su alcaldía, si no se encontró nada.
+ * Con esos puntos se arma un circuito que sale de la base (Castilla 262, Col. Álamos; ver DEPOT) y regresa:
+ * vecino más cercano y después se mejora con 2-opt (quitar cruces) y or-opt (mover paradas sueltas al
+ * hueco donde menos desvían). Las paradas que caen en el mismo punto van juntas, por CP, colonia, calle y número.
  */
 
 export type Stop = {
@@ -122,11 +122,6 @@ function twoOpt<T>(route: T[], at: (t: T) => Point, start: Point) {
   return r;
 }
 
-/** Un circuito se puede recorrer en los dos sentidos: se empieza por la parada más cercana a la base. */
-function nearestFirst<T>(route: T[], at: (t: T) => Point, start: Point) {
-  return route.length > 1 && km(start, at(route[route.length - 1])) < km(start, at(route[0])) ? [...route].reverse() : route;
-}
-
 /** Kilómetros del circuito completo: base → paradas → base. */
 function tourKm<T>(route: T[], at: (t: T) => Point, start: Point) {
   let total = 0;
@@ -138,37 +133,77 @@ function tourKm<T>(route: T[], at: (t: T) => Point, start: Point) {
   return total + km(here, start);
 }
 
-/** Mejora mínima (5 %) para cambiar el orden intuitivo de "siempre a la más cercana". */
-const MIN_GAIN = 0.05;
-
 /**
- * Recorrido: primero "siempre a la parada más cercana" (lo que el repartidor espera); solo se cambia por
- * el circuito mejorado si ahorra al menos 5 % de kilómetros.
+ * Or-opt: toma tramos de 1 a 3 paradas y los mueve (al derecho o al revés) al lugar del circuito donde
+ * menos desvían. Corrige las paradas que el vecino más cercano deja "olvidadas" y obligan a regresar.
  */
-function plan<T>(items: T[], at: (t: T) => Point, start: Point) {
-  const greedy = nearestNeighbor(items, at, start);
-  const better = nearestFirst(twoOpt(greedy, at, start), at, start);
-  return tourKm(better, at, start) < tourKm(greedy, at, start) * (1 - MIN_GAIN) ? better : greedy;
+function orOpt<T>(route: T[], at: (t: T) => Point, start: Point) {
+  let r = [...route];
+  let improved = true;
+  for (let pass = 0; improved && pass < 100; pass++) {
+    improved = false;
+    for (let len = 1; len <= 3 && !improved; len++) {
+      for (let i = 0; i + len <= r.length && !improved; i++) {
+        const pt = (k: number) => (k < 0 || k >= r.length ? start : at(r[k]));
+        const first = pt(i);
+        const last = pt(i + len - 1);
+        // Lo que se ahorra al quitar el tramo y unir sus vecinos
+        const gain = km(pt(i - 1), first) + km(last, pt(i + len)) - km(pt(i - 1), pt(i + len));
+        const rest = [...r.slice(0, i), ...r.slice(i + len)];
+        const rp = (k: number) => (k < 0 || k >= rest.length ? start : at(rest[k]));
+        for (let j = 0; j <= rest.length; j++) {
+          if (j === i) continue;
+          const a = rp(j - 1);
+          const b = rp(j);
+          const ab = km(a, b);
+          const fwd = km(a, first) + km(last, b) - ab;
+          const rev = km(a, last) + km(first, b) - ab;
+          if (Math.min(fwd, rev) + 1e-9 < gain) {
+            const seg = r.slice(i, i + len);
+            r = [...rest.slice(0, j), ...(rev < fwd ? seg.reverse() : seg), ...rest.slice(j)];
+            improved = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return r;
 }
 
-/**
- * Orden de entrega desde `start` (por omisión, la base de Kurier: Castilla 262, Álamos).
- * Regresa los ids en el orden en que hay que visitarlos.
- */
+/** Un circuito se puede recorrer en los dos sentidos: se empieza por la parada más cercana a la base. */
+function nearestFirst<T>(route: T[], at: (t: T) => Point, start: Point) {
+  return route.length > 1 && km(start, at(route[route.length - 1])) < km(start, at(route[0])) ? [...route].reverse() : route;
+}
+
+/** Recorrido: vecino más cercano, luego 2-opt y or-opt hasta que ya no se acorte. */
+function plan<T>(items: T[], at: (t: T) => Point, start: Point) {
+  let r = nearestNeighbor(items, at, start);
+  let km0 = tourKm(r, at, start);
+  for (let round = 0; round < 10; round++) {
+    r = orOpt(twoOpt(r, at, start), at, start);
+    const km1 = tourKm(r, at, start);
+    if (km1 + 1e-9 >= km0) break;
+    km0 = km1;
+  }
+  return nearestFirst(r, at, start);
+}
+
+/** Kilómetros aproximados en línea recta de un orden de paradas (base → paradas → base). */
+export function routeKm(stops: Stop[], order: number[], start: Point = DEPOT) {
+  const byId = new Map(stops.map((s) => [s.id, s]));
+  return tourKm(order.map((id) => byId.get(id)!), pointOf, start);
+}
+
 export function orderStops(stops: Stop[], start: Point = DEPOT): number[] {
   if (stops.length <= 1) return stops.map((s) => s.id);
-
-  // Con coordenadas reales en todas las paradas: recorrido por distancia real
-  if (stops.every((s) => s.lat != null && s.lng != null)) {
-    return plan(stops, pointOf, start).map((s) => s.id);
-  }
-
-  // Sin coordenadas: alcaldías por cercanía y, dentro de cada una, por CP, colonia y calle
+  // Paradas en el mismo punto (mismo edificio, o mismo centro de CP/alcaldía) se visitan juntas
   const groups = new Map<string, Stop[]>();
   for (const s of stops) {
-    const b = boroughOf(s);
-    groups.set(b, [...(groups.get(b) ?? []), s]);
+    const p = pointOf(s);
+    const k = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+    groups.set(k, [...(groups.get(k) ?? []), s]);
   }
-  const boroughs = plan([...groups.keys()], centerOf, start);
-  return boroughs.flatMap((b) => groups.get(b)!.sort(withinBorough).map((s) => s.id));
+  const tour = plan([...groups.values()], (g) => pointOf(g[0]), start);
+  return tour.flatMap((g) => g.sort(withinBorough).map((s) => s.id));
 }

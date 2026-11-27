@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { ensureGeo } from "@/lib/geocode";
 import { prisma } from "@/lib/db";
 import { assertSignedIn, safe } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/current-user";
@@ -169,6 +171,8 @@ async function createShipmentImpl(fd: FormData) {
   });
   if (fd.get("saveOrigin") === "on") await saveShipAddress("ORIGEN", pick("origin"));
   if (fd.get("saveDest") === "on") await saveShipAddress("DESTINO", pick("dest"));
+  // Ubicación aproximada para ordenar la ruta (solo si el cliente no mandó su link)
+  if (location.destLat == null) after(() => ensureGeo([s.id]).catch(() => {}));
   revalidatePath("/envios");
   redirect(`/envios/${s.id}`);
 }
@@ -231,6 +235,8 @@ async function updateRecipientImpl(id: number, fd: FormData) {
     where: { id },
     data: { ...changes, ...extra, ...loc, events: { create: { kind: "CORRECCION", detail: log.join(" · "), by: await who() } } },
   });
+  // Si cambió la dirección se vuelve a ubicar (ensureGeo compara la dirección guardada)
+  after(() => ensureGeo([id]).catch(() => {}));
   revalidatePath(`/envios/${id}`);
   revalidatePath("/envios");
 }

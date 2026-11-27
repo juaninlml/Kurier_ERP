@@ -800,6 +800,11 @@ model Shipment {
   destLocationUrl String          @default("") // link de ubicación que dio el cliente (Google Maps / WhatsApp)
   destLat         Float? // coordenadas del destino tomadas de ese link
   destLng         Float?
+  // Ubicación aproximada de la dirección (OpenStreetMap) para ordenar la ruta cuando no hay link del cliente
+  geoLat          Float?
+  geoLng          Float?
+  geoLevel        String          @default("") // "calle", "cp" o "ninguna" (no se encontró)
+  geoKey          String          @default("") // dirección con la que se calculó (si cambia, se vuelve a calcular)
   borough         String          @default("") // alcaldía destino
   zone            Int             @default(0) // 1 o 2
   // Paquete

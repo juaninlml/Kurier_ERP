@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { prisma } from "./db";
 import { orderStops } from "./route-order";
+import { ensureGeo } from "./geocode";
 
 /*
  * Cargas de ruta. Flujo del repartidor en /reparto:
@@ -60,11 +61,26 @@ export async function finishRouteLoad(loadId: number, by: string) {
  * Todas las rutas salen de la base: Castilla 262, Col. Álamos (DEPOT en src/lib/route-order.ts).
  */
 export async function assignRouteOrder(loadId: number) {
+  // Ubicación aproximada de las direcciones que aún no la tienen (casi siempre ya se calculó al cargar)
+  const ids = await prisma.shipment.findMany({ where: { loadId }, select: { id: true } });
+  await ensureGeo(ids.map((s) => s.id), 15_000);
   const stops = await prisma.shipment.findMany({
     where: { loadId },
-    select: { id: true, destZip: true, borough: true, destColony: true, destStreet: true, destNumber: true, destLat: true, destLng: true },
+    select: { id: true, destZip: true, borough: true, destColony: true, destStreet: true, destNumber: true, destLat: true, destLng: true, geoLat: true, geoLng: true },
   });
-  const order = orderStops(stops.map((s) => ({ id: s.id, zip: s.destZip, borough: s.borough, colony: s.destColony, street: s.destStreet, number: s.destNumber, lat: s.destLat, lng: s.destLng })));
+  // El link del cliente gana; si no, la ubicación aproximada de la dirección; si no, el centro de la alcaldía
+  const order = orderStops(
+    stops.map((s) => ({
+      id: s.id,
+      zip: s.destZip,
+      borough: s.borough,
+      colony: s.destColony,
+      street: s.destStreet,
+      number: s.destNumber,
+      lat: s.destLat ?? s.geoLat,
+      lng: s.destLat != null ? s.destLng : s.geoLng,
+    })),
+  );
   await prisma.$transaction(order.map((id, i) => prisma.shipment.update({ where: { id }, data: { routeSeq: i + 1 } })));
   return order.length;
 }
