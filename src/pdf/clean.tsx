@@ -209,12 +209,15 @@ export function TotalsBox({
   s,
   rows,
   total,
+  totalAlt,
   words,
   width = 230,
 }: {
   s: CompanySettings;
   rows: { label: string; value: string }[];
   total: { label: string; value: string };
+  /** Segundo total con el mismo tamaño y color (p. ej. el equivalente en pesos de una factura en yuanes). */
+  totalAlt?: { label: string; value: string };
   words?: string;
   width?: number;
 }) {
@@ -228,6 +231,7 @@ export function TotalsBox({
     <View wrap={false} style={{ width }}>
       {rows.map((r, i) => line(r.label, r.value, i))}
       {line(total.label, total.value, rows.length, true)}
+      {totalAlt ? line(totalAlt.label, totalAlt.value, rows.length + 1, true) : null}
       {words ? <Text style={{ marginTop: 4, fontSize: 7.5, color: C.muted, textAlign: "right", lineHeight: 1.35 }}>{words}</Text> : null}
     </View>
   );

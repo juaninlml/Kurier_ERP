@@ -213,6 +213,7 @@ const INVOICE_L = {
     payments: "Pagos recibidos", ref: "Ref.", payData: "Datos para pago", bank: "Banco", account: "Cuenta", clabe: "CLABE", beneficiary: "Beneficiario", reference: "Referencia de pago",
     cancelled: "CANCELADA", paidMark: "PAGADA",
     cnyNote: "Importes en yuan / renminbi (CNY).", mxnEq: "Equivalente en pesos mexicanos (MXN)", rate: "Tipo de cambio",
+    totalMxn: "Total en pesos (MXN)", balanceMxn: "Saldo en pesos (MXN)",
   },
   en: {
     doc: "Invoice", subtitle: "Billing format · All prices exclude VAT, in Mexican pesos (MXN)", footer: "Invoice format",
@@ -224,6 +225,7 @@ const INVOICE_L = {
     payments: "Payments received", ref: "Ref.", payData: "Payment details", bank: "Bank", account: "Account", clabe: "CLABE", beneficiary: "Beneficiary", reference: "Payment reference",
     cancelled: "CANCELLED", paidMark: "PAID",
     cnyNote: "Amounts in Chinese yuan / renminbi (CNY).", mxnEq: "Equivalent in Mexican pesos (MXN)", rate: "Exchange rate",
+    totalMxn: "Total in pesos (MXN)", balanceMxn: "Balance in pesos (MXN)",
   },
 } as const;
 
@@ -334,7 +336,9 @@ export function InvoicePdf({
             s={s}
             rows={totalsRows}
             total={{ label: invoice.paidTotal > 0 ? L.balance : L.total, value: `${formatMoney(due)}${cny ? " CNY" : ""}` }}
-            words={`${L.words}\n${en ? amountInWordsEn(due, invoice.currency) : amountInWords(due, invoice.currency)}`}
+            // Factura en yuanes: el total en pesos va justo debajo, igual de grande y resaltado
+            totalAlt={cny ? { label: invoice.paidTotal > 0 ? L.balanceMxn : L.totalMxn, value: `${formatCurrency(toMxn(due, invoice))} MXN` } : undefined}
+            words={`${L.words}\n${en ? amountInWordsEn(due, invoice.currency) : amountInWords(due, invoice.currency)}${cny ? `\n${L.rate}: ${exchangeRateLabel(invoice.exchangeRate)}` : ""}`}
           />
         </View>
         {cny && (

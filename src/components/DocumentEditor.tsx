@@ -408,12 +408,12 @@ export function DocumentEditor({
               {fx ? (
                 <>
                   <button type="button" className="btn-secondary w-fit" onClick={() => setRate(fx.rate)}>
-                    {t("Usar el del día: {v0}", { v0: fx.rate.toLocaleString("es-MX", { maximumFractionDigits: 4 }) })}
+                    {t("Usar el de la semana: {v0}", { v0: fx.rate.toLocaleString("es-MX", { maximumFractionDigits: 4 }) })}
                   </button>
-                  <span>{t("Referencia del Banco Central Europeo del {v0} (Frankfurter). Verifica con tu banco.", { v0: fx.date })}</span>
+                  <span>{t("Tipo de cambio de la semana: referencia del Banco Central Europeo del {v0} (Frankfurter). Se actualiza cada sábado a las 7:00 a. m. Verifica con tu banco.", { v0: fx.date })}</span>
                 </>
               ) : (
-                <span><Tr>No se pudo consultar el tipo de cambio del día; captúralo a mano.</Tr></span>
+                <span><Tr>No se pudo consultar el tipo de cambio de la semana; captúralo a mano.</Tr></span>
               )}
             </div>
           </div>

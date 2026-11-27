@@ -36,7 +36,7 @@ function contentSecurityPolicy(nonce: string) {
  * Proxy de Next.js 16 (antes "middleware"): todo el ERP requiere iniciar sesión con correo + código
  * del autenticador (ver src/auth.ts). Corre en Node.js; solo valida la sesión (JWT), sin tocar la base.
  * Las rutas públicas se definen en src/auth.config.ts. Además agrega la CSP a las páginas.
- * Quedan fuera: archivos estáticos y /api/wms (usa su propio token, WMS_API_TOKEN).
+ * Quedan fuera: archivos estáticos, /api/wms (usa su propio token, WMS_API_TOKEN) y /api/cron (CRON_SECRET).
  */
 export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
@@ -73,5 +73,5 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|branding/|kiosco-sw.js|api/wms/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|branding/|kiosco-sw.js|api/wms/|api/cron/).*)"],
 };

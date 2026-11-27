@@ -56,6 +56,10 @@ model CompanySettings {
   beClients         Int      @default(0) // clientes que pagan sistema (0 = clientes activos)
   beWorkingDays     Float    @default(26) // días operativos al mes
   beIncludePayroll  Boolean  @default(true) // sumar la nómina de los empleados activos
+  // Tipo de cambio de referencia para facturas en yuanes (CNY)
+  cnyRate           Float    @default(0) // MXN por 1 CNY (Frankfurter / Banco Central Europeo)
+  cnyRateDate       String   @default("") // fecha de publicación de ese tipo de cambio (yyyy-mm-dd)
+  cnyRateAt         DateTime? // cuándo se consultó; se renueva cada sábado a las 7:00 a. m.
   // Asistencia (kiosco)
   timezone          String   @default("America/Mexico_City")
   lateToleranceMin  Int      @default(10) // minutos de tolerancia para retardo
