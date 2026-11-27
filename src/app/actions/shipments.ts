@@ -92,10 +92,10 @@ export async function checkLocation(text: string, borough: string): Promise<Loca
   return resolveLocation(text, borough);
 }
 
-/** Ubicación del formulario: vacío = sin coordenadas; si hay link, debe traer coordenadas válidas. */
+/** Ubicación del formulario: el link de Maps es obligatorio y debe traer coordenadas válidas. */
 async function locationOf(fd: FormData, borough: string) {
   const url = str(fd, "destLocation").slice(0, 1000);
-  if (!url) return { destLocationUrl: "", destLat: null, destLng: null };
+  if (!url) throw new Error("Pega el link de Google Maps del domicilio de entrega: sin él no se puede generar la guía.");
   const r = await resolveLocation(url, borough);
   if (!r.ok) throw new Error(r.error);
   return { destLocationUrl: url, destLat: r.lat, destLng: r.lng };
@@ -171,8 +171,6 @@ async function createShipmentImpl(fd: FormData) {
   });
   if (fd.get("saveOrigin") === "on") await saveShipAddress("ORIGEN", pick("origin"));
   if (fd.get("saveDest") === "on") await saveShipAddress("DESTINO", pick("dest"));
-  // Ubicación aproximada para ordenar la ruta (solo si el cliente no mandó su link)
-  if (location.destLat == null) after(() => ensureGeo([s.id]).catch(() => {}));
   revalidatePath("/envios");
   redirect(`/envios/${s.id}`);
 }
@@ -219,8 +217,7 @@ async function updateRecipientImpl(id: number, fd: FormData) {
       Object.assign(loc, { destLocationUrl: newUrl, destLat: r.lat, destLng: r.lng });
       log.push(s.destLocationUrl ? "Ubicación del cliente actualizada" : "Se agregó la ubicación del cliente");
     } else {
-      Object.assign(loc, { destLocationUrl: "", destLat: null, destLng: null });
-      log.push("Se quitó la ubicación del cliente");
+      throw new Error("El link de Google Maps es obligatorio: no se puede quitar, solo cambiar por otro.");
     }
   }
   if (!log.length) return;

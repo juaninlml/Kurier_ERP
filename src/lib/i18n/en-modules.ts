@@ -1272,4 +1272,8 @@ export const enModules: Record<string, string> = {
   "No se pudieron leer los renglones. Recarga la página.": "Couldn't read the rows. Reload the page.",
   "Agrega al menos un SKU con sus cajas y piezas por caja.": "Add at least one SKU with its boxes and pieces per box.",
   "Renglón {v0}: escribe el SKU, las cajas entregadas y las piezas por caja (números enteros mayores a 0).": "Row {v0}: enter the SKU, boxes delivered and pieces per box (whole numbers above 0).",
+  "Link de Google Maps": "Google Maps link",
+  "Obligatorio: el link de Maps o de la ubicación de WhatsApp del domicilio, confirmado por el cliente. Con él se ordena la ruta y el repartidor llega directo al punto.": "Required: the Maps or WhatsApp location link of the address, confirmed by the customer. It's used to order the route and the driver goes straight to the pin.",
+  "Pega el link de Google Maps del domicilio de entrega: sin él no se puede generar la guía.": "Paste the Google Maps link of the delivery address: the label can't be generated without it.",
+  "El link de Google Maps es obligatorio: no se puede quitar, solo cambiar por otro.": "The Google Maps link is required: it can't be removed, only replaced.",
 };

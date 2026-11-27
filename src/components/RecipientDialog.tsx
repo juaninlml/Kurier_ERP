@@ -20,7 +20,7 @@ const FIELDS: [keyof Dest, string, { required?: boolean; type?: string }?][] = [
   ["destState", "Estado"],
   ["destZip", "CP", { required: true }],
   ["destRef", "Referencia"],
-  ["destLocation", "Link de ubicación"],
+  ["destLocation", "Link de Google Maps", { required: true }],
 ];
 
 /** Corregir destinatario: solo se guardan los campos que cambian y queda en la bitácora. */

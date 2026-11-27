@@ -136,7 +136,7 @@ export function ShipmentForm({
             </label>
             <div className="sm:col-span-2">
               <label htmlFor="destLocation" className="label flex items-center gap-1.5">
-                <LocateFixed className="size-3.5" /> {t("Link de ubicación (opcional)")}
+                <LocateFixed className="size-3.5" /> {t("Link de Google Maps")} *
               </label>
               <div className="flex gap-2">
                 <input
@@ -149,6 +149,7 @@ export function ShipmentForm({
                     const text = e.clipboardData.getData("text");
                     if (text) setTimeout(() => verify(text.trim()), 0);
                   }}
+                  required
                   placeholder="https://maps.app.goo.gl/…"
                   autoComplete="off"
                   className="input min-w-0 flex-1 font-mono text-xs"
@@ -179,7 +180,7 @@ export function ShipmentForm({
                 )
               ) : (
                 <span className="mt-1 block text-[11px] text-muted-foreground">
-                  {t("El link de Maps o de la ubicación de WhatsApp que confirme el cliente. El repartidor llega directo al punto.")}
+                  {t("Obligatorio: el link de Maps o de la ubicación de WhatsApp del domicilio, confirmado por el cliente. Con él se ordena la ruta y el repartidor llega directo al punto.")}
                 </span>
               )}
             </div>
