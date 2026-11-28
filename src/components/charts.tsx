@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, BarChart3, Table2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLang, useT } from "./I18nProvider";
-import { localeOf } from "@/lib/i18n";
+import { localeOf } from "@/lib/i18n/core";
 import { cn } from "@/lib/utils";
 
 /*

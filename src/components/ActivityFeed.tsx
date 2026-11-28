@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Banknote, FileText, HandCoins, ReceiptText, UserPlus, ArrowLeftRight, type LucideIcon } from "lucide-react";
 import type { ActivityItem, ActivityKind } from "@/lib/insights";
 import { useLang, useT } from "./I18nProvider";
-import { localeOf } from "@/lib/i18n";
+import { localeOf } from "@/lib/i18n/core";
 import { cn } from "@/lib/utils";
 
 const KIND: Record<ActivityKind, { icon: LucideIcon; label: string; tone: string }> = {

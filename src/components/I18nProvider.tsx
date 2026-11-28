@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { translator, type Lang, type T } from "@/lib/i18n";
+import { makeTranslator, type Lang, type Messages, type T } from "@/lib/i18n/core";
 import { THEME_COOKIE, type Theme } from "@/lib/theme";
 
 type Ctx = { lang: Lang; t: T; theme: Theme; setTheme: (t: Theme) => void };
-const I18nCtx = createContext<Ctx>({ lang: "es", t: translator("es"), theme: "light", setTheme: () => {} });
+const I18nCtx = createContext<Ctx>({ lang: "es", t: makeTranslator("es"), theme: "light", setTheme: () => {} });
 
 const prefersDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -18,7 +18,8 @@ function applyTheme(theme: Theme) {
 }
 
 /** Idioma y tema de la interfaz. */
-export function I18nProvider({ lang, theme: initial = "light", children }: { lang: Lang; theme?: Theme; children: React.ReactNode }) {
+/** `messages`: diccionario del idioma (lo manda el layout solo en inglés; en español no hace falta). */
+export function I18nProvider({ lang, messages, theme: initial = "light", children }: { lang: Lang; messages?: Messages; theme?: Theme; children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(initial);
 
   const setTheme = useCallback((next: Theme) => {
@@ -36,7 +37,7 @@ export function I18nProvider({ lang, theme: initial = "light", children }: { lan
     return () => q.removeEventListener("change", on);
   }, [theme]);
 
-  const value = useMemo(() => ({ lang, t: translator(lang), theme, setTheme }), [lang, theme, setTheme]);
+  const value = useMemo(() => ({ lang, t: makeTranslator(lang, messages), theme, setTheme }), [lang, messages, theme, setTheme]);
   return <I18nCtx.Provider value={value}>{children}</I18nCtx.Provider>;
 }
 

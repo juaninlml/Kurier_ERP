@@ -10,6 +10,7 @@ import { ArrivalCurtain } from "@/components/SessionCurtain";
 import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLang } from "@/lib/i18n/server";
+import { messagesFor } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isTheme, THEME_COOKIE, THEME_SCRIPT, VIEW_TRANSITION_GUARD } from "@/lib/theme";
 
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + VIEW_TRANSITION_GUARD }} />
       </head>
       <body className="antialiased">
-        <I18nProvider lang={lang} theme={theme}>
+        <I18nProvider lang={lang} messages={messagesFor(lang)} theme={theme}>
           <TooltipProvider delayDuration={200}>
             {signedIn ? (
               <div className="flex min-h-screen">

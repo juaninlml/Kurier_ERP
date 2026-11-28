@@ -142,7 +142,8 @@ export async function autoCloseShifts(now = new Date()) {
   const punches = await prisma.punch.findMany({
     where: { deleted: false, workDate: { gte: since, lte: today } },
     orderBy: { at: "asc" },
-    include: { employee: { select: { scheduleEnd: true } } },
+    // Solo lo que se usa (corre cada minuto en cada tablet del kiosco)
+    select: { employeeId: true, type: true, at: true, workDate: true, employee: { select: { scheduleEnd: true } } },
   });
   const days = new Map<string, typeof punches>();
   for (const p of punches) days.set(`${p.employeeId}|${p.workDate}`, [...(days.get(`${p.employeeId}|${p.workDate}`) ?? []), p]);

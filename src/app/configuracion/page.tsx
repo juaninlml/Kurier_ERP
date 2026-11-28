@@ -1,4 +1,4 @@
-import { getSettings, hasLogo as checkLogo } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { saveSettings } from "@/app/actions/settings";
 import { PageHeader, Field } from "@/components/kit";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -16,7 +16,8 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
   const t = await getT();
   const s = await getSettings();
   const { ok } = await searchParams;
-  const hasLogo = await checkLogo();
+  // getSettings ya trae logoMime (sin los bytes): no hace falta otra consulta para saber si hay logo
+  const hasLogo = Boolean(s.logoMime);
 
   return (
     <div className="mx-auto max-w-5xl">

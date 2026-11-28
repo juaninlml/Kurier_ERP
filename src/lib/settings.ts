@@ -1,10 +1,16 @@
+import { cache } from "react";
 import { prisma } from "./db";
 import type { Prisma } from "@prisma/client";
 
-/** Configuración para pantallas (sin los bytes del logo). */
-export async function getSettings() {
-  return prisma.companySettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 }, omit: { logoData: true } });
-}
+/**
+ * Configuración para pantallas (sin los bytes del logo). Es una lectura (antes un upsert, que escribía
+ * en cada página) y se calcula una sola vez por petición aunque la pidan varias partes de la página.
+ * Solo si la fila aún no existe (instalación nueva) se crea.
+ */
+export const getSettings = cache(async () => {
+  const s = await prisma.companySettings.findUnique({ where: { id: 1 }, omit: { logoData: true } });
+  return s ?? prisma.companySettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 }, omit: { logoData: true } });
+});
 
 /** Configuración completa, incluyendo el logo (para PDFs). */
 export async function getSettingsWithLogo() {

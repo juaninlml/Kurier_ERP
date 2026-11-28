@@ -18,15 +18,18 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
   const t = await getT();
   const id = Number((await params).id);
   const { nuevo } = await searchParams;
-  const client = await prisma.client.findUnique({
-    where: { id },
-    include: {
-      quotes: { orderBy: { issueDate: "desc" }, take: 20 },
-      invoices: { orderBy: { issueDate: "desc" }, take: 50 },
-    },
-  });
+  // Cliente y marcas en paralelo (antes eran dos viajes seguidos a la base)
+  const [client, brands] = await Promise.all([
+    prisma.client.findUnique({
+      where: { id },
+      include: {
+        quotes: { orderBy: { issueDate: "desc" }, take: 20 },
+        invoices: { orderBy: { issueDate: "desc" }, take: 50 },
+      },
+    }),
+    brandOptions(),
+  ]);
   if (!client) notFound();
-  const brands = await brandOptions();
   const brandName = brands.length > 1 ? brands.find((b) => b.id === (client.brandId ?? 0))?.name : null;
 
   const open = client.invoices.filter((i) => i.status === "PENDIENTE" || i.status === "PARCIAL");

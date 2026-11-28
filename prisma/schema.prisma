@@ -333,6 +333,9 @@ model Invoice {
   @@index([clientId])
   @@index([status, dueDate])
   @@index([createdAt])
+  // Índices (0036)
+  @@index([issueDate])
+  @@index([ordersWeek])
 }
 
 model InvoiceItem {
@@ -538,6 +541,8 @@ model PayrollLine {
   net             Float      @default(0)
 
   @@index([employeeId])
+  // Índices (0036)
+  @@index([runId])
 }
 
 /// Usuario del ERP (inicia sesión con correo + código de su app autenticadora). role: OWNER (cuenta maestra) | ADMIN | USER
@@ -612,6 +617,8 @@ model Punch {
   createdAt   DateTime     @default(now())
 
   @@index([employeeId, workDate])
+  // Índice (0036): la salida automática del kiosco filtra solo por fecha, cada minuto
+  @@index([workDate])
 }
 
 /// Incidencia de un empleado (fechas AAAA-MM-DD, solo cuentan sus días laborables).
@@ -836,6 +843,8 @@ model Shipment {
   @@index([createdAt])
   @@index([clientId, createdAt])
   @@index([loadId])
+  // Índices (0036)
+  @@index([status])
 }
 
 /// Bitácora de una guía: creación, correcciones de destinatario y cambios de estatus.

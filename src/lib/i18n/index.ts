@@ -1,27 +1,19 @@
 import { en as enBase } from "./en";
 import { enModules } from "./en-modules";
+import { makeTranslator, type Lang, type Messages, type T } from "./core";
 
-/** Diccionario completo (base + módulos). */
-const en: Record<string, string> = { ...enModules, ...enBase };
+export { LANGS, LANG_COOKIE, isLang, localeOf, makeTranslator, type Lang, type Messages, type T } from "./core";
 
-export type Lang = "es" | "en";
-export const LANGS: Lang[] = ["es", "en"];
-export const LANG_COOKIE = "kurier_lang";
-export const isLang = (v: unknown): v is Lang => v === "es" || v === "en";
+/** Diccionario completo (base + módulos). Solo en el servidor: los componentes del navegador usan ./core. */
+const en: Messages = { ...enModules, ...enBase };
 
-export type T = (text: string, vars?: Record<string, string | number>) => string;
+/** Diccionario que necesita el navegador para un idioma (el español no necesita ninguno). */
+export const messagesFor = (lang: Lang): Messages | undefined => (lang === "en" ? en : undefined);
 
 /**
  * Traducción: el texto en español es la clave. Si no hay traducción al inglés se muestra en español.
  * Variables: t("Hola {name}", { name: "Ana" }).
  */
 export function translator(lang: Lang): T {
-  return (text, vars) => {
-    let out = lang === "en" ? (en[text] ?? text) : text;
-    if (vars) for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
-    return out;
-  };
+  return makeTranslator(lang, messagesFor(lang));
 }
-
-/** Configuración regional para fechas y números. */
-export const localeOf = (lang: Lang) => (lang === "en" ? "en-US" : "es-MX");
