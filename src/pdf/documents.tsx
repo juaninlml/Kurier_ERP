@@ -1,11 +1,11 @@
 import React from "react";
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text } from "./rp";
 import type { Client, CompanySettings, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Service, ServiceSection, TariffTable } from "@prisma/client";
 import { BrandedPage, DocTitle, SectionTab, Table, Note, Conditions, PdfDoc, Callout, InfoTable, parseInfoTable, base, palette, tint } from "./brand";
 import { CleanPage, PartyBlock, InfoGrid, SectionLabel, CleanTable, TotalsBox, SmallNote, CompactTerms, C, type CleanCell, type CleanCol } from "./clean";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
-import { formatDate, formatDateLong, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
+import { formatDate, formatDateLong, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, amountInWordsZh, round2 } from "@/lib/money";
 import { docText } from "@/lib/i18n/doc-text";
 import { localeOf, translator, type Lang } from "@/lib/i18n";
 import { groupBySection, rateLabel } from "@/lib/totals";
@@ -19,7 +19,7 @@ const qtyLabel = (q: number, unit: string) => `${formatNumber(q)} ${unit.toLower
 const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
 /** Cantidad con su unidad en el idioma del formato ("3 paquetes" / "3 packages"). */
 const qtyText = (q: number, unit: string, lang: Lang) =>
-  lang === "en" ? `${formatNumber(q)} ${pluralEn(docText(unit, "en").toLowerCase(), q)}` : qtyLabel(q, unit);
+  lang === "en" ? `${formatNumber(q)} ${pluralEn(docText(unit, "en").toLowerCase(), q)}` : lang === "zh" ? `${formatNumber(q)} ${docText(unit, "zh")}` : qtyLabel(q, unit);
 const taxLabel = (items: { taxRate: number }[], lang: Lang = "es") => {
   const t = translator(lang);
   const rates = [...new Set(items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
@@ -81,7 +81,7 @@ export function QuotePdf({
   }
 
   return (
-    <PdfDoc title={`${t("Cotización")} ${quote.folio} — ${party.name}`}>
+    <PdfDoc lang={lang} title={`${t("Cotización")} ${quote.folio} — ${party.name}`}>
       <CleanPage s={s} lang={lang} title={`${t("Cotización")} ${quote.folio}`} watermark={quote.status === "RECHAZADA" ? t("RECHAZADA") : undefined}>
         <PartyBlock
           name={party.legalName || party.name}
@@ -254,6 +254,18 @@ const INVOICE_L = {
     cnyNote: "Amounts in Chinese yuan / renminbi (CNY).", mxnEq: "Equivalent in Mexican pesos (MXN)", rate: "Exchange rate",
     totalMxn: "Total in pesos (MXN)", balanceMxn: "Balance in pesos (MXN)",
   },
+  zh: {
+    doc: "发票", subtitle: "账单格式 · 所有价格均不含增值税，以墨西哥比索（MXN）计价", footer: "发票格式",
+    folio: "发票编号", folioNote: "内部参考编号", issue: "开票日期", due: "到期日", client: "客户", rfc: "税号（RFC）",
+    period: "账单期间", volume: "本期业务量", storage: "仓储", terms: "付款条件", quote: "参考报价单",
+    billing: "开票信息", detail: "已开票服务明细", concept: "项目", qty: "数量", unitPrice: "单价", amount: "金额",
+    atCost: "按实际成本（浮动）", subtotal: "不含增值税小计", discount: "折扣", tax: "增值税", paid: "已付", balance: "未付余额", total: "应付总额",
+    taxes: "税费", exempt: "免税", totalInv: "发票总额", words: "金额大写：",
+    payments: "已收款项", ref: "参考号", payData: "付款信息", bank: "银行", account: "账号", clabe: "CLABE 账号", beneficiary: "收款人", reference: "付款参考号",
+    cancelled: "已作废", paidMark: "已付款",
+    cnyNote: "金额以人民币（CNY）计价。", mxnEq: "折合墨西哥比索（MXN）", rate: "汇率",
+    totalMxn: "比索总额（MXN）", balanceMxn: "比索余额（MXN）",
+  },
 } as const;
 
 export function InvoicePdf({
@@ -264,12 +276,12 @@ export function InvoicePdf({
   s: CompanySettings;
   invoice: Invoice & { client: Client; items: InvoiceItem[]; payments: Payment[]; quote: Quote | null };
   /** Idioma del formato: los textos fijos y los conceptos comunes se traducen. */
-  lang?: "es" | "en";
+  lang?: Lang;
 }) {
   const L = INVOICE_L[lang];
   const en = lang === "en";
   const x = (text: string) => docText(text, lang);
-  const date = (d: Date) => (en ? formatDateNum(d, "en-US") : formatDateNumEs(d));
+  const date = (d: Date) => (lang === "es" ? formatDateNumEs(d) : formatDateNum(d, localeOf(lang)));
   const balance = round2(invoice.total - invoice.paidTotal);
   const cl = invoice.client;
   // Moneda de la factura: $ (MXN) o ¥ (CNY). En CNY se agrega el equivalente en pesos con el tipo de cambio guardado.
@@ -296,7 +308,7 @@ export function InvoicePdf({
   ).filter(([, v]) => v);
 
   return (
-    <PdfDoc title={`${L.doc} ${invoice.folio} — ${cl.name}`}>
+    <PdfDoc lang={lang} title={`${L.doc} ${invoice.folio} — ${cl.name}`}>
       <CleanPage s={s} lang={lang} title={`${L.doc} ${invoice.folio}${cny ? " (CNY)" : ""}`} watermark={invoice.status === "CANCELADA" ? L.cancelled : invoice.status === "PAGADA" ? L.paidMark : undefined}>
         <PartyBlock name={cl.legalName || cl.name} lines={[cl.legalName && cl.legalName !== cl.name ? cl.name : "", cl.rfc && `${L.rfc}: ${cl.rfc}`, cl.address]} />
 
@@ -321,7 +333,7 @@ export function InvoicePdf({
           ]}
           rows={invoice.items.map((i) => [
             { main: x(i.description), sub: x(i.detail) },
-            en ? `${formatNumber(i.quantity)} ${pluralEn(x(i.unit).toLowerCase(), i.quantity)}` : qtyLabel(i.quantity, i.unit),
+            en ? `${formatNumber(i.quantity)} ${pluralEn(x(i.unit).toLowerCase(), i.quantity)}` : lang === "zh" ? `${formatNumber(i.quantity)} ${x(i.unit)}` : qtyLabel(i.quantity, i.unit),
             (i.priceText && x(i.priceText)) || (i.atCost ? L.atCost : `${formatMoney(i.unitPrice)}${i.discountPct ? ` (-${formatNumber(i.discountPct)}%)` : ""}`),
             i.taxRate > 0 ? `${L.tax} ${formatNumber(i.taxRate)}%` : L.exempt,
             formatMoney(i.amount),
@@ -362,7 +374,7 @@ export function InvoicePdf({
             total={{ label: invoice.paidTotal > 0 ? L.balance : L.total, value: `${formatMoney(due)}${cny ? " CNY" : ""}` }}
             // Factura en yuanes: el total en pesos va justo debajo, igual de grande y resaltado
             totalAlt={cny ? { label: invoice.paidTotal > 0 ? L.balanceMxn : L.totalMxn, value: `${formatCurrency(toMxn(due, invoice))} MXN` } : undefined}
-            words={`${L.words}\n${en ? amountInWordsEn(due, invoice.currency) : amountInWords(due, invoice.currency)}${cny ? `\n${L.rate}: ${exchangeRateLabel(invoice.exchangeRate)}` : ""}`}
+            words={`${L.words}\n${en ? amountInWordsEn(due, invoice.currency) : lang === "zh" ? amountInWordsZh(due, invoice.currency) : amountInWords(due, invoice.currency)}${cny ? `\n${L.rate}: ${exchangeRateLabel(invoice.exchangeRate)}` : ""}`}
           />
         </View>
         {cny && (
@@ -393,7 +405,7 @@ export function StatementPdf({ s, data, lang = "es" }: { s: CompanySettings; dat
   const hasCny = data.invoices.some((i) => i.currency === "CNY");
 
   return (
-    <PdfDoc title={`${t("Estado de cuenta")} ${data.client.name}`}>
+    <PdfDoc lang={lang} title={`${t("Estado de cuenta")} ${data.client.name}`}>
       <BrandedPage s={s} lang={lang} footerLabel={`${t("Estado de cuenta")} · ${data.client.name}`}>
         <DocTitle s={s} title={t("Estado de cuenta")} subtitle={`${data.client.name} · ${t("Fecha de corte")}: ${dLong(now)} · ${t(PRICES_NOTE)}`} />
 
@@ -478,7 +490,7 @@ export function ReportPdf({
     );
 
   return (
-    <PdfDoc title={t("Reporte financiero")}>
+    <PdfDoc lang={lang} title={t("Reporte financiero")}>
       <BrandedPage s={s} lang={lang} footerLabel={t("Reporte financiero")}>
         <DocTitle
           s={s}
@@ -618,7 +630,7 @@ export function TariffPdf({
   const rest = tables.filter((tb) => !placed.has(tb.id) && !known.has(tb.afterSection));
 
   return (
-    <PdfDoc title={`${t("Tarifario de Servicios")} — ${s.tradeName}`}>
+    <PdfDoc lang={lang} title={`${t("Tarifario de Servicios")} — ${s.tradeName}`}>
       <BrandedPage s={s} lang={lang} footerLabel={t("Tarifario de Servicios")}>
         <DocTitle s={s} title={t("Tarifario de Servicios")} subtitle={t("* Todos los precios mostrados son sin IVA · Moneda: pesos mexicanos (MXN)")} />
         {s.tariffIntro ? <Text style={{ textAlign: "center", fontSize: 10.5, color: "#334155", lineHeight: 1.4, marginTop: -4, marginBottom: 6, paddingHorizontal: 30 }}>{x(s.tariffIntro)}</Text> : null}

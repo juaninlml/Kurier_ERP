@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, View, Text, Svg, Path, Rect, Circle } from "@react-pdf/renderer";
+import { Document, PdfLang, Page, View, Text, Svg, Path, Rect, Circle } from "./rp";
 import QRCode from "qrcode";
 import type { CompanySettings, Shipment } from "@prisma/client";
 import { translator, type Lang } from "@/lib/i18n";
@@ -84,6 +84,7 @@ const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const shortDate = (d: Date, lang: Lang) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "numeric", day: "numeric" }).formatToParts(d).map((x) => [x.type, x.value]));
+  if (lang === "zh") return `${p.year}-${p.month.padStart(2, "0")}-${p.day.padStart(2, "0")}`;
   return `${p.day}-${(lang === "en" ? MONTHS_EN : MONTHS)[Number(p.month) - 1]}-${p.year}`;
 };
 const phone = (p: string) => (p.length === 10 ? `${p.slice(0, 2)} ${p.slice(2, 6)} ${p.slice(6)}` : p);
@@ -229,6 +230,7 @@ export function ShipmentLabelPdf({ s, sh, sheet, trackUrl, lang = "es" }: { s: C
   const pages = Array.from({ length: Math.max(1, sh.packages) }, (_, i) => i + 1);
   const dash = { borderStyle: "dashed", borderColor: "#888", position: "absolute" } as const;
   return (
+    <PdfLang lang={lang}>
     <Document title={`${translator(lang)("Guía")} ${sh.tracking}`} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
       {pages.map((n) =>
         sheet ? (
@@ -252,5 +254,6 @@ export function ShipmentLabelPdf({ s, sh, sheet, trackUrl, lang = "es" }: { s: C
         ),
       )}
     </Document>
+    </PdfLang>
   );
 }

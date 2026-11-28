@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, View, Text } from "@react-pdf/renderer";
+import { Document, PdfLang, Page, View, Text } from "./rp";
 import type { StorageUnit } from "@prisma/client";
 import { Barcode, KidoMark, QR } from "./label";
 import { translator, type Lang } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import { translator, type Lang } from "@/lib/i18n";
 export function StorageLabelPdf({ units, lang = "es" }: { units: StorageUnit[]; lang?: Lang }) {
   const t = translator(lang);
   return (
+    <PdfLang lang={lang}>
     <Document title={t("Etiquetas de almacenamiento")} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
       {units.map((u) => (
         <Page key={u.id} size={[288, 432]}>
@@ -39,5 +40,6 @@ export function StorageLabelPdf({ units, lang = "es" }: { units: StorageUnit[]; 
         </Page>
       ))}
     </Document>
+    </PdfLang>
   );
 }

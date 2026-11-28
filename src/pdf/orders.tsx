@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text } from "./rp";
 import type { CompanySettings } from "@prisma/client";
 import { BrandedPage, DocTitle, PdfDoc, SectionTab, Table, Note, base, palette, GRAY, type Col } from "./brand";
 import { formatMoney, formatNumber } from "@/lib/money";
@@ -42,7 +42,7 @@ export function OrdersSummaryPdf({ s, data, lang = "es" }: { s: CompanySettings;
   ];
 
   return (
-    <PdfDoc title={`${t("Resumen de órdenes")} ${data.client.name}`}>
+    <PdfDoc lang={lang} title={`${t("Resumen de órdenes")} ${data.client.name}`}>
       <BrandedPage s={s} lang={lang} footerLabel={`${t("Resumen de órdenes")} · ${data.client.name}`}>
         <DocTitle s={s} title={t("Resumen de órdenes")} subtitle={`${data.client.name} · ${period}`} extra={t("Paquetes procesados por oleada de surtido")} />
 

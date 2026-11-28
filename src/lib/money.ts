@@ -114,3 +114,57 @@ export function amountInWordsEn(amount: number, currency = "MXN"): string {
   if (currency === "CNY") return `${enWords(pesos)} YUAN ${String(cents).padStart(2, "0")}/100 CNY`;
   return `${enWords(pesos)} ${pesos === 1 ? "PESO" : "PESOS"} ${String(cents).padStart(2, "0")}/100 MXN`;
 }
+
+// ---- Importe con letra en chino (cifras financieras en mayúscula: 壹贰叁…) ----
+const ZH_DIGITS = "零壹贰叁肆伍陆柒捌玖";
+const ZH_UNITS = ["", "拾", "佰", "仟"];
+const ZH_GROUPS = ["", "万", "亿", "万亿"];
+function zhGroup(n: number) {
+  let out = "";
+  let zero = false;
+  for (let i = 3; i >= 0; i--) {
+    const d = Math.floor(n / 10 ** i) % 10;
+    if (d === 0) {
+      if (out) zero = true;
+      continue;
+    }
+    if (zero) out += "零";
+    zero = false;
+    out += ZH_DIGITS[d] + ZH_UNITS[i];
+  }
+  return out;
+}
+function zhUpper(n: number) {
+  if (n === 0) return "零";
+  const groups: number[] = [];
+  for (; n > 0; n = Math.floor(n / 10000)) groups.push(n % 10000);
+  let out = "";
+  let gap = false;
+  for (let g = groups.length - 1; g >= 0; g--) {
+    const v = groups[g];
+    if (v === 0) {
+      if (out) gap = true;
+      continue;
+    }
+    if (out && (gap || v < 1000)) out += "零";
+    gap = false;
+    out += zhGroup(v) + ZH_GROUPS[g];
+  }
+  return out;
+}
+
+/** Importe con letra en chino: "人民币壹仟贰佰元伍角整" (CNY) · "壹仟贰佰墨西哥比索 50/100 MXN". */
+export function amountInWordsZh(amount: number, currency = "MXN"): string {
+  const total = round2(Math.abs(amount));
+  const units = Math.floor(total);
+  const cents = Math.round((total - units) * 100);
+  if (currency === "CNY") {
+    const jiao = Math.floor(cents / 10);
+    const fen = cents % 10;
+    let tail = "";
+    if (jiao) tail += `${ZH_DIGITS[jiao]}角`;
+    if (fen) tail += `${!jiao && units ? "零" : ""}${ZH_DIGITS[fen]}分`;
+    return `人民币${units || !cents ? `${zhUpper(units)}元` : ""}${tail}${fen ? "" : "整"}`;
+  }
+  return `${zhUpper(units)}墨西哥比索 ${String(cents).padStart(2, "0")}/100 MXN`;
+}

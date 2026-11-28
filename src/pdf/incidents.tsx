@@ -1,15 +1,15 @@
 import React from "react";
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text } from "./rp";
 import type { CompanySettings, Employee, Incident } from "@prisma/client";
 import { BrandedPage, DataTable, DocTitle, NoticeBox, Note, PdfDoc, SectionTab, GRAY, INK } from "./brand";
 import { formatDate, formatMoney, formatNumber } from "@/lib/money";
 import { LATES_PER_REST, incidentFolio, longDate as longDateEs, monthName as monthNameEs, rangeLabel as rangeLabelEs } from "@/lib/incidents";
-import { translator, type Lang } from "@/lib/i18n";
+import { localeOf, translator, type Lang } from "@/lib/i18n";
 
 /** Fechas yyyy-mm-dd del formato en el idioma pedido (en español, las de siempre). */
 function dates(lang: Lang) {
-  if (lang !== "en") return { longDate: longDateEs, monthName: monthNameEs, rangeLabel: rangeLabelEs };
-  const f = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { ...o, timeZone: "UTC" });
+  if (lang === "es") return { longDate: longDateEs, monthName: monthNameEs, rangeLabel: rangeLabelEs };
+  const f = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString(localeOf(lang), { ...o, timeZone: "UTC" });
   const short = (d: string) => f(d, { month: "short", day: "numeric" });
   return {
     longDate: (d: string) => f(d, { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
@@ -69,7 +69,7 @@ export function IncidentPdf({
 }) {
   const t = translator(lang);
   const { longDate, monthName, rangeLabel } = dates(lang);
-  const formatDateEs = (d: Date) => formatDate(d, lang === "en" ? "en-US" : "es-MX");
+  const formatDateEs = (d: Date) => formatDate(d, localeOf(lang));
   const by = (who: string) => (who ? ` ${t("por {who}", { who })}` : "");
   const title = t(i.source === "HISTORICO" && i.type === "VACACIONES" ? "Constancia de vacaciones" : (TITLE[i.type] ?? "Incidencia"));
   const folio = incidentFolio(i);
@@ -155,7 +155,7 @@ export function IncidentPdf({
         ];
 
   return (
-    <PdfDoc title={`${title} ${folio} · ${e.name}`}>
+    <PdfDoc lang={lang} title={`${title} ${folio} · ${e.name}`}>
       <BrandedPage
         s={s}
         lang={lang}

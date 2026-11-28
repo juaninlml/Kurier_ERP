@@ -553,7 +553,7 @@ model User {
   image           String       @default("")
   role            String       @default("USER")
   active          Boolean      @default(true)
-  locale          String       @default("es") // es | en
+  locale          String       @default("es") // es | en | zh
   position        String       @default("") // puesto (perfil)
   phone           String       @default("")
   lastLoginAt     DateTime?

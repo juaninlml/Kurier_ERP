@@ -27,13 +27,13 @@ export async function renderQuote(id: number, lang: Lang = "es") {
   ]);
   const sectionNotes = Object.fromEntries(sections.map((x) => [x.name, x.note]));
   return {
-    filename: `${slug(t("Cotización"))}_${slug(s.tradeName)}_${slug(quoteParty(quote).name)}_${quote.folio}.pdf`,
+    filename: `${fileWord(t("Cotización"))}_${slug(s.tradeName)}_${slug(quoteParty(quote).name)}_${quote.folio}.pdf`,
     buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} infoTables={infoTables} lang={lang} />),
   };
 }
 
 /** Factura en PDF. `lang` = idioma del usuario que la pide (la copia de Drive siempre en español). */
-export async function renderInvoice(id: number, lang: "es" | "en" = "es") {
+export async function renderInvoice(id: number, lang: Lang = "es") {
   const [base, invoice] = await Promise.all([
     getSettings(),
     prisma.invoice.findUnique({
@@ -44,7 +44,7 @@ export async function renderInvoice(id: number, lang: "es" | "en" = "es") {
   if (!invoice) return null;
   const s = applyBrand(base, invoice.brand);
   return {
-    filename: `${lang === "en" ? "Invoice" : "Factura"}_${invoice.folio}_${slug(invoice.client.name)}.pdf`,
+    filename: `${pick(lang, "Factura", "Invoice", "发票")}_${invoice.folio}_${slug(invoice.client.name)}.pdf`,
     buffer: await renderToBuffer(<InvoicePdf s={s} invoice={invoice} lang={lang} />),
   };
 }
@@ -62,7 +62,7 @@ export async function renderStatement(clientId: number, lang: Lang = "es") {
   const s = applyBrand(base, client.brand);
   const { invoices, brand: _brand, ...c } = client;
   return {
-    filename: `${slug(t("Estado de cuenta"))}_${slug(c.name)}.pdf`,
+    filename: `${fileWord(t("Estado de cuenta"))}_${slug(c.name)}.pdf`,
     buffer: await renderToBuffer(<StatementPdf s={s} data={{ client: c as typeof client, invoices }} lang={lang} />),
   };
 }
@@ -72,7 +72,7 @@ export async function renderReport(fromStr?: string, toStr?: string, lang: Lang 
   const { from, to } = parseRange(fromStr, toStr);
   const [s, stmt, ar] = await Promise.all([getSettings(), incomeStatement(from, to), receivables()]);
   const tag = `${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}`;
-  return { filename: `${slug(t("Reporte financiero"))}_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} lang={lang} />) };
+  return { filename: `${fileWord(t("Reporte financiero"))}_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} lang={lang} />) };
 }
 
 export async function renderTariff(lang: Lang = "es") {
@@ -84,10 +84,16 @@ export async function renderTariff(lang: Lang = "es") {
     prisma.tariffTable.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
   ]);
   return {
-    filename: `${slug(t("Tarifario de Servicios"))}_${slug(s.tradeName)}.pdf`,
+    filename: `${fileWord(t("Tarifario de Servicios"))}_${slug(s.tradeName)}.pdf`,
     buffer: await renderToBuffer(<TariffPdf s={s} sections={sections} services={services} tables={tables} lang={lang} />),
   };
 }
+
+/** Texto fijo del nombre de archivo por idioma. */
+const pick = (lang: Lang, es: string, en: string, zh: string) => (lang === "en" ? en : lang === "zh" ? zh : es);
+
+/** Palabra de nombre de archivo: en chino se conserva tal cual (sin espacios); si no, como slug(). */
+const fileWord = (t: string) => (/[\u3400-\u9fff]/.test(t) ? t.replace(/\s+/g, "") : slug(t));
 
 /** "Cestco Dental" → "CestcoDental" (sin acentos ni símbolos, apto para nombre de archivo). */
 function slug(t: string) {
@@ -122,7 +128,7 @@ export async function renderPayrollReceipts(runId: number, lineId?: number, lang
   const tag = run.periodStart.toISOString().slice(0, 10);
   const who = lineId ? `_${slug(run.lines[0].employee.name)}` : "";
   return {
-    filename: `${lang === "en" ? "Payroll_receipts" : "Recibos_nomina"}_${tag}${who}.pdf`,
+    filename: `${pick(lang, "Recibos_nomina", "Payroll_receipts", "工资单")}_${tag}${who}.pdf`,
     buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={lines} lang={lang} />),
   };
 }
@@ -135,14 +141,14 @@ export async function renderOrdersSummary(clientId: number, from: string, to: st
   const s = applyBrand(base, data.client.brand);
   const { OrdersSummaryPdf } = await import("./orders");
   return {
-    filename: `${lang === "en" ? "Orders_summary" : "Resumen_ordenes"}_${slug(data.client.name)}_${from}_${to}.pdf`,
+    filename: `${pick(lang, "Resumen_ordenes", "Orders_summary", "订单汇总")}_${slug(data.client.name)}_${from}_${to}.pdf`,
     buffer: await renderToBuffer(<OrdersSummaryPdf s={s} data={data} lang={lang} />),
   };
 }
 
 /** Formato de una incidencia (vacaciones, permiso, falta o descanso por retardos). */
 export async function renderIncident(id: number, lang: Lang = "es") {
-  const { seniority, vacationDaysFor, VACATION_PREMIUM } = await import("@/lib/payroll");
+  const { seniority, seniorityLabel, vacationDaysFor, VACATION_PREMIUM } = await import("@/lib/payroll");
   const { vacationTakenMap } = await import("@/lib/payroll-data");
   const { addDaysStr, isWorkday } = await import("@/lib/attendance");
   const { incidentFolio } = await import("@/lib/incidents");
@@ -151,16 +157,7 @@ export async function renderIncident(id: number, lang: Lang = "es") {
   const e = i.employee;
   const at = new Date(`${i.startDate}T12:00:00Z`);
   const sen = seniority(e.startDate, at);
-  const en = lang === "en";
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  const senLabel =
-    [
-      sen.years ? plural(sen.years, en ? "year" : "año", en ? "years" : "años") : "",
-      sen.months ? plural(sen.months, en ? "month" : "mes", en ? "months" : "meses") : "",
-      !sen.years && !sen.months ? plural(sen.days, en ? "day" : "día", en ? "days" : "días") : "",
-    ]
-      .filter(Boolean)
-      .join(", ");
+  const senLabel = seniorityLabel(sen, lang);
   let vacation;
   if (i.type === "VACACIONES") {
     const total = (await vacationTakenMap([e], at)).get(e.id) ?? 0;
@@ -193,7 +190,7 @@ export async function renderShipmentLabel(id: number, sheet = false, origin = ""
   if (!sh) return null;
   const s = applyBrand(base, sh.client?.brand ?? null);
   const { ShipmentLabelPdf } = await import("./label");
-  return { filename: `${lang === "en" ? "Label_LastMile" : "Guia_UltimaMilla"}_${sh.tracking}${sheet ? (lang === "en" ? "_letter" : "_carta") : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} trackUrl={origin ? `${origin}/rastreo/${sh.tracking}` : ""} lang={lang} />) };
+  return { filename: `${pick(lang, "Guia_UltimaMilla", "Label_LastMile", "末端配送运单")}_${sh.tracking}${sheet ? `_${pick(lang, "carta", "letter", "信纸")}` : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} trackUrl={origin ? `${origin}/rastreo/${sh.tracking}` : ""} lang={lang} />) };
 }
 
 /** Etiquetas de almacenamiento: una (id) o todas las activas (sin id). */
@@ -202,7 +199,7 @@ export async function renderStorageLabels(id?: number, lang: Lang = "es") {
   if (!units.length) return null;
   const { StorageLabelPdf } = await import("./storage-label");
   return {
-    filename: units.length === 1 ? `${lang === "en" ? "Storage" : "Almacenamiento"}_${units[0].code}.pdf` : lang === "en" ? "Storage_labels.pdf" : "Almacenamientos.pdf",
+    filename: units.length === 1 ? `${pick(lang, "Almacenamiento", "Storage", "储物箱")}_${units[0].code}.pdf` : `${pick(lang, "Almacenamientos", "Storage_labels", "储物箱标签")}.pdf`,
     buffer: await renderToBuffer(<StorageLabelPdf units={units} lang={lang} />),
   };
 }
@@ -212,12 +209,12 @@ export async function renderGoodsExit(id: number | null, lang: Lang = "es") {
   const s = await getSettings();
   const { GoodsExitPdf } = await import("./goods-exit");
   if (id === null) {
-    return { filename: lang === "en" ? "Blank_goods_exit_sheet.pdf" : "Hoja_de_salida_en_blanco.pdf", buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ items: [] }} lang={lang} />) };
+    return { filename: `${pick(lang, "Hoja_de_salida_en_blanco", "Blank_goods_exit_sheet", "空白出库单")}.pdf`, buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ items: [] }} lang={lang} />) };
   }
   const e = await prisma.goodsExit.findUnique({ where: { id }, include: { client: { select: { name: true } }, items: { orderBy: { position: "asc" } } } });
   if (!e) return null;
   return {
-    filename: `${lang === "en" ? "Exit" : "Salida"}_${e.folio}_${slug(e.client.name)}.pdf`,
+    filename: `${pick(lang, "Salida", "Exit", "出库单")}_${e.folio}_${slug(e.client.name)}.pdf`,
     buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ ...e, client: e.client.name }} lang={lang} />),
   };
 }

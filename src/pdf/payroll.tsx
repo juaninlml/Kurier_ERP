@@ -1,9 +1,9 @@
 import React from "react";
-import { Page, View, Text, Image } from "@react-pdf/renderer";
+import { Page, View, Text, Image } from "./rp";
 import type { CompanySettings, Employee, PayrollLine, PayrollRun } from "@prisma/client";
 import { PdfDoc, palette, loadLogo, GRAY, INK } from "./brand";
 import { payrollLine } from "@/lib/payroll";
-import { amountInWords, amountInWordsEn, formatDate, formatMoney, formatNumber } from "@/lib/money";
+import { amountInWords, amountInWordsEn, amountInWordsZh, formatDate, formatMoney, formatNumber } from "@/lib/money";
 import { localeOf, translator, type Lang } from "@/lib/i18n";
 
 type Line = PayrollLine & { employee: Employee };
@@ -151,7 +151,7 @@ function Receipt({ s, run, l, lang }: { s: CompanySettings; run: PayrollRun; l: 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 7, borderTopWidth: 1, borderTopColor: c.orange, paddingTop: 4 }}>
         <View>
           <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: c.orange }}>{tr("NETO A RECIBIR")}</Text>
-          <Text style={{ fontSize: 6.8, color: GRAY }}>{lang === "en" ? amountInWordsEn(t.net) : amountInWords(t.net)}</Text>
+          <Text style={{ fontSize: 6.8, color: GRAY }}>{lang === "en" ? amountInWordsEn(t.net) : lang === "zh" ? amountInWordsZh(t.net) : amountInWords(t.net)}</Text>
         </View>
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: c.orange }}>{formatMoney(t.net)}</Text>
       </View>
@@ -194,7 +194,7 @@ export function PayrollReceiptsPdf({ s, run, lines, lang = "es" }: { s: CompanyS
   const pages: Line[][] = [];
   for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2));
   return (
-    <PdfDoc title={`${tr("Recibos de nómina")} ${tr("{from} al {to}", { from: date(run.periodStart), to: date(run.periodEnd) })}`}>
+    <PdfDoc lang={lang} title={`${tr("Recibos de nómina")} ${tr("{from} al {to}", { from: date(run.periodStart), to: date(run.periodEnd) })}`}>
       {pages.map((pair, i) => (
         <Page key={i} size="LETTER" style={{ paddingHorizontal: 40, paddingVertical: 26, fontFamily: "Helvetica", color: INK }}>
           <Receipt s={s} run={run} l={pair[0]} lang={lang} />

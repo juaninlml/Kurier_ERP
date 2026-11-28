@@ -20,6 +20,12 @@
         "value": "helvetica-oblique",
         "createdAt": "2026-11-19T19:33:01.698Z",
         "reason": "Existing PDF convention: pdfkit built-in Helvetica family in src/pdf"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "notosanssc",
+        "createdAt": "2026-11-28T14:25:02.848Z",
+        "reason": "Task requirement: Simplified Chinese PDFs need a CJK font; Helvetica has no CJK glyphs (PDF only, not UI)"
       }
     ]
   }

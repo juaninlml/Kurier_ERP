@@ -1,12 +1,11 @@
 import React from "react";
-import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet, PdfLang } from "./rp";
 import type { Style } from "@react-pdf/types";
 import type { CompanySettings } from "@prisma/client";
+import type { Lang } from "@/lib/i18n/core";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
-// Sin guiones de separación automática (evita "FI-NANCIERO", folios cortados, etc.)
-Font.registerHyphenationCallback((word) => [word]);
 
 /** Mezcla un color hex con blanco (t = 0 → color, 1 → blanco). */
 export function tint(hex: string, t: number) {
@@ -60,7 +59,7 @@ export function BrandedPage({
   watermark?: string;
   children: React.ReactNode;
   /** Idioma del pie de página ("Página 1 de 2" / "Page 1 of 2"). */
-  lang?: "es" | "en";
+  lang?: Lang;
 }) {
   const c = palette(s);
   const logo = loadLogo(s);
@@ -94,7 +93,7 @@ export function BrandedPage({
 
       {watermark && (
         <View fixed style={{ position: "absolute", top: 360, left: 0, right: 0, alignItems: "center" }}>
-          <Text style={{ fontSize: 90, color: watermark === "PAGADA" || watermark === "PAID" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
+          <Text style={{ fontSize: 90, color: watermark === "PAGADA" || watermark === "PAID" || watermark === "已付款" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
             {watermark}
           </Text>
         </View>
@@ -106,7 +105,7 @@ export function BrandedPage({
       <View fixed style={{ position: "absolute", bottom: 22, left: 46, right: 46 }}>
         <View style={{ borderTopWidth: 0.5, borderTopColor: "#e2e8f0", paddingTop: 6, flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={{ fontSize: 7.5, color: GRAY }}>{`${s.tradeName} · ${footerLabel}`}</Text>
-          <Text style={{ fontSize: 7.5, color: GRAY }} render={({ pageNumber, totalPages }) => (lang === "en" ? `Page ${pageNumber} of ${totalPages}` : `Página ${pageNumber} de ${totalPages}`)} />
+          <Text style={{ fontSize: 7.5, color: GRAY }} render={({ pageNumber, totalPages }) => (lang === "en" ? `Page ${pageNumber} of ${totalPages}` : lang === "zh" ? `第 ${pageNumber} 页，共 ${totalPages} 页` : `Página ${pageNumber} de ${totalPages}`)} />
         </View>
       </View>
     </Page>
@@ -288,11 +287,14 @@ export function Conditions({ s, text }: { s: CompanySettings; text: string }) {
   );
 }
 
-export function PdfDoc({ title, children }: { title: string; children: React.ReactNode }) {
+/** Documento PDF. `lang` = idioma del documento (en chino cambia la fuente; ver ./rp). */
+export function PdfDoc({ title, children, lang = "es" }: { title: string; children: React.ReactNode; lang?: Lang }) {
   return (
-    <Document title={title} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
-      {children}
-    </Document>
+    <PdfLang lang={lang}>
+      <Document title={title} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
+        {children}
+      </Document>
+    </PdfLang>
   );
 }
 

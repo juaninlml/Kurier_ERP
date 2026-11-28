@@ -1,7 +1,8 @@
 import React from "react";
-import { Page, View, Text, Image } from "@react-pdf/renderer";
+import { Page, View, Text, Image } from "./rp";
 import type { Style } from "@react-pdf/types";
 import type { CompanySettings } from "@prisma/client";
+import type { Lang } from "@/lib/i18n/core";
 import { loadLogo, tint, Rich } from "./brand";
 
 /**
@@ -38,7 +39,7 @@ export function CleanPage({
   title: string;
   children: React.ReactNode;
   watermark?: string;
-  lang?: "es" | "en";
+  lang?: Lang;
 }) {
   const c = cleanColors(s);
   const logo = loadLogo(s);
@@ -82,7 +83,7 @@ export function CleanPage({
 
       {watermark && (
         <View fixed style={{ position: "absolute", top: 360, left: 0, right: 0, alignItems: "center" }}>
-          <Text style={{ fontSize: 90, color: watermark === "PAGADA" || watermark === "PAID" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
+          <Text style={{ fontSize: 90, color: watermark === "PAGADA" || watermark === "PAID" || watermark === "已付款" ? "#16a34a" : "#ef4444", opacity: 0.1, transform: "rotate(-30deg)", fontFamily: "Helvetica-Bold" }}>
             {watermark}
           </Text>
         </View>
@@ -94,7 +95,7 @@ export function CleanPage({
       <View fixed style={{ position: "absolute", bottom: 20, left: PAD_X, right: PAD_X }}>
         <View style={{ borderTopWidth: 0.75, borderTopColor: C.ink, paddingTop: 5, flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={{ fontSize: 8, color: C.ink }}>{contact || s.tradeName}</Text>
-          <Text style={{ fontSize: 8, color: C.muted }} render={({ pageNumber, totalPages }) => `${lang === "en" ? "Page" : "Página"} ${pageNumber} / ${totalPages}`} />
+          <Text style={{ fontSize: 8, color: C.muted }} render={({ pageNumber, totalPages }) => (lang === "zh" ? `第 ${pageNumber}/${totalPages} 页` : `${lang === "en" ? "Page" : "Página"} ${pageNumber} / ${totalPages}`)} />
         </View>
       </View>
     </Page>

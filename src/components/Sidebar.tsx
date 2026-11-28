@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLang, useT, useTheme } from "./I18nProvider";
 import { setLanguage, signOutAction } from "@/app/actions/account";
-import { Tr } from "@/components/Tr";
+import { LANGS, LANG_NAMES } from "@/lib/i18n/core";
 import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
 import { canOpen, ROLE_LABEL } from "@/lib/permissions";
 
@@ -247,12 +247,11 @@ function UserMenu({ user }: { user: SidebarUser }) {
           <Languages className="size-3.5" /> {t("Idioma")}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={lang} onValueChange={(v) => start(async () => void (await setLanguage(v)))}>
-          <DropdownMenuRadioItem value="es" disabled={pending}>
-            <Tr>Español</Tr>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="en" disabled={pending}>
-            <Tr>English</Tr>
-          </DropdownMenuRadioItem>
+          {LANGS.map((v) => (
+            <DropdownMenuRadioItem key={v} value={v} disabled={pending} lang={v}>
+              {LANG_NAMES[v].name}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">

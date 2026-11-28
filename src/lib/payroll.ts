@@ -1,5 +1,6 @@
 import { round2 } from "./money";
 import { requestLang } from "./request-lang";
+import type { Lang } from "./i18n/core";
 
 /**
  * Cálculos de nómina según la Ley Federal del Trabajo (sin ISR, IMSS ni carga patronal).
@@ -60,8 +61,12 @@ export function seniority(start: Date, at = new Date()) {
   return { years, months, days, totalDays, lastAnniversary, nextAnniversary };
 }
 
-export function seniorityLabel(s: { years: number; months: number; days: number }) {
-  if (requestLang() === "en") {
+export function seniorityLabel(s: { years: number; months: number; days: number }, lang: Lang = requestLang()) {
+  if (lang === "zh") {
+    const zh = [s.years ? `${s.years}年` : "", s.months ? `${s.months}个月` : "", !s.years && !s.months ? `${s.days}天` : ""].filter(Boolean);
+    return zh.join("") || "不足一天";
+  }
+  if (lang === "en") {
     const en = [
       s.years ? `${s.years} year${s.years === 1 ? "" : "s"}` : "",
       s.months ? `${s.months} month${s.months === 1 ? "" : "s"}` : "",

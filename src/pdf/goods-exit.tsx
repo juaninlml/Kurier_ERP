@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text } from "./rp";
 import type { CompanySettings } from "@prisma/client";
 import { BrandedPage, PdfDoc, GRAY, INK, tint } from "./brand";
 import { formatDate, formatNumber } from "@/lib/money";
@@ -127,7 +127,7 @@ export function GoodsExitPdf({ s, x, lang = "es" }: { s: CompanySettings; x: Exi
   const accent = s.accentColor;
   const title = t("Hoja de salida de mercancía");
   return (
-    <PdfDoc title={blank ? title : `${title} ${x.folio}`}>
+    <PdfDoc lang={lang} title={blank ? title : `${title} ${x.folio}`}>
       <BrandedPage s={s} lang={lang} footerLabel={blank ? t("Control operativo de salidas") : `${t("Salida de mercancía")} ${x.folio} · ${x.client ?? ""}`}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
           <View>

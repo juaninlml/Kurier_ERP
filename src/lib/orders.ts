@@ -44,10 +44,18 @@ export function rangeLabel(from: string, to: string, locale = requestLocale()) {
   const [fy, fm] = from.split("-");
   const [ty, tm] = to.split("-");
   const end = fmt(to, { day: "numeric", month: "long", year: "numeric" }, locale);
+  if (locale.startsWith("zh")) {
+    // "2026年11月16日至22日" · "2026年10月28日至11月3日"
+    const start = fmt(from, { year: "numeric", month: "long", day: "numeric" }, locale);
+    if (fy === ty && fm === tm) return `${start}至${Number(to.slice(8))}日`;
+    return `${start}至${fmt(to, fy === ty ? { month: "long", day: "numeric" } : { year: "numeric", month: "long", day: "numeric" }, locale)}`;
+  }
   if (!locale.startsWith("es")) {
     // "Nov 16 – 22, 2026" · "Oct 28 – Nov 3, 2026"
+    // (Intl con solo día y año da "2026 (day: 22)", por eso el mismo mes se arma a mano)
     const start = fmt(from, fy === ty ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" }, locale);
-    return `${start} – ${fmt(to, fy === ty && fm === tm ? { day: "numeric", year: "numeric" } : { month: "short", day: "numeric", year: "numeric" }, locale)}`;
+    if (fy === ty && fm === tm) return `${start} – ${Number(to.slice(8))}, ${ty}`;
+    return `${start} – ${fmt(to, { month: "short", day: "numeric", year: "numeric" }, locale)}`;
   }
   if (fy === ty && fm === tm) return `${Number(from.slice(8))} al ${end}`;
   if (fy === ty) return `${fmt(from, { day: "numeric", month: "long" }, locale)} al ${end}`;

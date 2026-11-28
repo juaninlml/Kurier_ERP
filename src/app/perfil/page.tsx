@@ -8,7 +8,7 @@ import { Avatar } from "@/components/Sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getLang, getT } from "@/lib/i18n/server";
-import { localeOf } from "@/lib/i18n";
+import { localeOf, LANGS, LANG_NAMES } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -69,8 +69,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </Field>
             <Field label={t("Idioma")}>
               <select name="locale" defaultValue={lang} className="input">
-                <option value="es">{t("Español")}</option>
-                <option value="en">{t("English")}</option>
+                {LANGS.map((v) => (
+                  <option key={v} value={v} lang={v}>
+                    {LANG_NAMES[v].name}
+                  </option>
+                ))}
               </select>
             </Field>
           </div>

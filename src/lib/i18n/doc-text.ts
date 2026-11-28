@@ -76,5 +76,66 @@ export function docTextEn(text: string, field: DocField = "general") {
 
 /** Texto de documento en el idioma pedido (en español se deja tal cual). */
 export function docText(text: string, lang: Lang, field: DocField = "general") {
-  return lang === "en" ? docTextEn(text, field) : text;
+  return lang === "en" ? docTextEn(text, field) : lang === "zh" ? docTextZh(text, field) : text;
+}
+
+// ───────── Chino simplificado ─────────
+
+const tZh = translator("zh");
+const ZH_MONTHS: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+const zhMonth = (m: string) => ZH_MONTHS[m.toLowerCase()] ?? m;
+const hasCjk = (s: string) => /[㐀-鿿]/.test(s);
+
+/** Busca en el diccionario chino con la misma tolerancia que lookup(); solo acepta resultados en chino. */
+function lookupZh(text: string) {
+  const s = text.trim().replace(/\s+/g, " ");
+  const bare = s.replace(/\.$/, "");
+  const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+  for (const k of [text, s, bare, `${bare}.`, cap(bare), `${cap(bare)}.`]) {
+    const v = tZh(k);
+    if (v !== k && hasCjk(v)) return v;
+  }
+  return null;
+}
+
+/** Frases habituales del campo "Almacenamiento" en chino. */
+function storageZh(text: string) {
+  const s = text.trim();
+  if (/^no se (?:cobra|factura)/i.test(s)) return "本期不收取仓储费。";
+  if (/^sin (?:cargo|costo|cobro)/i.test(s)) return "本期无仓储费用。";
+  if (/^(?:no aplica|n\/a)\.?$/i.test(s)) return "不适用。";
+  if (/^incluid[oa]/i.test(s)) return /servicio/i.test(s) ? "已包含在服务中。" : /tarifa/i.test(s) ? "已包含在费率中。" : "已包含。";
+  return s
+    .replace(/\b(?:almacenamiento|almacenaje)\b/gi, "仓储")
+    .replace(/\btarimas?\b/gi, "托盘")
+    .replace(/\bposici(?:ones|ón)\b/gi, "库位")
+    .replace(/\bubicaci(?:ones|ón)\b/gi, "货位")
+    .replace(/\b(?:por|al) mes\b/gi, "/月")
+    .replace(/\bpor semana\b/gi, "/周")
+    .replace(/\bpor día\b/gi, "/天")
+    .replace(/\bmensual(?:es)?\b/gi, "每月")
+    .replace(/\bdías\b/gi, "天")
+    .replace(/\bde\b/gi, "")
+    .replace(/\s{2,}/g, " ");
+}
+
+/** Texto de documento en chino (mismo criterio que docTextEn: lo que no se reconoce se deja como se capturó). */
+export function docTextZh(text: string, field: DocField = "general") {
+  if (!text?.trim()) return text;
+  const direct = lookupZh(text);
+  if (direct) return direct;
+  if (field === "storage") return storageZh(text);
+  return text
+    .replace(/^Material de empaque: /, "包装材料：")
+    .replace(/(\d+) al (\d+) de (\w+) de (\d{4})/g, (_, a, b, m, y) => `${y}年${zhMonth(m)}月${a}日至${b}日`)
+    .replace(/(\d+) de (\w+) al (\d+) de (\w+) de (\d{4})/g, (_, a, m1, b, m2, y) => `${y}年${zhMonth(m1)}月${a}日至${zhMonth(m2)}月${b}日`)
+    .replace(/ — ciclo semanal/, "（每周周期）")
+    .replace(/ — ciclo mensual/, "（每月周期）")
+    .replace(/(\d+) paquetes en (\d+) día\(s\) operado\(s\)/, "$2 个作业日共 $1 件包裹")
+    .replace(/Paquetes procesados del /, "已处理包裹：")
+    .replace(/^Medidas (.+) cm$/, "尺寸 $1 厘米")
+    .replace(/^Pago contra recepción de factura a (\d+) días naturales\.?$/, "收到发票后 $1 个自然日内付款。")
+    .replace(/^Pago contra recepción de factura\.?$/, "收到发票后付款。");
 }
