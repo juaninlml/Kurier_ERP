@@ -1,5 +1,6 @@
 import { en as enBase } from "./en";
 import { enModules } from "./en-modules";
+import { enPdf } from "./en-pdf";
 import { makeTranslator, type Lang, type Messages, type T } from "./core";
 
 export { LANGS, LANG_COOKIE, isLang, localeOf, makeTranslator, type Lang, type Messages, type T } from "./core";
@@ -15,5 +16,8 @@ export const messagesFor = (lang: Lang): Messages | undefined => (lang === "en" 
  * Variables: t("Hola {name}", { name: "Ana" }).
  */
 export function translator(lang: Lang): T {
-  return makeTranslator(lang, messagesFor(lang));
+  return makeTranslator(lang, lang === "en" ? enServer : undefined);
 }
+
+/** En el servidor también los textos de los PDF (no viajan al navegador). */
+const enServer: Messages = { ...enPdf, ...en };

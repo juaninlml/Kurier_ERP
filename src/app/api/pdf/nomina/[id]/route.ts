@@ -1,5 +1,6 @@
 import { renderPayrollReceipts } from "@/pdf/render";
 import { pdfResponse } from "../../respond";
+import { getLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,5 +10,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const id = Number((await params).id);
   const url = new URL(req.url);
   const line = Number(url.searchParams.get("linea")) || undefined;
-  return pdfResponse(() => renderPayrollReceipts(id, line), url.searchParams.has("download"));
+  return pdfResponse(async () => renderPayrollReceipts(id, line, await getLang()), url.searchParams.has("download"));
 }

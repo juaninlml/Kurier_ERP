@@ -5,8 +5,9 @@ import { BrandedPage, DocTitle, SectionTab, Table, Note, Conditions, PdfDoc, Cal
 import { CleanPage, PartyBlock, InfoGrid, SectionLabel, CleanTable, TotalsBox, SmallNote, CompactTerms, C, type CleanCell, type CleanCol } from "./clean";
 import { parsePerOrder, parseVolumes, scenarioTable } from "@/lib/quote-extras";
 import { quoteParty } from "@/lib/quote-party";
-import { formatDateEs, formatDateLongEs, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
+import { formatDate, formatDateLong, formatDateNum, formatDateNumEs, formatMoney, formatNumber, amountInWords, amountInWordsEn, round2 } from "@/lib/money";
 import { docText } from "@/lib/i18n/doc-text";
+import { localeOf, translator, type Lang } from "@/lib/i18n";
 import { groupBySection, rateLabel } from "@/lib/totals";
 import type { incomeStatement, receivables } from "@/lib/reports";
 import { STATUS_LABELS } from "@/lib/constants";
@@ -14,10 +15,29 @@ import { formatCurrency, exchangeRateLabel, toMxn } from "@/lib/currency";
 
 const PRICES_NOTE = "Todos los precios sin IVA, en pesos mexicanos (MXN)";
 const qtyLabel = (q: number, unit: string) => `${formatNumber(q)} ${unit.toLowerCase()}`;
-const taxLabel = (items: { taxRate: number }[]) => {
+/** Plural simple en inglés para unidades ("package" → "packages"); las que ya terminan en s o llevan "/" se dejan. */
+const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
+/** Cantidad con su unidad en el idioma del formato ("3 paquetes" / "3 packages"). */
+const qtyText = (q: number, unit: string, lang: Lang) =>
+  lang === "en" ? `${formatNumber(q)} ${pluralEn(docText(unit, "en").toLowerCase(), q)}` : qtyLabel(q, unit);
+const taxLabel = (items: { taxRate: number }[], lang: Lang = "es") => {
+  const t = translator(lang);
   const rates = [...new Set(items.filter((i) => i.taxRate > 0).map((i) => i.taxRate))];
-  return rates.length === 1 ? `IVA ${formatNumber(rates[0])}%` : "IVA";
+  return rates.length === 1 ? `${t("IVA")} ${formatNumber(rates[0])}%` : t("IVA");
 };
+/** Textos del documento en el idioma pedido: `t` para los fijos, `x` para lo capturado (frases comunes), fechas locales. */
+function texts(lang: Lang) {
+  const loc = localeOf(lang);
+  return {
+    t: translator(lang),
+    x: (text: string) => docText(text, lang),
+    /** Condiciones capturadas: se traduce línea por línea lo que se reconoce. */
+    lines: (text: string) => text.split("\n").map((l) => docText(l, lang)).join("\n"),
+    dNum: (d: Date | string) => formatDateNum(d, loc),
+    dShort: (d: Date | string) => formatDate(d, loc),
+    dLong: (d: Date | string) => formatDateLong(d, loc),
+  };
+}
 
 // ───────────────────────────── Cotización ─────────────────────────────
 
@@ -26,13 +46,16 @@ export function QuotePdf({
   quote,
   sectionNotes,
   infoTables = [],
+  lang = "es",
 }: {
   s: CompanySettings;
   quote: Quote & { client: Client | null; items: QuoteItem[] };
   sectionNotes: Record<string, string>;
   /** Tablas informativas del tarifario marcadas para imprimirse en cotizaciones (SLA, etc.). */
   infoTables?: TariffTable[];
+  lang?: Lang;
 }) {
+  const { t, x, lines, dNum } = texts(lang);
   const profile: { label: string; value: string }[] = (() => {
     try {
       return JSON.parse(quote.profile);
@@ -46,39 +69,39 @@ export function QuotePdf({
   const perOrder = parsePerOrder(quote.perOrder);
   const volumes = parseVolumes(quote.scenarios);
   const scenarios = scenarioTable(quote.items, quote.baseVolume, volumes, formatMoney);
-  const tax = taxLabel(quote.items);
+  const tax = taxLabel(quote.items, lang);
 
   // Servicios: una sola tabla; cada sección es un subtítulo dentro de ella.
   const svcRows: CleanCell[][] = [];
   const svcGroups: Record<number, string> = {};
-  const svcNotes = groups.map(([section]) => sectionNotes[section]).filter((n) => n?.trim());
+  const svcNotes = groups.map(([section]) => sectionNotes[section]).filter((n) => n?.trim()).map(x);
   for (const [section, items] of groups) {
-    if (groups.length > 1 || section) svcGroups[svcRows.length] = section || "Otros servicios";
-    for (const i of items) svcRows.push([{ main: i.description, bold: true }, { main: rateLabel(i, formatMoney), color: s.accentColor, bold: true }, i.detail]);
+    if (groups.length > 1 || section) svcGroups[svcRows.length] = section ? x(section) : t("Otros servicios");
+    for (const i of items) svcRows.push([{ main: x(i.description), bold: true }, { main: x(rateLabel(i, formatMoney)), color: s.accentColor, bold: true }, x(i.detail)]);
   }
 
   return (
-    <PdfDoc title={`Cotización ${quote.folio} — ${party.name}`}>
-      <CleanPage s={s} title={`Cotización ${quote.folio}`} watermark={quote.status === "RECHAZADA" ? "RECHAZADA" : undefined}>
+    <PdfDoc title={`${t("Cotización")} ${quote.folio} — ${party.name}`}>
+      <CleanPage s={s} lang={lang} title={`${t("Cotización")} ${quote.folio}`} watermark={quote.status === "RECHAZADA" ? t("RECHAZADA") : undefined}>
         <PartyBlock
           name={party.legalName || party.name}
-          lines={[party.legalName && party.legalName !== party.name ? party.name : "", party.rfc && `RFC: ${party.rfc}`, quote.attention && `Atención: ${quote.attention}`]}
+          lines={[party.legalName && party.legalName !== party.name ? party.name : "", party.rfc && `${t("RFC")}: ${party.rfc}`, quote.attention && `${t("Atención")}: ${quote.attention}`]}
         />
 
         <InfoGrid
           items={[
-            { label: "Fecha", value: formatDateNumEs(quote.issueDate) },
-            { label: "Vigente hasta", value: formatDateNumEs(quote.validUntil) },
-            ...profile.filter((r) => r.label.trim() && r.value.trim()),
+            { label: t("Fecha"), value: dNum(quote.issueDate) },
+            { label: t("Vigente hasta"), value: dNum(quote.validUntil) },
+            ...profile.filter((r) => r.label.trim() && r.value.trim()).map((r) => ({ label: x(r.label), value: x(r.value) })),
           ]}
         />
 
         {svcRows.length > 0 && (
           <CleanTable
             cols={[
-              { title: "Servicio", width: "27%" },
-              { title: "Tarifa", width: "20%" },
-              { title: "Descripción", width: "53%" },
+              { title: t("Servicio"), width: "27%" },
+              { title: t("Tarifa"), width: "20%" },
+              { title: t("Descripción"), width: "53%" },
             ]}
             rows={svcRows}
             groups={svcGroups}
@@ -90,31 +113,31 @@ export function QuotePdf({
 
         {perOrder.length > 0 && (
           <View wrap={false}>
-            <SectionLabel s={s}>Costo por pedido</SectionLabel>
+            <SectionLabel s={s}>{t("Costo por pedido")}</SectionLabel>
             <CleanTable
               cols={
                 quote.perOrderFee > 0
                   ? [
-                      { title: "Tipo de pedido", width: "58%" },
+                      { title: t("Tipo de pedido"), width: "58%" },
                       { title: "Fulfillment", width: "20%", align: "right" },
-                      { title: "Con guía de Kurier", width: "22%", align: "right" },
+                      { title: t("Con guía de Kurier"), width: "22%", align: "right" },
                     ]
                   : [
-                      { title: "Tipo de pedido", width: "75%" },
+                      { title: t("Tipo de pedido"), width: "75%" },
                       { title: "Fulfillment", width: "25%", align: "right" },
                     ]
               }
               rows={perOrder.map((r) =>
                 quote.perOrderFee > 0
-                  ? [r.label, formatMoney(r.amount), { main: formatMoney(round2(r.amount + quote.perOrderFee)), bold: true }]
-                  : [r.label, { main: formatMoney(r.amount), bold: true }],
+                  ? [x(r.label), formatMoney(r.amount), { main: formatMoney(round2(r.amount + quote.perOrderFee)), bold: true }]
+                  : [x(r.label), { main: formatMoney(r.amount), bold: true }],
               )}
             />
             <SmallNote
               text={
                 quote.perOrderFee > 0
-                  ? `Precios sin IVA. La columna "Con guía de Kurier" suma la comisión de ${formatMoney(quote.perOrderFee)} por guía; no incluye el flete.`
-                  : "Precios sin IVA."
+                  ? t('Precios sin IVA. La columna "Con guía de Kurier" suma la comisión de {fee} por guía; no incluye el flete.', { fee: formatMoney(quote.perOrderFee) })
+                  : t("Precios sin IVA.")
               }
             />
           </View>
@@ -122,80 +145,84 @@ export function QuotePdf({
 
         {scenarios && (
           <View wrap={scenarios.rows.length > 12}>
-            <SectionLabel s={s}>Costo mensual según volumen</SectionLabel>
+            <SectionLabel s={s}>{t("Costo mensual según volumen")}</SectionLabel>
             <CleanTable
-              cols={scenarioCols(volumes)}
+              cols={scenarioCols(volumes, lang)}
               rows={[
-                ...scenarios.rows.map((r) => [r.label, ...r.values.map((v) => formatMoney(v))]),
-                ["Subtotal sin IVA", ...scenarios.subtotal.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true })),
+                ...scenarios.rows.map((r) => [x(r.label), ...r.values.map((v) => formatMoney(v))]),
+                [t("Subtotal sin IVA"), ...scenarios.subtotal.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true })),
                 [tax, ...scenarios.tax.map((v) => formatMoney(v))],
-                ["Total mensual estimado", ...scenarios.total.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true, color: s.accentColor })),
+                [t("Total mensual estimado"), ...scenarios.total.map((v) => formatMoney(v))].map((v) => ({ main: v, bold: true, color: s.accentColor })),
               ]}
             />
-            <SmallNote text={quote.notes} />
+            <SmallNote text={x(quote.notes)} />
           </View>
         )}
 
         {!scenarios && estimate.length > 0 && (
           <View wrap={estimate.length > 12}>
-            <SectionLabel s={s}>Costo mensual estimado</SectionLabel>
+            <SectionLabel s={s}>{t("Costo mensual estimado")}</SectionLabel>
             <CleanTable
               cols={[
-                { title: "Concepto", width: "52%" },
-                { title: "Cantidad", width: "16%", align: "right" },
-                { title: "Tarifa", width: "15%", align: "right" },
-                { title: "Importe", width: "17%", align: "right" },
+                { title: t("Concepto"), width: "52%" },
+                { title: t("Cantidad"), width: "16%", align: "right" },
+                { title: t("Tarifa"), width: "15%", align: "right" },
+                { title: t("Importe"), width: "17%", align: "right" },
               ]}
-              rows={estimate.map((i) => [i.description, qtyLabel(i.quantity, i.unit), i.atCost ? "Al costo" : formatMoney(i.unitPrice), formatMoney(i.amount)])}
+              rows={estimate.map((i) => [x(i.description), qtyText(i.quantity, i.unit, lang), i.atCost ? t("Al costo") : formatMoney(i.unitPrice), formatMoney(i.amount)])}
             />
             <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
               <View style={{ flex: 1, paddingRight: 24 }}>
-                <SmallNote text={quote.notes} style={{ marginTop: 0 }} />
+                <SmallNote text={x(quote.notes)} style={{ marginTop: 0 }} />
               </View>
               <TotalsBox
                 s={s}
                 rows={[
-                  { label: "Subtotal sin IVA", value: formatMoney(quote.subtotal - quote.discount) },
-                  ...(quote.discount > 0 ? [{ label: "Descuento incluido", value: formatMoney(-quote.discount) }] : []),
+                  { label: t("Subtotal sin IVA"), value: formatMoney(quote.subtotal - quote.discount) },
+                  ...(quote.discount > 0 ? [{ label: t("Descuento incluido"), value: formatMoney(-quote.discount) }] : []),
                   { label: tax, value: formatMoney(quote.tax) },
                 ]}
-                total={{ label: "Total mensual estimado", value: formatMoney(quote.total) }}
+                total={{ label: t("Total mensual estimado"), value: formatMoney(quote.total) }}
               />
             </View>
           </View>
         )}
-        {!scenarios && estimate.length === 0 && <SmallNote text={quote.notes} />}
+        {!scenarios && estimate.length === 0 && <SmallNote text={x(quote.notes)} />}
 
-        {infoTables.map((t) => {
-          const p = parseInfoTable(t.columns, t.rows);
+        {infoTables.map((tb) => {
+          const p = parseInfoTable(tb.columns, tb.rows);
           if (!p) return null;
           return (
-            <View key={t.id} wrap={p.data.length > 10}>
-              <SectionLabel s={s}>{t.title}</SectionLabel>
-              <CleanTable cols={p.cols} rows={p.data.map((r) => r.map((v, j): CleanCell => (j === 0 ? { main: v, bold: true } : p.isRate ? { main: v, color: s.accentColor, bold: true } : v)))} />
-              <SmallNote text={t.note} />
+            <View key={tb.id} wrap={p.data.length > 10}>
+              <SectionLabel s={s}>{x(tb.title)}</SectionLabel>
+              <CleanTable
+                cols={p.cols.map((c) => ({ ...c, title: x(c.title) }))}
+                rows={p.data.map((r) => r.map((raw, j): CleanCell => { const v = x(raw); return j === 0 ? { main: v, bold: true } : p.isRate ? { main: v, color: s.accentColor, bold: true } : v; }))}
+              />
+              <SmallNote text={x(tb.note)} />
             </View>
           );
         })}
 
         {quote.terms.trim() && (
           <View>
-            <SectionLabel s={s}>Condiciones comerciales</SectionLabel>
-            <CompactTerms text={quote.terms} />
+            <SectionLabel s={s}>{t("Condiciones comerciales")}</SectionLabel>
+            <CompactTerms text={lines(quote.terms)} />
           </View>
         )}
-        <SmallNote text={`${PRICES_NOTE}.`} style={{ marginTop: 10 }} />
+        <SmallNote text={`${t(PRICES_NOTE)}.`} style={{ marginTop: 10 }} />
       </CleanPage>
     </PdfDoc>
   );
 }
 
 /** Columnas de la tabla de escenarios por volumen. */
-function scenarioCols(volumes: number[]): CleanCol[] {
+function scenarioCols(volumes: number[], lang: Lang): CleanCol[] {
+  const t = translator(lang);
   const w = volumes.length <= 3 ? 17 : 14;
   return [
-    { title: "Concepto", width: `${100 - w * volumes.length}%` },
-    ...volumes.map((v) => ({ title: `${formatNumber(v)} pedidos`, width: `${w}%`, align: "right" as const })),
+    { title: t("Concepto"), width: `${100 - w * volumes.length}%` },
+    ...volumes.map((v) => ({ title: t("{n} pedidos", { n: formatNumber(v) }), width: `${w}%`, align: "right" as const })),
   ];
 }
 
@@ -228,9 +255,6 @@ const INVOICE_L = {
     totalMxn: "Total in pesos (MXN)", balanceMxn: "Balance in pesos (MXN)",
   },
 } as const;
-
-/** Plural simple en inglés para unidades ("package" → "packages"); las que ya terminan en s o llevan "/" se dejan. */
-const pluralEn = (unit: string, qty: number) => (qty === 1 || !unit || /s$|\/|\s/.test(unit) ? unit : unit.endsWith("x") ? `${unit}es` : `${unit}s`);
 
 export function InvoicePdf({
   s,
@@ -358,7 +382,8 @@ export function InvoicePdf({
 
 type Statement = { client: Client; invoices: (Invoice & { payments: Payment[] })[] };
 
-export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement }) {
+export function StatementPdf({ s, data, lang = "es" }: { s: CompanySettings; data: Statement; lang?: Lang }) {
+  const { t, dNum, dLong } = texts(lang);
   const c = palette(s);
   const now = new Date();
   const open = data.invoices.filter((i) => i.status === "PENDIENTE" || i.status === "PARCIAL");
@@ -368,15 +393,15 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
   const hasCny = data.invoices.some((i) => i.currency === "CNY");
 
   return (
-    <PdfDoc title={`Estado de cuenta ${data.client.name}`}>
-      <BrandedPage s={s} footerLabel={`Estado de cuenta · ${data.client.name}`}>
-        <DocTitle s={s} title="Estado de cuenta" subtitle={`${data.client.name} · Fecha de corte: ${formatDateLongEs(now)} · ${PRICES_NOTE}`} />
+    <PdfDoc title={`${t("Estado de cuenta")} ${data.client.name}`}>
+      <BrandedPage s={s} lang={lang} footerLabel={`${t("Estado de cuenta")} · ${data.client.name}`}>
+        <DocTitle s={s} title={t("Estado de cuenta")} subtitle={`${data.client.name} · ${t("Fecha de corte")}: ${dLong(now)} · ${t(PRICES_NOTE)}`} />
 
         <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
           {[
-            { l: "Saldo total", v: balance, color: c.blue },
-            { l: "Vencido", v: overdue, color: "#b91c1c" },
-            { l: "Por vencer", v: round2(balance - overdue), color: c.orange },
+            { l: t("Saldo total"), v: balance, color: c.blue },
+            { l: t("Vencido"), v: overdue, color: "#b91c1c" },
+            { l: t("Por vencer"), v: round2(balance - overdue), color: c.orange },
           ].map((k) => (
             <View key={k.l} style={[base.box, { flex: 1, backgroundColor: c.peach }]}>
               <Text style={[base.muted, { fontSize: 7.5 }]}>{k.l.toUpperCase()}</Text>
@@ -385,28 +410,28 @@ export function StatementPdf({ s, data }: { s: CompanySettings; data: Statement 
           ))}
         </View>
 
-        <SectionTab s={s}>Facturas</SectionTab>
+        <SectionTab s={s}>{t("Facturas")}</SectionTab>
         <Table
           s={s}
           cols={[
-            { title: "Folio", width: "14%" },
-            { title: "Emisión", width: "13%" },
-            { title: "Vence", width: "13%" },
-            { title: "Estatus", width: "15%" },
-            { title: "Total", width: "15%", align: "right" },
-            { title: "Pagado", width: "15%", align: "right" },
-            { title: "Saldo", width: "15%", align: "right" },
+            { title: t("Folio"), width: "14%" },
+            { title: t("Emisión"), width: "13%" },
+            { title: t("Vencimiento"), width: "13%" },
+            { title: t("Estatus"), width: "15%" },
+            { title: t("Total"), width: "15%", align: "right" },
+            { title: t("Pagado"), width: "15%", align: "right" },
+            { title: t("Saldo"), width: "15%", align: "right" },
           ]}
           styles={["label", "normal", "normal", "normal", "normal", "normal", "strong"]}
           rows={data.invoices.map((inv) => {
             const bal = round2(inv.total - inv.paidTotal);
             const late = bal > 0 && inv.dueDate < now;
             const m = (n: number) => `${formatCurrency(n, inv.currency)}${inv.currency === "CNY" ? " CNY" : ""}`;
-            return [inv.folio, formatDateNumEs(inv.issueDate), formatDateNumEs(inv.dueDate), late ? "Vencida" : STATUS_LABELS[inv.status], m(inv.total), m(inv.paidTotal), m(bal)];
+            return [inv.folio, dNum(inv.issueDate), dNum(inv.dueDate), t(late ? "Vencida" : STATUS_LABELS[inv.status]), m(inv.total), m(inv.paidTotal), m(bal)];
           })}
         />
-        {hasCny && <Note>Las facturas en yuanes (CNY) se muestran en su moneda; los saldos de arriba están en pesos (MXN) con el tipo de cambio guardado en cada factura.</Note>}
-        {data.invoices.length === 0 && <Note>Sin facturas registradas.</Note>}
+        {hasCny && <Note>{t("Las facturas en yuanes (CNY) se muestran en su moneda; los saldos de arriba están en pesos (MXN) con el tipo de cambio guardado en cada factura.")}</Note>}
+        {data.invoices.length === 0 && <Note>{t("Sin facturas registradas.")}</Note>}
       </BrandedPage>
     </PdfDoc>
   );
@@ -420,13 +445,16 @@ export function ReportPdf({
   to,
   stmt,
   ar,
+  lang = "es",
 }: {
   s: CompanySettings;
   from: Date;
   to: Date;
   stmt: Awaited<ReturnType<typeof incomeStatement>>;
   ar: Awaited<ReturnType<typeof receivables>>;
+  lang?: Lang;
 }) {
+  const { t, x, dShort, dLong } = texts(lang);
   const c = palette(s);
   const row = { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 7, borderBottomWidth: 0.5, borderBottomColor: "#e8e1da" } as const;
   const totalRow = (label: string, value: number, color?: string) => (
@@ -440,7 +468,7 @@ export function ReportPdf({
       rows.map((r) => (
         <View key={r.category} style={row}>
           <Text>
-            {r.category} <Text style={base.muted}>({r.count})</Text>
+            {x(r.category)} <Text style={base.muted}>({r.count})</Text>
           </Text>
           <Text>{formatMoney(r.amount)}</Text>
         </View>
@@ -450,16 +478,20 @@ export function ReportPdf({
     );
 
   return (
-    <PdfDoc title="Reporte financiero">
-      <BrandedPage s={s} footerLabel="Reporte financiero">
-        <DocTitle s={s} title="Reporte financiero" subtitle={`Del ${formatDateLongEs(from)} al ${formatDateLongEs(to)} · ${stmt.count} movimientos · Montos con IVA salvo indicación`} />
+    <PdfDoc title={t("Reporte financiero")}>
+      <BrandedPage s={s} lang={lang} footerLabel={t("Reporte financiero")}>
+        <DocTitle
+          s={s}
+          title={t("Reporte financiero")}
+          subtitle={t("Del {from} al {to} · {n} movimientos · Montos con IVA salvo indicación", { from: dLong(from), to: dLong(to), n: stmt.count })}
+        />
 
         <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
           {[
-            { l: "Ingresos", v: stmt.incomeTotal, color: "#047857" },
-            { l: "Egresos", v: stmt.expenseTotal, color: "#b91c1c" },
-            { l: "Flujo neto", v: stmt.cashFlow, color: stmt.cashFlow >= 0 ? c.blue : "#b91c1c" },
-            { l: "Por cobrar", v: ar.total, color: c.orange },
+            { l: t("Ingresos"), v: stmt.incomeTotal, color: "#047857" },
+            { l: t("Egresos"), v: stmt.expenseTotal, color: "#b91c1c" },
+            { l: t("Flujo neto"), v: stmt.cashFlow, color: stmt.cashFlow >= 0 ? c.blue : "#b91c1c" },
+            { l: t("Por cobrar"), v: ar.total, color: c.orange },
           ].map((k) => (
             <View key={k.l} style={[base.box, { flex: 1, backgroundColor: c.peach }]}>
               <Text style={[base.muted, { fontSize: 7.5 }]}>{k.l.toUpperCase()}</Text>
@@ -468,40 +500,40 @@ export function ReportPdf({
           ))}
         </View>
 
-        <SectionTab s={s}>Ingresos</SectionTab>
+        <SectionTab s={s}>{t("Ingresos")}</SectionTab>
         <View style={{ height: 2, backgroundColor: c.blue }} />
-        {catRows(stmt.income, "Sin ingresos en el periodo.")}
-        {totalRow("Total ingresos", stmt.incomeTotal, "#047857")}
+        {catRows(stmt.income, t("Sin ingresos en el periodo."))}
+        {totalRow(t("Total ingresos"), stmt.incomeTotal, "#047857")}
 
-        <SectionTab s={s}>Egresos</SectionTab>
+        <SectionTab s={s}>{t("Egresos")}</SectionTab>
         <View style={{ height: 2, backgroundColor: c.blue }} />
-        {catRows(stmt.expense, "Sin egresos en el periodo.")}
-        {totalRow("Total egresos", stmt.expenseTotal, "#b91c1c")}
+        {catRows(stmt.expense, t("Sin egresos en el periodo."))}
+        {totalRow(t("Total egresos"), stmt.expenseTotal, "#b91c1c")}
 
-        <SectionTab s={s}>Resultado del periodo</SectionTab>
+        <SectionTab s={s}>{t("Resultado del periodo")}</SectionTab>
         <View wrap={false}>
           <View style={{ height: 2, backgroundColor: c.blue }} />
-          {totalRow("Flujo neto (con IVA)", stmt.cashFlow)}
+          {totalRow(t("Flujo neto (con IVA)"), stmt.cashFlow)}
           <View style={row}>
-            <Text style={base.muted}>IVA cobrado (en ingresos)</Text>
+            <Text style={base.muted}>{t("IVA cobrado (en ingresos)")}</Text>
             <Text>{formatMoney(stmt.incomeTax)}</Text>
           </View>
           <View style={row}>
-            <Text style={base.muted}>IVA pagado (en egresos)</Text>
+            <Text style={base.muted}>{t("IVA pagado (en egresos)")}</Text>
             <Text>{formatMoney(stmt.expenseTax)}</Text>
           </View>
           <View style={row}>
-            <Text style={base.muted}>Diferencia de IVA (estimado)</Text>
+            <Text style={base.muted}>{t("Diferencia de IVA (estimado)")}</Text>
             <Text>{formatMoney(stmt.ivaBalance)}</Text>
           </View>
-          {totalRow("Utilidad antes de impuestos (sin IVA)", stmt.netBeforeTax, stmt.netBeforeTax >= 0 ? "#047857" : "#b91c1c")}
+          {totalRow(t("Utilidad antes de impuestos (sin IVA)"), stmt.netBeforeTax, stmt.netBeforeTax >= 0 ? "#047857" : "#b91c1c")}
         </View>
 
-        <SectionTab s={s}>Antigüedad de cuentas por cobrar</SectionTab>
+        <SectionTab s={s}>{t("Antigüedad de cuentas por cobrar")}</SectionTab>
         <View wrap={false} style={{ flexDirection: "row", borderTopWidth: 2, borderTopColor: c.blue }}>
           {(Object.entries(ar.byBucket) as [string, number][]).map(([b, v]) => (
             <View key={b} style={{ flex: 1, padding: 6, borderWidth: 0.5, borderColor: tint(c.blue, 0.8) }}>
-              <Text style={[base.muted, { fontSize: 7.5 }]}>{b === "corriente" ? "AL CORRIENTE" : `${b} DÍAS`}</Text>
+              <Text style={[base.muted, { fontSize: 7.5 }]}>{b === "corriente" ? t("AL CORRIENTE") : t("{b} DÍAS", { b })}</Text>
               <Text style={[base.bold, { marginTop: 2 }]}>{formatMoney(v)}</Text>
             </View>
           ))}
@@ -511,13 +543,15 @@ export function ReportPdf({
             <Table
               s={s}
               cols={[
-                { title: "Folio", width: "16%" },
-                { title: "Cliente", width: "42%" },
-                { title: "Vencimiento", width: "24%" },
-                { title: "Saldo", width: "18%", align: "right" },
+                { title: t("Folio"), width: "16%" },
+                { title: t("Cliente"), width: "42%" },
+                { title: t("Vencimiento"), width: "24%" },
+                { title: t("Saldo"), width: "18%", align: "right" },
               ]}
               styles={["label", "normal", "normal", "strong"]}
-              rows={ar.rows.slice(0, 60).map((r) => [r.folio, r.client.name, r.daysOverdue > 0 ? `${r.daysOverdue} días vencida` : `Vence ${formatDateEs(r.dueDate)}`, formatMoney(r.balance)])}
+              rows={ar.rows
+                .slice(0, 60)
+                .map((r) => [r.folio, r.client.name, r.daysOverdue > 0 ? t("{n} días vencida", { n: r.daysOverdue }) : t("Vence {d}", { d: dShort(r.dueDate) }), formatMoney(r.balance)])}
             />
           </View>
         )}
@@ -533,12 +567,15 @@ export function TariffPdf({
   sections,
   services,
   tables,
+  lang = "es",
 }: {
   s: CompanySettings;
   sections: ServiceSection[];
   services: Service[];
   tables: TariffTable[];
+  lang?: Lang;
 }) {
+  const { t, x, lines } = texts(lang);
   const known = new Set(sections.map((x) => x.name));
   const groups = [
     ...sections.map((sec) => ({ name: sec.name, note: sec.note, items: services.filter((x) => x.section === sec.name) })),
@@ -546,11 +583,11 @@ export function TariffPdf({
   ];
   const placed = new Set<number>();
   const tablesAfter = (name: string) =>
-    tables.filter((t) => t.afterSection === name).map((t) => {
-      placed.add(t.id);
-      return <InfoTable key={t.id} s={s} title={t.title} columns={t.columns} rows={t.rows} note={t.note} />;
+    tables.filter((tb) => tb.afterSection === name).map((tb) => {
+      placed.add(tb.id);
+      return <InfoTable key={tb.id} s={s} title={x(tb.title)} columns={tb.columns} rows={tb.rows} note={x(tb.note)} />;
     });
-  const rate = (x: Service) => x.priceText || (x.atCost ? "Al costo" : formatMoney(x.unitPrice));
+  const rate = (sv: Service) => (sv.priceText && x(sv.priceText)) || (sv.atCost ? t("Al costo") : formatMoney(sv.unitPrice));
 
   // Lista plana (sin Views anidados): react-pdf calcula mal los saltos de página con contenedores profundos.
   const body = groups.flatMap((g) => [
@@ -561,41 +598,41 @@ export function TariffPdf({
             s={s}
             head={
               <SectionTab s={s} bare>
-                {g.name}
+                {x(g.name)}
               </SectionTab>
             }
             cols={[
-              { title: "Servicio", width: "21%" },
-              { title: "Tarifa", width: "14%" },
-              { title: "Unidad de cobro", width: "14%" },
-              { title: "Descripción detallada", width: "51%" },
+              { title: t("Servicio"), width: "21%" },
+              { title: t("Tarifa"), width: "14%" },
+              { title: t("Unidad de cobro"), width: "14%" },
+              { title: t("Descripción detallada"), width: "51%" },
             ]}
             styles={["label", "rate", "normal", "normal"]}
-            rows={g.items.map((x) => [x.name, rate(x), x.unit, x.description])}
+            rows={g.items.map((sv) => [x(sv.name), rate(sv), x(sv.unit), x(sv.description)])}
           />,
-          <Callout key={`n-${g.name}`} s={s} text={g.note} />,
+          <Callout key={`n-${g.name}`} s={s} text={x(g.note)} />,
         ]
       : []),
     ...tablesAfter(g.name),
   ]);
-  const rest = tables.filter((t) => !placed.has(t.id) && !known.has(t.afterSection));
+  const rest = tables.filter((tb) => !placed.has(tb.id) && !known.has(tb.afterSection));
 
   return (
-    <PdfDoc title={`Tarifario de Servicios — ${s.tradeName}`}>
-      <BrandedPage s={s} footerLabel="Tarifario de Servicios">
-        <DocTitle s={s} title="Tarifario de Servicios" subtitle="* Todos los precios mostrados son sin IVA · Moneda: pesos mexicanos (MXN)" />
-        {s.tariffIntro ? <Text style={{ textAlign: "center", fontSize: 10.5, color: "#334155", lineHeight: 1.4, marginTop: -4, marginBottom: 6, paddingHorizontal: 30 }}>{s.tariffIntro}</Text> : null}
+    <PdfDoc title={`${t("Tarifario de Servicios")} — ${s.tradeName}`}>
+      <BrandedPage s={s} lang={lang} footerLabel={t("Tarifario de Servicios")}>
+        <DocTitle s={s} title={t("Tarifario de Servicios")} subtitle={t("* Todos los precios mostrados son sin IVA · Moneda: pesos mexicanos (MXN)")} />
+        {s.tariffIntro ? <Text style={{ textAlign: "center", fontSize: 10.5, color: "#334155", lineHeight: 1.4, marginTop: -4, marginBottom: 6, paddingHorizontal: 30 }}>{x(s.tariffIntro)}</Text> : null}
         {body}
-        {rest.map((t) => (
-          <InfoTable key={t.id} s={s} title={t.title} columns={t.columns} rows={t.rows} note={t.note} />
+        {rest.map((tb) => (
+          <InfoTable key={tb.id} s={s} title={x(tb.title)} columns={tb.columns} rows={tb.rows} note={x(tb.note)} />
         ))}
         {(s.tariffTerms || s.quoteTerms).trim() && (
           <View>
-            <SectionTab s={s}>Condiciones comerciales</SectionTab>
-            <Conditions s={s} text={s.tariffTerms || s.quoteTerms} />
+            <SectionTab s={s}>{t("Condiciones comerciales")}</SectionTab>
+            <Conditions s={s} text={lines(s.tariffTerms || s.quoteTerms)} />
           </View>
         )}
-        <Callout s={s} text={s.tariffClosing} />
+        <Callout s={s} text={x(s.tariffClosing)} />
       </BrandedPage>
     </PdfDoc>
   );

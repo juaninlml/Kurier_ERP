@@ -1,6 +1,7 @@
 import { renderOrdersSummary } from "@/pdf/render";
 import { DATE_RE, companyToday, weekOf } from "@/lib/orders";
 import { pdfResponse } from "../../respond";
+import { getLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,5 +13,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   let from = q.get("desde") ?? "";
   let to = q.get("hasta") ?? "";
   if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) ({ from, to } = weekOf(await companyToday()));
-  return pdfResponse(() => renderOrdersSummary(id, from, to), q.has("download"));
+  return pdfResponse(async () => renderOrdersSummary(id, from, to, await getLang()), q.has("download"));
 }

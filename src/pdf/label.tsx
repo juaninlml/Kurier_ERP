@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Page, View, Text, Svg, Path, Rect, Circle } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 import type { CompanySettings, Shipment } from "@prisma/client";
+import { translator, type Lang } from "@/lib/i18n";
 
 /*
  * Guía de última milla en formato 4 × 6 pulgadas (288 × 432 pt) para impresora térmica.
@@ -80,9 +81,10 @@ export function KidoMark({ size }: { size: number }) {
 // ───────── Guía ─────────
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const shortDate = (d: Date) => {
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const shortDate = (d: Date, lang: Lang) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "numeric", day: "numeric" }).formatToParts(d).map((x) => [x.type, x.value]));
-  return `${p.day}-${MONTHS[Number(p.month) - 1]}-${p.year}`;
+  return `${p.day}-${(lang === "en" ? MONTHS_EN : MONTHS)[Number(p.month) - 1]}-${p.year}`;
 };
 const phone = (p: string) => (p.length === 10 ? `${p.slice(0, 2)} ${p.slice(2, 6)} ${p.slice(6)}` : p);
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -91,15 +93,17 @@ const INK = "#000";
 const line = { borderBottomWidth: 1, borderBottomColor: INK } as const;
 const small = { fontSize: 6, letterSpacing: 0.2 } as const;
 
-function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: number; of: number; trackUrl?: string }) {
+function Label({ sh, n, of, trackUrl, lang }: { s: CompanySettings; sh: Shipment; n: number; of: number; trackUrl?: string; lang: Lang }) {
+  const t = translator(lang);
+  const nextDay = sh.serviceLevel === "DIA_SIGUIENTE";
   const borough = (sh.borough || sh.destCity || "").toUpperCase();
   const street = [sh.destStreet, sh.destNumber].filter(Boolean).join(" ");
   const colony = [sh.destColony && `Col. ${sh.destColony}`, sh.borough && `Alc. ${sh.borough}`].filter(Boolean).join(", ");
-  const city = `${sh.destCity || "Ciudad de México"}, CP ${sh.destZip}`;
+  const city = `${sh.destCity || "Ciudad de México"}, ${t("CP")} ${sh.destZip}`;
   const originLines = [
     [sh.originStreet, sh.originNumber].filter(Boolean).join(" ") + (sh.originColony ? `, Col. ${sh.originColony}` : ""),
     [sh.originCity, sh.originState].filter(Boolean).join(", ") + ` ${sh.originZip}`,
-    sh.originPhone ? `Tel. ${phone(sh.originPhone)}` : sh.originEmail,
+    sh.originPhone ? `${t("Tel.")} ${phone(sh.originPhone)}` : sh.originEmail,
   ].filter((x) => x && x.trim());
   const code = sh.tracking.replace(/-/g, "");
 
@@ -111,11 +115,13 @@ function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: n
           <KidoMark size={30} />
           <View style={{ flex: 1, marginLeft: 5 }}>
             <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", letterSpacing: -0.6, lineHeight: 1 }}>kurier kido</Text>
-            <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", letterSpacing: 0.6, marginTop: 1 }}>GUÍA DE ÚLTIMA MILLA · CDMX</Text>
+            <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", letterSpacing: 0.6, marginTop: 1 }}>{t("GUÍA DE ÚLTIMA MILLA · CDMX")}</Text>
           </View>
           <View style={{ backgroundColor: INK, paddingHorizontal: 7, paddingVertical: 3, alignItems: "center" }}>
-            <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Helvetica-Bold" }}>ZONA {sh.zone}</Text>
-            <Text style={{ color: "#fff", fontSize: 6.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 }}>{sh.serviceLevel === "DIA_SIGUIENTE" ? "DÍA SIGUIENTE" : "MISMO DÍA"}</Text>
+            <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Helvetica-Bold" }}>
+              {t("ZONA")} {sh.zone}
+            </Text>
+            <Text style={{ color: "#fff", fontSize: 6.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 }}>{t(nextDay ? "DÍA SIGUIENTE" : "MISMO DÍA")}</Text>
           </View>
         </View>
 
@@ -127,45 +133,53 @@ function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: n
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 1 }}>
             <Text style={{ fontSize: 6.5 }}>
-              RUTA {sh.route || "—"} · PARADA {sh.stop || "—"}
+              {t("RUTA")} {sh.route || "—"} · {t("PARADA")} {sh.stop || "—"}
             </Text>
             <Text style={{ fontSize: 6.5 }}>
-              Fecha {shortDate(sh.createdAt)} · Bulto {n} / {of}
+              {t("Fecha")} {shortDate(sh.createdAt, lang)} · {t("Bulto")} {n} / {of}
             </Text>
           </View>
         </View>
 
         {/* Destinatario */}
         <View style={{ paddingHorizontal: 6, paddingVertical: 4, ...line }}>
-          <Text style={small}>DESTINATARIO</Text>
+          <Text style={small}>{t("DESTINATARIO")}</Text>
           <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", marginTop: 1 }}>{sh.destName}</Text>
           {sh.destCompany ? <Text style={{ fontSize: 8 }}>{sh.destCompany}</Text> : null}
           <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", marginTop: 2 }}>{street}</Text>
           {colony ? <Text style={{ fontSize: 8.5, marginTop: 1 }}>{colony}</Text> : null}
           <Text style={{ fontSize: 8.5, marginTop: 1 }}>{city}</Text>
-          <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", marginTop: 2 }}>Tel. {phone(sh.destPhone)}</Text>
-          <Text style={{ fontSize: 7.5, marginTop: 1 }}>Ref: {sh.destRef || "—"}</Text>
+          <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", marginTop: 2 }}>
+            {t("Tel.")} {phone(sh.destPhone)}
+          </Text>
+          <Text style={{ fontSize: 7.5, marginTop: 1 }}>
+            {t("Ref")}: {sh.destRef || "—"}
+          </Text>
         </View>
 
         {/* QR y número de guía */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingVertical: 5, ...line }}>
           <QR value={trackUrl || sh.tracking} size={74} />
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={small}>GUÍA</Text>
+            <Text style={small}>{t("GUÍA")}</Text>
             <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold" }}>{sh.tracking}</Text>
-            <Text style={{ ...small, marginTop: 3 }}>REFERENCIA KURIER</Text>
+            <Text style={{ ...small, marginTop: 3 }}>{t("REFERENCIA KURIER")}</Text>
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>{sh.reference}</Text>
             {sh.cod > 0 ? (
               <View style={{ backgroundColor: INK, paddingHorizontal: 4, paddingVertical: 2, marginTop: 3, alignSelf: "flex-start" }}>
-                <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Helvetica-Bold" }}>COBRAR AL ENTREGAR {money(sh.cod)}</Text>
+                <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Helvetica-Bold" }}>
+                  {t("COBRAR AL ENTREGAR")} {money(sh.cod)}
+                </Text>
               </View>
             ) : (
               <>
-                <Text style={{ ...small, marginTop: 3 }}>SERVICIO</Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>Entrega a domicilio · {sh.serviceLevel === "DIA_SIGUIENTE" ? "día siguiente" : "mismo día"}</Text>
+                <Text style={{ ...small, marginTop: 3 }}>{t("SERVICIO")}</Text>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>
+                  {t("Entrega a domicilio")} · {t(nextDay ? "día siguiente" : "mismo día")}
+                </Text>
               </>
             )}
-            <Text style={{ fontSize: 6, marginTop: 2 }}>Escanea para rastrear · al entregar: foto y firma</Text>
+            <Text style={{ fontSize: 6, marginTop: 2 }}>{t("Escanea para rastrear · al entregar: foto y firma")}</Text>
           </View>
         </View>
 
@@ -178,7 +192,7 @@ function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: n
         {/* Remitente y firma */}
         <View style={{ flexDirection: "row", flex: 1 }}>
           <View style={{ flex: 1, padding: 5, borderRightWidth: 1, borderRightColor: INK }}>
-            <Text style={small}>REMITENTE</Text>
+            <Text style={small}>{t("REMITENTE")}</Text>
             <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", marginTop: 1 }}>{sh.originCompany || sh.originName}</Text>
             {sh.originCompany && sh.originName !== sh.originCompany ? <Text style={{ fontSize: 6.5 }}>{sh.originName}</Text> : null}
             {originLines.map((l) => (
@@ -187,16 +201,16 @@ function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: n
               </Text>
             ))}
             <Text style={{ fontSize: 6, marginTop: 3 }}>
-              {sh.packageType === "SOBRE" ? "Sobre" : "Caja"}
+              {t(sh.packageType === "SOBRE" ? "Sobre" : "Caja")}
               {sh.weightKg ? ` · ${sh.weightKg} kg` : ""}
               {sh.content ? ` · ${sh.content}` : ""}
             </Text>
           </View>
           <View style={{ flex: 1, padding: 5 }}>
-            <Text style={small}>RECIBE (NOMBRE Y FIRMA)</Text>
+            <Text style={small}>{t("RECIBE (NOMBRE Y FIRMA)")}</Text>
             <View style={{ borderBottomWidth: 0.8, borderBottomColor: INK, marginTop: 26 }} />
             <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
-              <Text style={{ fontSize: 6.5, marginRight: 4 }}>Intento:</Text>
+              <Text style={{ fontSize: 6.5, marginRight: 4 }}>{t("Intento")}:</Text>
               {[1, 2, 3].map((i) => (
                 <View key={i} style={{ flexDirection: "row", alignItems: "center", marginRight: 6 }}>
                   <View style={{ width: 7, height: 7, borderWidth: 0.8, borderColor: INK, marginRight: 2 }} />
@@ -211,17 +225,17 @@ function Label({ sh, n, of, trackUrl }: { s: CompanySettings; sh: Shipment; n: n
   );
 }
 
-export function ShipmentLabelPdf({ s, sh, sheet, trackUrl }: { s: CompanySettings; sh: Shipment; sheet?: boolean; trackUrl?: string }) {
+export function ShipmentLabelPdf({ s, sh, sheet, trackUrl, lang = "es" }: { s: CompanySettings; sh: Shipment; sheet?: boolean; trackUrl?: string; lang?: Lang }) {
   const pages = Array.from({ length: Math.max(1, sh.packages) }, (_, i) => i + 1);
   const dash = { borderStyle: "dashed", borderColor: "#888", position: "absolute" } as const;
   return (
-    <Document title={`Guía ${sh.tracking}`} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
+    <Document title={`${translator(lang)("Guía")} ${sh.tracking}`} author="Kurier ERP" creator="Kurier ERP" producer="Kurier ERP">
       {pages.map((n) =>
         sheet ? (
           // Hoja carta horizontal (792 × 612): la guía al centro con líneas de corte
           <Page key={n} size="LETTER" orientation="landscape" style={{ position: "relative" }}>
             <View style={{ position: "absolute", left: 252, top: 90 }}>
-              <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} />
+              <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} lang={lang} />
             </View>
             <View style={{ ...dash, left: 0, right: 0, top: 90, borderTopWidth: 0.6 }} />
             <View style={{ ...dash, left: 0, right: 0, top: 522, borderTopWidth: 0.6 }} />
@@ -233,7 +247,7 @@ export function ShipmentLabelPdf({ s, sh, sheet, trackUrl }: { s: CompanySetting
           </Page>
         ) : (
           <Page key={n} size={[288, 432]}>
-            <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} />
+            <Label s={s} sh={sh} n={n} of={pages.length} trackUrl={trackUrl} lang={lang} />
           </Page>
         ),
       )}

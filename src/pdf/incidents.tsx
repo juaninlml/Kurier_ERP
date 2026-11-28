@@ -2,8 +2,21 @@ import React from "react";
 import { View, Text } from "@react-pdf/renderer";
 import type { CompanySettings, Employee, Incident } from "@prisma/client";
 import { BrandedPage, DataTable, DocTitle, NoticeBox, Note, PdfDoc, SectionTab, GRAY, INK } from "./brand";
-import { formatDateEs, formatMoney, formatNumber } from "@/lib/money";
-import { LATES_PER_REST, incidentFolio, longDate, monthName, rangeLabel } from "@/lib/incidents";
+import { formatDate, formatMoney, formatNumber } from "@/lib/money";
+import { LATES_PER_REST, incidentFolio, longDate as longDateEs, monthName as monthNameEs, rangeLabel as rangeLabelEs } from "@/lib/incidents";
+import { translator, type Lang } from "@/lib/i18n";
+
+/** Fechas yyyy-mm-dd del formato en el idioma pedido (en español, las de siempre). */
+function dates(lang: Lang) {
+  if (lang !== "en") return { longDate: longDateEs, monthName: monthNameEs, rangeLabel: rangeLabelEs };
+  const f = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { ...o, timeZone: "UTC" });
+  const short = (d: string) => f(d, { month: "short", day: "numeric" });
+  return {
+    longDate: (d: string) => f(d, { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
+    monthName: (key: string) => f(`${key}-01`, { month: "long", year: "numeric" }),
+    rangeLabel: (from: string, to: string) => (from === to ? short(from) : `${short(from)} – ${short(to)}`),
+  };
+}
 
 /** Datos de vacaciones al momento de la solicitud (para el formato de vacaciones). */
 export type VacationInfo = {
@@ -39,89 +52,121 @@ function Signatures({ names }: { names: [string, string][] }) {
 }
 
 /** Formato de una incidencia: solicitud de vacaciones, permiso de ausencia, constancia de falta o aviso de descanso por retardos. */
-export function IncidentPdf({ s, i, e, seniority, vacation }: { s: CompanySettings; i: Incident; e: Employee; seniority: string; vacation?: VacationInfo }) {
-  const title = i.source === "HISTORICO" && i.type === "VACACIONES" ? "Constancia de vacaciones" : (TITLE[i.type] ?? "Incidencia");
+export function IncidentPdf({
+  s,
+  i,
+  e,
+  seniority,
+  vacation,
+  lang = "es",
+}: {
+  s: CompanySettings;
+  i: Incident;
+  e: Employee;
+  seniority: string;
+  vacation?: VacationInfo;
+  lang?: Lang;
+}) {
+  const t = translator(lang);
+  const { longDate, monthName, rangeLabel } = dates(lang);
+  const formatDateEs = (d: Date) => formatDate(d, lang === "en" ? "en-US" : "es-MX");
+  const by = (who: string) => (who ? ` ${t("por {who}", { who })}` : "");
+  const title = t(i.source === "HISTORICO" && i.type === "VACACIONES" ? "Constancia de vacaciones" : (TITLE[i.type] ?? "Incidencia"));
   const folio = incidentFolio(i);
-  const dates = rangeLabel(i.startDate, i.endDate);
-  const days = `${formatNumber(i.days)} día${i.days === 1 ? "" : "s"} laborable${i.days === 1 ? "" : "s"}`;
+  const range = rangeLabel(i.startDate, i.endDate);
+  const days = t(i.days === 1 ? "{n} día laborable" : "{n} días laborables", { n: formatNumber(i.days) });
+  const fromTo = (a: string, b: string) => t("Del {from} al {to}", { from: longDate(a), to: longDate(b) });
   const historic = i.source === "HISTORICO";
+  const decided = i.decidedAt ? formatDateEs(i.decidedAt) : "—";
   const status = historic
-    ? `**Registro histórico:** ${i.type === "VACACIONES" ? "vacaciones ya disfrutadas" : "incidencia de fechas anteriores"}, capturada el ${formatDateEs(i.createdAt)}${i.createdBy ? ` por ${i.createdBy}` : ""}. Se pagó fuera del ERP y no entra a la nómina.`
+    ? `**${t("Registro histórico")}:** ${t(i.type === "VACACIONES" ? "vacaciones ya disfrutadas" : "incidencia de fechas anteriores")}, ${t("capturada el {d}", { d: formatDateEs(i.createdAt) })}${by(i.createdBy)}. ${t("Se pagó fuera del ERP y no entra a la nómina.")}`
     : i.status === "AUTORIZADA"
-      ? `**Estatus: AUTORIZADA** el ${i.decidedAt ? formatDateEs(i.decidedAt) : "—"}${i.decidedBy ? ` por ${i.decidedBy}` : ""}.`
+      ? `**${t("Estatus: AUTORIZADA")}** ${t("el {d}", { d: decided })}${by(i.decidedBy)}.`
       : i.status === "RECHAZADA"
-        ? `**Estatus: ${i.type === "DESCANSO_RETARDOS" ? "CANCELADO (perdonado)" : "NO AUTORIZADA"}** el ${i.decidedAt ? formatDateEs(i.decidedAt) : "—"}${i.decidedBy ? ` por ${i.decidedBy}` : ""}.`
-        : "**Estatus: PENDIENTE DE AUTORIZACIÓN.**";
+        ? `**${t(i.type === "DESCANSO_RETARDOS" ? "Estatus: CANCELADO (perdonado)" : "Estatus: NO AUTORIZADA")}** ${t("el {d}", { d: decided })}${by(i.decidedBy)}.`
+        : `**${t("Estatus: PENDIENTE DE AUTORIZACIÓN.")}**`;
 
   const worker: [string, string][] = [
-    ["Nombre", e.name],
-    ["Puesto", e.position || "—"],
-    ["Área / departamento", [e.area, e.department].filter(Boolean).join(" › ") || "—"],
-    ["Fecha de ingreso", `${formatDateEs(e.startDate)} (antigüedad: ${seniority})`],
-    ...(e.nss ? ([["NSS", e.nss]] as [string, string][]) : []),
+    [t("Nombre"), e.name],
+    [t("Puesto"), e.position || "—"],
+    [t("Área / departamento"), [e.area, e.department].filter(Boolean).join(" › ") || "—"],
+    [t("Fecha de ingreso"), `${formatDateEs(e.startDate)} (${t("antigüedad")}: ${seniority})`],
+    ...(e.nss ? ([[t("NSS"), e.nss]] as [string, string][]) : []),
   ];
 
   let detail: [string, string][] = [];
   let note = "";
   if (i.type === "VACACIONES" && vacation) {
     detail = [
-      ["Días que corresponden", `${vacation.entitled} días del periodo ${formatDateEs(vacation.periodFrom)} al ${formatDateEs(vacation.periodTo)} (art. 76 LFT)`],
-      ["Días disfrutados antes", `${formatNumber(vacation.takenBefore)} días`],
-      [historic ? "Días disfrutados" : "Días solicitados", i.startDate === i.endDate ? `${days}: ${longDate(i.startDate)}` : `${days}: del ${longDate(i.startDate)} al ${longDate(i.endDate)}`],
-      ["Regresa a laborar", vacation.returnDate ? longDate(vacation.returnDate) : "—"],
-      [historic ? "Saldo después de estos días" : "Saldo después de esta solicitud", `${formatNumber(vacation.balance)} días`],
-      ["Prima vacacional (25%)", `${formatMoney(vacation.premium)} (art. 80 LFT)${historic ? ", pagada fuera del ERP" : ""}`],
-      ...(i.reason ? ([["Observaciones", i.reason]] as [string, string][]) : []),
+      [
+        t("Días que corresponden"),
+        t("{n} días del periodo {from} al {to} (art. 76 LFT)", { n: vacation.entitled, from: formatDateEs(vacation.periodFrom), to: formatDateEs(vacation.periodTo) }),
+      ],
+      [t("Días disfrutados antes"), t("{n} días", { n: formatNumber(vacation.takenBefore) })],
+      [t(historic ? "Días disfrutados" : "Días solicitados"), i.startDate === i.endDate ? `${days}: ${longDate(i.startDate)}` : `${days}: ${fromTo(i.startDate, i.endDate)}`],
+      [t("Regresa a laborar"), vacation.returnDate ? longDate(vacation.returnDate) : "—"],
+      [t(historic ? "Saldo después de estos días" : "Saldo después de esta solicitud"), t("{n} días", { n: formatNumber(vacation.balance) })],
+      [t("Prima vacacional (25%)"), `${formatMoney(vacation.premium)} (art. 80 LFT)${historic ? `, ${t("pagada fuera del ERP")}` : ""}`],
+      ...(i.reason ? ([[t("Observaciones"), i.reason]] as [string, string][]) : []),
     ];
-    note =
-      "Las vacaciones se pagan con salario íntegro en la nómina de la semana en que se disfrutan, junto con la prima vacacional. El trabajador debe disfrutar al menos 12 días continuos al año (art. 78 LFT).";
+    note = t(
+      "Las vacaciones se pagan con salario íntegro en la nómina de la semana en que se disfrutan, junto con la prima vacacional. El trabajador debe disfrutar al menos 12 días continuos al año (art. 78 LFT).",
+    );
   } else if (i.type === "PERMISO") {
     detail = [
-      ["Tipo", i.withPay ? "Permiso CON goce de sueldo (falta justificada)" : "Permiso SIN goce de sueldo (falta justificada)"],
-      ["Fechas", i.startDate === i.endDate ? longDate(i.startDate) : `Del ${longDate(i.startDate)} al ${longDate(i.endDate)}`],
-      ["Días", days],
-      ["Motivo", i.reason || "—"],
-      ["Efecto en nómina", i.withPay ? "Se paga normalmente." : "No se pagan los días del permiso. No cuenta como falta injustificada ni afecta el aguinaldo."],
+      [t("Tipo"), t(i.withPay ? "Permiso CON goce de sueldo (falta justificada)" : "Permiso SIN goce de sueldo (falta justificada)")],
+      [t("Fechas"), i.startDate === i.endDate ? longDate(i.startDate) : fromTo(i.startDate, i.endDate)],
+      [t("Días"), days],
+      [t("Motivo"), i.reason || "—"],
+      [t("Efecto en nómina"), t(i.withPay ? "Se paga normalmente." : "No se pagan los días del permiso. No cuenta como falta injustificada ni afecta el aguinaldo.")],
     ];
   } else if (i.type === "FALTA") {
     detail = [
-      ["Fechas", i.startDate === i.endDate ? longDate(i.startDate) : `Del ${longDate(i.startDate)} al ${longDate(i.endDate)}`],
-      ["Días", days],
-      ["Motivo / origen", i.reason || (i.source === "KIOSCO" ? "Sin checada de entrada en el kiosco" : "—")],
-      ["Efecto en nómina", "Se descuenta a salario diario y no cuenta como día trabajado para el aguinaldo."],
+      [t("Fechas"), i.startDate === i.endDate ? longDate(i.startDate) : fromTo(i.startDate, i.endDate)],
+      [t("Días"), days],
+      [t("Motivo / origen"), i.reason || (i.source === "KIOSCO" ? t("Sin checada de entrada en el kiosco") : "—")],
+      [t("Efecto en nómina"), t("Se descuenta a salario diario y no cuenta como día trabajado para el aguinaldo.")],
     ];
-    note = "Si la falta tiene justificación (incapacidad, permiso, etc.), el trabajador debe presentarla para cambiarla a falta justificada.";
+    note = t("Si la falta tiene justificación (incapacidad, permiso, etc.), el trabajador debe presentarla para cambiarla a falta justificada.");
   } else if (i.type === "DESCANSO_RETARDOS") {
     const lates = i.lateDates.split(",").filter(Boolean);
     detail = [
-      ["Mes del acumulado", monthName(i.monthKey)],
-      [`Retardos (${lates.length})`, lates.map((d) => longDate(d)).join("; ") || "—"],
-      ["Día de descanso", longDate(i.startDate)],
-      ["Efecto en nómina", "Día sin goce de sueldo, registrado como falta injustificada (no cuenta como día trabajado para el aguinaldo)."],
+      [t("Mes del acumulado"), monthName(i.monthKey)],
+      [t("Retardos ({n})", { n: lates.length }), lates.map((d) => longDate(d)).join("; ") || "—"],
+      [t("Día de descanso"), longDate(i.startDate)],
+      [t("Efecto en nómina"), t("Día sin goce de sueldo, registrado como falta injustificada (no cuenta como día trabajado para el aguinaldo).")],
     ];
-    note = `Conforme al reglamento interior de trabajo, cada ${LATES_PER_REST} retardos acumulados en un mes calendario equivalen a un día de descanso sin goce de sueldo, que se toma la semana siguiente a la nómina en que se completan. El conteo se reinicia cada mes.`;
+    note = t(
+      "Conforme al reglamento interior de trabajo, cada {n} retardos acumulados en un mes calendario equivalen a un día de descanso sin goce de sueldo, que se toma la semana siguiente a la nómina en que se completan. El conteo se reinicia cada mes.",
+      { n: LATES_PER_REST },
+    );
   }
 
   const signatures: [string, string][] =
     i.type === "VACACIONES" || i.type === "PERMISO"
       ? [
-          [e.name, "Firma del trabajador (solicita)"],
-          ["", "Jefe inmediato (Vo. Bo.)"],
-          [i.decidedBy, "Autoriza"],
+          [e.name, t("Firma del trabajador (solicita)")],
+          ["", t("Jefe inmediato (Vo. Bo.)")],
+          [i.decidedBy, t("Autoriza")],
         ]
       : [
-          [e.name, "Firma del trabajador (enterado)"],
-          ["", "Recursos humanos"],
+          [e.name, t("Firma del trabajador (enterado)")],
+          ["", t("Recursos humanos")],
         ];
 
   return (
     <PdfDoc title={`${title} ${folio} · ${e.name}`}>
-      <BrandedPage s={s} footerLabel={`${title} · ${e.name}`} watermark={i.status === "RECHAZADA" ? (i.type === "DESCANSO_RETARDOS" ? "CANCELADO" : "NO AUTORIZADA") : undefined}>
-        <DocTitle s={s} title={title} subtitle={`${e.name} · ${dates}`} extra={`Folio ${folio} · Elaborado el ${formatDateEs(i.createdAt)}`} />
-        <SectionTab s={s}>Datos del trabajador</SectionTab>
-        <DataTable s={s} rows={worker} />
-        <SectionTab s={s}>{i.type === "VACACIONES" ? "Vacaciones solicitadas" : i.type === "DESCANSO_RETARDOS" ? "Retardos y día de descanso" : "Detalle"}</SectionTab>
-        <DataTable s={s} rows={detail} />
+      <BrandedPage
+        s={s}
+        lang={lang}
+        footerLabel={`${title} · ${e.name}`}
+        watermark={i.status === "RECHAZADA" ? t(i.type === "DESCANSO_RETARDOS" ? "CANCELADO" : "NO AUTORIZADA") : undefined}
+      >
+        <DocTitle s={s} title={title} subtitle={`${e.name} · ${range}`} extra={t("Folio {folio} · Elaborado el {d}", { folio, d: formatDateEs(i.createdAt) })} />
+        <SectionTab s={s}>{t("Datos del trabajador")}</SectionTab>
+        <DataTable s={s} rows={worker} headers={[t("Concepto"), t("Detalle")]} />
+        <SectionTab s={s}>{t(i.type === "VACACIONES" ? "Vacaciones solicitadas" : i.type === "DESCANSO_RETARDOS" ? "Retardos y día de descanso" : "Detalle")}</SectionTab>
+        <DataTable s={s} rows={detail} headers={[t("Concepto"), t("Detalle")]} />
         <NoticeBox s={s} text={status} />
         <Note>{note}</Note>
         <Signatures names={signatures} />

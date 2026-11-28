@@ -1,5 +1,6 @@
 import { renderShipmentLabel } from "@/pdf/render";
 import { pdfResponse } from "../../respond";
+import { getLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,5 +9,5 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   const url = new URL(req.url);
-  return pdfResponse(() => renderShipmentLabel(id, url.searchParams.get("formato") === "carta", url.origin), url.searchParams.has("download"));
+  return pdfResponse(async () => renderShipmentLabel(id, url.searchParams.get("formato") === "carta", url.origin, await getLang()), url.searchParams.has("download"));
 }

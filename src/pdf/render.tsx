@@ -6,8 +6,15 @@ import { incomeStatement, receivables, parseRange } from "@/lib/reports";
 import { quoteParty } from "@/lib/quote-party";
 import { applyBrand } from "@/lib/brands";
 import { QuotePdf, InvoicePdf, StatementPdf, ReportPdf, TariffPdf } from "./documents";
+import { translator, type Lang } from "@/lib/i18n";
 
-export async function renderQuote(id: number) {
+/*
+ * Todos los formatos salen en el idioma de quien los pide (`lang`); por omisión en español
+ * (las copias que se guardan en Drive siempre van en español).
+ */
+
+export async function renderQuote(id: number, lang: Lang = "es") {
+  const t = translator(lang);
   const [base, quote] = await Promise.all([
     getSettings(),
     prisma.quote.findUnique({ where: { id }, include: { client: true, brand: true, items: { orderBy: { position: "asc" } } } }),
@@ -20,8 +27,8 @@ export async function renderQuote(id: number) {
   ]);
   const sectionNotes = Object.fromEntries(sections.map((x) => [x.name, x.note]));
   return {
-    filename: `Cotizacion_${slug(s.tradeName)}_${slug(quoteParty(quote).name)}_${quote.folio}.pdf`,
-    buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} infoTables={infoTables} />),
+    filename: `${slug(t("Cotización"))}_${slug(s.tradeName)}_${slug(quoteParty(quote).name)}_${quote.folio}.pdf`,
+    buffer: await renderToBuffer(<QuotePdf s={s} quote={quote} sectionNotes={sectionNotes} infoTables={infoTables} lang={lang} />),
   };
 }
 
@@ -42,7 +49,8 @@ export async function renderInvoice(id: number, lang: "es" | "en" = "es") {
   };
 }
 
-export async function renderStatement(clientId: number) {
+export async function renderStatement(clientId: number, lang: Lang = "es") {
+  const t = translator(lang);
   const [base, client] = await Promise.all([
     getSettings(),
     prisma.client.findUnique({
@@ -54,19 +62,21 @@ export async function renderStatement(clientId: number) {
   const s = applyBrand(base, client.brand);
   const { invoices, brand: _brand, ...c } = client;
   return {
-    filename: `Estado_de_cuenta_${slug(c.name)}.pdf`,
-    buffer: await renderToBuffer(<StatementPdf s={s} data={{ client: c as typeof client, invoices }} />),
+    filename: `${slug(t("Estado de cuenta"))}_${slug(c.name)}.pdf`,
+    buffer: await renderToBuffer(<StatementPdf s={s} data={{ client: c as typeof client, invoices }} lang={lang} />),
   };
 }
 
-export async function renderReport(fromStr?: string, toStr?: string) {
+export async function renderReport(fromStr?: string, toStr?: string, lang: Lang = "es") {
+  const t = translator(lang);
   const { from, to } = parseRange(fromStr, toStr);
   const [s, stmt, ar] = await Promise.all([getSettings(), incomeStatement(from, to), receivables()]);
   const tag = `${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}`;
-  return { filename: `Reporte_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} />) };
+  return { filename: `${slug(t("Reporte financiero"))}_${tag}.pdf`, buffer: await renderToBuffer(<ReportPdf s={s} from={from} to={to} stmt={stmt} ar={ar} lang={lang} />) };
 }
 
-export async function renderTariff() {
+export async function renderTariff(lang: Lang = "es") {
+  const t = translator(lang);
   const [s, sections, services, tables] = await Promise.all([
     getSettings(),
     prisma.serviceSection.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -74,8 +84,8 @@ export async function renderTariff() {
     prisma.tariffTable.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
   ]);
   return {
-    filename: `Tarifario_${slug(s.tradeName)}.pdf`,
-    buffer: await renderToBuffer(<TariffPdf s={s} sections={sections} services={services} tables={tables} />),
+    filename: `${slug(t("Tarifario de Servicios"))}_${slug(s.tradeName)}.pdf`,
+    buffer: await renderToBuffer(<TariffPdf s={s} sections={sections} services={services} tables={tables} lang={lang} />),
   };
 }
 
@@ -92,7 +102,7 @@ function slug(t: string) {
 }
 
 /** Recibos de nómina de una semana (o de un solo empleado con `lineId`). */
-export async function renderPayrollReceipts(runId: number, lineId?: number) {
+export async function renderPayrollReceipts(runId: number, lineId?: number, lang: Lang = "es") {
   const { jobCatalog } = await import("@/lib/payroll-data");
   const { groupByOrg } = await import("@/lib/org");
   const [base, run, catalog] = await Promise.all([
@@ -112,26 +122,26 @@ export async function renderPayrollReceipts(runId: number, lineId?: number) {
   const tag = run.periodStart.toISOString().slice(0, 10);
   const who = lineId ? `_${slug(run.lines[0].employee.name)}` : "";
   return {
-    filename: `Recibos_nomina_${tag}${who}.pdf`,
-    buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={lines} />),
+    filename: `${lang === "en" ? "Payroll_receipts" : "Recibos_nomina"}_${tag}${who}.pdf`,
+    buffer: await renderToBuffer(<PayrollReceiptsPdf s={s} run={run} lines={lines} lang={lang} />),
   };
 }
 
 /** Resumen de órdenes diarias de un cliente en un periodo (yyyy-mm-dd, inclusive). */
-export async function renderOrdersSummary(clientId: number, from: string, to: string) {
+export async function renderOrdersSummary(clientId: number, from: string, to: string, lang: Lang = "es") {
   const { clientOrdersSummary } = await import("@/lib/orders");
   const [base, data] = await Promise.all([getSettings(), clientOrdersSummary(clientId, from, to)]);
   if (!data) return null;
   const s = applyBrand(base, data.client.brand);
   const { OrdersSummaryPdf } = await import("./orders");
   return {
-    filename: `Resumen_ordenes_${slug(data.client.name)}_${from}_${to}.pdf`,
-    buffer: await renderToBuffer(<OrdersSummaryPdf s={s} data={data} />),
+    filename: `${lang === "en" ? "Orders_summary" : "Resumen_ordenes"}_${slug(data.client.name)}_${from}_${to}.pdf`,
+    buffer: await renderToBuffer(<OrdersSummaryPdf s={s} data={data} lang={lang} />),
   };
 }
 
 /** Formato de una incidencia (vacaciones, permiso, falta o descanso por retardos). */
-export async function renderIncident(id: number) {
+export async function renderIncident(id: number, lang: Lang = "es") {
   const { seniority, vacationDaysFor, VACATION_PREMIUM } = await import("@/lib/payroll");
   const { vacationTakenMap } = await import("@/lib/payroll-data");
   const { addDaysStr, isWorkday } = await import("@/lib/attendance");
@@ -141,10 +151,14 @@ export async function renderIncident(id: number) {
   const e = i.employee;
   const at = new Date(`${i.startDate}T12:00:00Z`);
   const sen = seniority(e.startDate, at);
-  // Siempre en español (los formatos no se traducen)
+  const en = lang === "en";
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const senLabel =
-    [sen.years ? plural(sen.years, "año", "años") : "", sen.months ? plural(sen.months, "mes", "meses") : "", !sen.years && !sen.months ? plural(sen.days, "día", "días") : ""]
+    [
+      sen.years ? plural(sen.years, en ? "year" : "año", en ? "years" : "años") : "",
+      sen.months ? plural(sen.months, en ? "month" : "mes", en ? "months" : "meses") : "",
+      !sen.years && !sen.months ? plural(sen.days, en ? "day" : "día", en ? "days" : "días") : "",
+    ]
       .filter(Boolean)
       .join(", ");
   let vacation;
@@ -169,41 +183,41 @@ export async function renderIncident(id: number) {
   const { IncidentPdf } = await import("./incidents");
   return {
     filename: `${incidentFolio(i)}_${slug(e.name)}.pdf`,
-    buffer: await renderToBuffer(<IncidentPdf s={s} i={i} e={e} seniority={senLabel} vacation={vacation} />),
+    buffer: await renderToBuffer(<IncidentPdf s={s} i={i} e={e} seniority={senLabel} vacation={vacation} lang={lang} />),
   };
 }
 
 /** Guía de última milla 4 × 6 (una página por bulto). `sheet` = en hoja carta con líneas de corte. */
-export async function renderShipmentLabel(id: number, sheet = false, origin = "") {
+export async function renderShipmentLabel(id: number, sheet = false, origin = "", lang: Lang = "es") {
   const [base, sh] = await Promise.all([getSettings(), prisma.shipment.findUnique({ where: { id }, include: { client: { include: { brand: true } } } })]);
   if (!sh) return null;
   const s = applyBrand(base, sh.client?.brand ?? null);
   const { ShipmentLabelPdf } = await import("./label");
-  return { filename: `Guia_UltimaMilla_${sh.tracking}${sheet ? "_carta" : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} trackUrl={origin ? `${origin}/rastreo/${sh.tracking}` : ""} />) };
+  return { filename: `${lang === "en" ? "Label_LastMile" : "Guia_UltimaMilla"}_${sh.tracking}${sheet ? (lang === "en" ? "_letter" : "_carta") : ""}.pdf`, buffer: await renderToBuffer(<ShipmentLabelPdf s={s} sh={sh} sheet={sheet} trackUrl={origin ? `${origin}/rastreo/${sh.tracking}` : ""} lang={lang} />) };
 }
 
 /** Etiquetas de almacenamiento: una (id) o todas las activas (sin id). */
-export async function renderStorageLabels(id?: number) {
+export async function renderStorageLabels(id?: number, lang: Lang = "es") {
   const units = await prisma.storageUnit.findMany({ where: id ? { id } : { active: true }, orderBy: { name: "asc" } });
   if (!units.length) return null;
   const { StorageLabelPdf } = await import("./storage-label");
   return {
-    filename: units.length === 1 ? `Almacenamiento_${units[0].code}.pdf` : "Almacenamientos.pdf",
-    buffer: await renderToBuffer(<StorageLabelPdf units={units} />),
+    filename: units.length === 1 ? `${lang === "en" ? "Storage" : "Almacenamiento"}_${units[0].code}.pdf` : lang === "en" ? "Storage_labels.pdf" : "Almacenamientos.pdf",
+    buffer: await renderToBuffer(<StorageLabelPdf units={units} lang={lang} />),
   };
 }
 
 /** Hoja de salida de mercancía; `id` null = formato en blanco para llenar a mano. */
-export async function renderGoodsExit(id: number | null) {
+export async function renderGoodsExit(id: number | null, lang: Lang = "es") {
   const s = await getSettings();
   const { GoodsExitPdf } = await import("./goods-exit");
   if (id === null) {
-    return { filename: "Hoja_de_salida_en_blanco.pdf", buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ items: [] }} />) };
+    return { filename: lang === "en" ? "Blank_goods_exit_sheet.pdf" : "Hoja_de_salida_en_blanco.pdf", buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ items: [] }} lang={lang} />) };
   }
   const e = await prisma.goodsExit.findUnique({ where: { id }, include: { client: { select: { name: true } }, items: { orderBy: { position: "asc" } } } });
   if (!e) return null;
   return {
-    filename: `Salida_${e.folio}_${slug(e.client.name)}.pdf`,
-    buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ ...e, client: e.client.name }} />),
+    filename: `${lang === "en" ? "Exit" : "Salida"}_${e.folio}_${slug(e.client.name)}.pdf`,
+    buffer: await renderToBuffer(<GoodsExitPdf s={s} x={{ ...e, client: e.client.name }} lang={lang} />),
   };
 }

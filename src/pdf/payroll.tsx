@@ -3,7 +3,8 @@ import { Page, View, Text, Image } from "@react-pdf/renderer";
 import type { CompanySettings, Employee, PayrollLine, PayrollRun } from "@prisma/client";
 import { PdfDoc, palette, loadLogo, GRAY, INK } from "./brand";
 import { payrollLine } from "@/lib/payroll";
-import { amountInWords, formatDateEs, formatMoney, formatNumber } from "@/lib/money";
+import { amountInWords, amountInWordsEn, formatDate, formatMoney, formatNumber } from "@/lib/money";
+import { localeOf, translator, type Lang } from "@/lib/i18n";
 
 type Line = PayrollLine & { employee: Employee };
 
@@ -19,7 +20,9 @@ function Pair({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
 }
 
 /** Un recibo (media hoja). */
-function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }) {
+function Receipt({ s, run, l, lang }: { s: CompanySettings; run: PayrollRun; l: Line; lang: Lang }) {
+  const tr = translator(lang);
+  const date = (d: Date) => formatDate(d, localeOf(lang));
   const c = palette(s);
   const logo = loadLogo(s);
   const weekly = l.weeklySalary || l.dailySalary * l.workDays;
@@ -32,26 +35,28 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
   const otherNote = parts.find((p) => p.startsWith("Permiso sin goce:"))?.replace("Permiso sin goce: ", "");
   const vacDates = parts.find((p) => p.startsWith("Vacaciones:"))?.replace("Vacaciones: ", "");
   const sueldoNote = [
-    l.vacationDays ? `Incluye ${formatNumber(l.vacationDays)} día(s) de vacaciones${vacDates ? ` (${vacDates})` : ""}` : "",
-    ...parts.filter((p) => p.startsWith("Permiso con goce:")),
+    l.vacationDays ? tr("Incluye {n} día(s) de vacaciones", { n: formatNumber(l.vacationDays) }) + (vacDates ? ` (${vacDates})` : "") : "",
+    ...parts.filter((p) => p.startsWith("Permiso con goce:")).map((p) => p.replace("Permiso con goce:", `${tr("Permiso con goce")}:`)),
   ]
     .filter(Boolean)
     .join(" · ");
 
   const earnings: [string, number, string?][] = [
-    [`Sueldo (${formatNumber(l.days)} día${l.days === 1 ? "" : "s"} × ${formatMoney(t.daily)})`, t.base, sueldoNote || undefined],
-    ...(t.vacationPremium ? ([["Prima vacacional (25%)", t.vacationPremium]] as [string, number][]) : []),
-    ...(l.bonus ? ([["Bono semanal", l.bonus, l.bonusNote]] as [string, number, string][]) : []),
-    ...(l.overtime ? ([[l.overtimeHours ? `Horas extra (${formatNumber(l.overtimeHours)} h)` : "Horas extra", l.overtime]] as [string, number][]) : []),
-    ...(l.aguinaldo ? ([["Aguinaldo", l.aguinaldo]] as [string, number][]) : []),
-    ...(l.otherIncome ? ([["Otras percepciones", l.otherIncome]] as [string, number][]) : []),
+    [tr(l.days === 1 ? "Sueldo ({n} día × {daily})" : "Sueldo ({n} días × {daily})", { n: formatNumber(l.days), daily: formatMoney(t.daily) }), t.base, sueldoNote || undefined],
+    ...(t.vacationPremium ? ([[tr("Prima vacacional (25%)"), t.vacationPremium]] as [string, number][]) : []),
+    ...(l.bonus ? ([[tr("Bono semanal"), l.bonus, l.bonusNote]] as [string, number, string][]) : []),
+    ...(l.overtime ? ([[l.overtimeHours ? tr("Horas extra ({n} h)", { n: formatNumber(l.overtimeHours) }) : tr("Horas extra"), l.overtime]] as [string, number][]) : []),
+    ...(l.aguinaldo ? ([[tr("Aguinaldo"), l.aguinaldo]] as [string, number][]) : []),
+    ...(l.otherIncome ? ([[tr("Otras percepciones"), l.otherIncome]] as [string, number][]) : []),
   ];
   const deductions: [string, number, string?][] = [
     ...(t.absenceDeduction
-      ? ([[`Faltas injustificadas (${formatNumber(l.absences)} × ${formatMoney(t.daily)})`, t.absenceDeduction, unjustNote]] as [string, number, string?][])
+      ? ([[tr("Faltas injustificadas ({n} × {daily})", { n: formatNumber(l.absences), daily: formatMoney(t.daily) }), t.absenceDeduction, unjustNote]] as [string, number, string?][])
       : []),
-    ...(t.leaveDeduction ? ([[`Permisos sin goce (${formatNumber(l.leaveDays)} × ${formatMoney(t.daily)})`, t.leaveDeduction, otherNote]] as [string, number, string?][]) : []),
-    ...(l.deductions ? ([["Préstamo / otros descuentos", l.deductions, l.deductionNote]] as [string, number, string][]) : []),
+    ...(t.leaveDeduction
+      ? ([[tr("Permisos sin goce ({n} × {daily})", { n: formatNumber(l.leaveDays), daily: formatMoney(t.daily) }), t.leaveDeduction, otherNote]] as [string, number, string?][])
+      : []),
+    ...(l.deductions ? ([[tr("Préstamo / otros descuentos"), l.deductions, l.deductionNote]] as [string, number, string][]) : []),
   ];
 
   const list = (rows: [string, number, string?][]) =>
@@ -66,7 +71,7 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
         </View>
       ))
     ) : (
-      <Text style={{ ...cell, color: GRAY, paddingVertical: 2.5 }}>Sin deducciones</Text>
+      <Text style={{ ...cell, color: GRAY, paddingVertical: 2.5 }}>{tr("Sin deducciones")}</Text>
     );
 
   return (
@@ -78,13 +83,13 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
           {logo && <Image src={logo} style={{ height: 22, maxWidth: 40, objectFit: "contain", marginRight: 6 }} />}
           <View>
             <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: c.blue }}>{company.toUpperCase()}</Text>
-            {s.rfc ? <Text style={{ fontSize: 7, color: GRAY }}>RFC {s.rfc}</Text> : null}
+            {s.rfc ? <Text style={{ fontSize: 7, color: GRAY }}>{tr("RFC")} {s.rfc}</Text> : null}
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
-          <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: c.orange }}>RECIBO DE NÓMINA</Text>
+          <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: c.orange }}>{tr("RECIBO DE NÓMINA")}</Text>
           <Text style={{ fontSize: 7.5, color: GRAY }}>
-            Folio NOM-{run.id}-{l.id}
+            {tr("Folio")} NOM-{run.id}-{l.id}
           </Text>
         </View>
       </View>
@@ -92,17 +97,17 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
       {/* Empleado y periodo */}
       <View style={{ flexDirection: "row", marginTop: 6, gap: 14 }}>
         <View style={{ flex: 1.3 }}>
-          <Pair k="Empleado" v={e.name} bold />
-          <Pair k="Puesto" v={e.position || "—"} />
-          <Pair k="Área / depto." v={[e.area, e.department].filter(Boolean).join(" › ") || "—"} />
-          <Pair k="Fecha de ingreso" v={formatDateEs(e.startDate)} />
+          <Pair k={tr("Empleado")} v={e.name} bold />
+          <Pair k={tr("Puesto")} v={e.position || "—"} />
+          <Pair k={tr("Área / depto.")} v={[e.area, e.department].filter(Boolean).join(" › ") || "—"} />
+          <Pair k={tr("Fecha de ingreso")} v={date(e.startDate)} />
           {e.curp || e.rfc ? <Pair k={e.curp ? "CURP" : "RFC"} v={e.curp || e.rfc} /> : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Pair k="Periodo" v={`${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)}`} bold />
-          <Pair k="Fecha de pago" v={formatDateEs(run.payDate)} />
-          <Pair k="Jornada" v={`${l.workDays} días · ${formatNumber(l.hoursPerDay)} h`} />
-          <Pair k="Días pagados" v={`${formatNumber(Math.max(0, l.days - l.absences - l.leaveDays))} de ${l.workDays}`} />
+          <Pair k={tr("Periodo")} v={tr("{from} al {to}", { from: date(run.periodStart), to: date(run.periodEnd) })} bold />
+          <Pair k={tr("Fecha de pago")} v={date(run.payDate)} />
+          <Pair k={tr("Jornada")} v={tr("{d} días · {h} h", { d: l.workDays, h: formatNumber(l.hoursPerDay) })} />
+          <Pair k={tr("Días pagados")} v={tr("{n} de {total}", { n: formatNumber(Math.max(0, l.days - l.absences - l.leaveDays)), total: l.workDays })} />
         </View>
       </View>
 
@@ -110,9 +115,9 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
       <View style={{ flexDirection: "row", marginTop: 6, backgroundColor: c.peach, borderRadius: 3, paddingVertical: 5 }}>
         {(
           [
-            ["Salario semanal", formatMoney(weekly)],
-            [`Salario diario (÷ ${l.workDays})`, formatMoney(t.daily)],
-            [`Salario por hora (÷ ${formatNumber(l.hoursPerDay)} h)`, formatMoney(t.hourly)],
+            [tr("Salario semanal"), formatMoney(weekly)],
+            [tr("Salario diario (÷ {n})", { n: l.workDays }), formatMoney(t.daily)],
+            [tr("Salario por hora (÷ {n} h)", { n: formatNumber(l.hoursPerDay) }), formatMoney(t.hourly)],
           ] as const
         ).map(([k, v]) => (
           <View key={k} style={{ flex: 1, alignItems: "center" }}>
@@ -125,18 +130,18 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
       {/* Percepciones y deducciones */}
       <View style={{ flexDirection: "row", marginTop: 7, gap: 14 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: c.blue, marginBottom: 2 }}>PERCEPCIONES</Text>
+          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: c.blue, marginBottom: 2 }}>{tr("PERCEPCIONES")}</Text>
           {list(earnings)}
           <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 3 }}>
-            <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>Total percepciones</Text>
+            <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>{tr("Total percepciones")}</Text>
             <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>{formatMoney(t.gross)}</Text>
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: c.blue, marginBottom: 2 }}>DEDUCCIONES</Text>
+          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: c.blue, marginBottom: 2 }}>{tr("DEDUCCIONES")}</Text>
           {list(deductions)}
           <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 3 }}>
-            <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>Total deducciones</Text>
+            <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>{tr("Total deducciones")}</Text>
             <Text style={{ ...cell, fontFamily: "Helvetica-Bold" }}>{formatMoney(t.totalDeductions)}</Text>
           </View>
         </View>
@@ -145,31 +150,37 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
       {/* Neto */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 7, borderTopWidth: 1, borderTopColor: c.orange, paddingTop: 4 }}>
         <View>
-          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: c.orange }}>NETO A RECIBIR</Text>
-          <Text style={{ fontSize: 6.8, color: GRAY }}>{amountInWords(t.net)}</Text>
+          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: c.orange }}>{tr("NETO A RECIBIR")}</Text>
+          <Text style={{ fontSize: 6.8, color: GRAY }}>{lang === "en" ? amountInWordsEn(t.net) : amountInWords(t.net)}</Text>
         </View>
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: c.orange }}>{formatMoney(t.net)}</Text>
       </View>
       {l.notice ? (
         <View style={{ marginTop: 4, backgroundColor: c.peach, borderLeftWidth: 2, borderLeftColor: c.orange, paddingVertical: 3, paddingHorizontal: 5 }}>
           <Text style={{ fontSize: 7.3, lineHeight: 1.3 }}>
-            <Text style={{ fontFamily: "Helvetica-Bold", color: c.orange }}>AVISO: </Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", color: c.orange }}>{tr("AVISO")}: </Text>
             {l.notice}
           </Text>
         </View>
       ) : null}
-      {l.notes ? <Text style={{ fontSize: 7.5, color: GRAY, marginTop: 3 }}>Comentarios: {l.notes}</Text> : null}
+      {l.notes ? (
+        <Text style={{ fontSize: 7.5, color: GRAY, marginTop: 3 }}>
+          {tr("Comentarios")}: {l.notes}
+        </Text>
+      ) : null}
 
       {/* Firma */}
       <View style={{ flexDirection: "row", marginTop: "auto", alignItems: "flex-end", gap: 20 }}>
         <Text style={{ flex: 1.4, fontSize: 6.8, color: GRAY, lineHeight: 1.35 }}>
-          Recibí de {company} la cantidad neta indicada por concepto de mi salario y prestaciones del periodo señalado, sin que se me adeude cantidad alguna por
-          otro concepto a la fecha.
+          {tr(
+            "Recibí de {company} la cantidad neta indicada por concepto de mi salario y prestaciones del periodo señalado, sin que se me adeude cantidad alguna por otro concepto a la fecha.",
+            { company },
+          )}
         </Text>
         <View style={{ flex: 1, alignItems: "center" }}>
           <View style={{ borderTopWidth: 0.8, borderTopColor: INK, width: "100%", marginBottom: 2 }} />
           <Text style={{ fontSize: 7.5 }}>{e.name}</Text>
-          <Text style={{ fontSize: 6.8, color: GRAY }}>Nombre y firma del trabajador</Text>
+          <Text style={{ fontSize: 6.8, color: GRAY }}>{tr("Nombre y firma del trabajador")}</Text>
         </View>
       </View>
     </View>
@@ -177,18 +188,20 @@ function Receipt({ s, run, l }: { s: CompanySettings; run: PayrollRun; l: Line }
 }
 
 /** Recibos de nómina: dos por hoja tamaño carta, con línea de corte. */
-export function PayrollReceiptsPdf({ s, run, lines }: { s: CompanySettings; run: PayrollRun; lines: Line[] }) {
+export function PayrollReceiptsPdf({ s, run, lines, lang = "es" }: { s: CompanySettings; run: PayrollRun; lines: Line[]; lang?: Lang }) {
+  const tr = translator(lang);
+  const date = (d: Date) => formatDate(d, localeOf(lang));
   const pages: Line[][] = [];
   for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2));
   return (
-    <PdfDoc title={`Recibos de nómina ${formatDateEs(run.periodStart)} al ${formatDateEs(run.periodEnd)}`}>
+    <PdfDoc title={`${tr("Recibos de nómina")} ${tr("{from} al {to}", { from: date(run.periodStart), to: date(run.periodEnd) })}`}>
       {pages.map((pair, i) => (
         <Page key={i} size="LETTER" style={{ paddingHorizontal: 40, paddingVertical: 26, fontFamily: "Helvetica", color: INK }}>
-          <Receipt s={s} run={run} l={pair[0]} />
+          <Receipt s={s} run={run} l={pair[0]} lang={lang} />
           {pair[1] && (
             <>
               <View style={{ borderTopWidth: 0.8, borderTopColor: "#cbd5e1", borderStyle: "dashed", marginVertical: 6 }} />
-              <Receipt s={s} run={run} l={pair[1]} />
+              <Receipt s={s} run={run} l={pair[1]} lang={lang} />
             </>
           )}
         </Page>

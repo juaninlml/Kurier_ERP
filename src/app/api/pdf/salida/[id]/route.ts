@@ -1,5 +1,6 @@
 import { renderGoodsExit } from "@/pdf/render";
 import { pdfResponse } from "../../respond";
+import { getLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,5 +10,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const raw = (await params).id;
   const id = raw === "blanco" ? null : Number(raw);
   if (id !== null && !Number.isInteger(id)) return new Response("No encontrado", { status: 404 });
-  return pdfResponse(() => renderGoodsExit(id), new URL(req.url).searchParams.has("download"));
+  return pdfResponse(async () => renderGoodsExit(id, await getLang()), new URL(req.url).searchParams.has("download"));
 }
