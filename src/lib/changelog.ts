@@ -18,6 +18,42 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-28-b",
+    kind: "new",
+    text: {
+      es: {
+        title: "Nueva sección de Cobranza",
+        items: [
+          "En Finanzas → Cobranza ves a los clientes con saldo, del más atrasado al más reciente, con sus facturas abiertas y días de atraso.",
+          "Un clic abre WhatsApp o tu correo con el recordatorio de pago ya escrito (saldo, facturas vencidas y datos bancarios); también puedes descargar el estado de cuenta para adjuntarlo.",
+          "Registra cada llamada, visita o mensaje y la fecha en que el cliente prometió pagar; las promesas incumplidas se marcan en rojo.",
+          "Puedes registrar el pago de una factura ahí mismo.",
+          "Ya no se ofrece pago contra entrega en los envíos de última milla: se quitó de las guías, la app de reparto y el rastreo.",
+        ],
+      },
+      en: {
+        title: "New Collections section",
+        items: [
+          "In Finance → Collections you see clients with a balance, most overdue first, with their open invoices and days late.",
+          "One click opens WhatsApp or your email with the payment reminder already written (balance, overdue invoices and bank details); you can also download the account statement to attach it.",
+          "Record each call, visit or message and the date the client promised to pay; broken promises are marked in red.",
+          "You can record an invoice payment right there.",
+          "Cash on delivery is no longer offered for last-mile shipments: it was removed from labels, the delivery app and tracking.",
+        ],
+      },
+      zh: {
+        title: "新增“催收”栏目",
+        items: [
+          "在 财务 → 催收 中可以看到有余额的客户，逾期最久的排在前面，并显示其未结发票和逾期天数。",
+          "一键打开 WhatsApp 或邮箱，付款提醒已写好（余额、逾期发票和银行信息）；也可以下载对账单作为附件。",
+          "记录每次电话、拜访或消息，以及客户承诺付款的日期；未兑现的承诺会以红色标出。",
+          "可以直接在此登记发票付款。",
+          "末端配送不再提供货到付款：已从运单、派送应用和物流追踪中移除。",
+        ],
+      },
+    },
+  },
+  {
     id: "2026-11-28",
     kind: "new",
     text: {

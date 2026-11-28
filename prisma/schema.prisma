@@ -94,6 +94,7 @@ model Client {
   dailyOrders   DailyOrder[]
   shipments     Shipment[]
   goodsExits    GoodsExit[]
+  collectionNotes CollectionNote[]
 }
 
 /// Proveedor de Kurier (renta, insumos de empaque, paquetería, servicios…). Los egresos de contabilidad se ligan a él.
@@ -828,7 +829,7 @@ model Shipment {
   heightCm        Float           @default(0)
   weightKg        Float           @default(0)
   packages        Int             @default(1) // bultos de la parada
-  cod             Float           @default(0) // pago contra entrega
+  cod             Float           @default(0) // pago contra entrega: ya no se ofrece (2026-11); la columna queda solo por los envíos anteriores
   // Cobro
   price           Float           @default(0) // por parada, sin IVA
   priceLabel      String          @default("")
@@ -1021,4 +1022,19 @@ model GoodsExitItem {
 
   @@index([exitId])
   @@index([sku])
+}
+
+/// Cobranza: seguimiento a los clientes con saldo (llamadas, mensajes, visitas) y promesas de pago.
+model CollectionNote {
+  id            Int      @id @default(autoincrement())
+  clientId      Int
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind          String   @default("NOTA") // LLAMADA | WHATSAPP | CORREO | VISITA | NOTA
+  note          String   @default("")
+  promiseDate   String   @default("") // yyyy-mm-dd en que el cliente prometió pagar ("" = sin promesa)
+  promiseAmount Float    @default(0) // monto prometido en MXN (0 = no lo dijo)
+  createdBy     String   @default("")
+  createdAt     DateTime @default(now())
+
+  @@index([clientId, createdAt])
 }

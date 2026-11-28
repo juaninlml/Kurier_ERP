@@ -132,12 +132,6 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
           <dt className="text-xs text-muted-foreground">{t("Bultos")}</dt>
           <dd className="font-medium">{s.packages}</dd>
         </div>
-        {s.cod > 0 && !cancelled && s.status !== "ENTREGADA" && (
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("Pago contra entrega")}</dt>
-            <dd className="font-medium">${s.cod.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</dd>
-          </div>
-        )}
       </dl>
     </TrackingShell>
   );

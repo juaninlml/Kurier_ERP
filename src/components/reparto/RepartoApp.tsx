@@ -50,7 +50,6 @@ function MapsButton({ to, className, label }: { to: Where; className?: string; l
   );
 }
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
 /** Reduce la foto (máx. 1600 px, JPEG) antes de subirla: las fotos del celular pesan varios MB. */
 async function compress(file: File): Promise<Blob> {
@@ -444,7 +443,6 @@ function NextStop({ stop, total }: { stop: DeliveryInfo | null; total: number })
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg leading-tight font-semibold">{stop.destName}</h2>
-          {stop.cod > 0 && <span className="shrink-0 rounded-md bg-foreground px-2 py-1 text-xs font-bold text-background">{t("COBRAR")} {money(stop.cod)}</span>}
         </div>
         <a href={mapsUrl(stop)} target="_blank" rel="noreferrer" className="flex items-start gap-1.5 text-sm underline-offset-2 hover:underline">
           <MapPin className="mt-0.5 size-4 shrink-0 text-primary" /> {stop.address}
@@ -496,7 +494,6 @@ function Manifest({ items, nextId }: { items: DeliveryInfo[]; nextId: number | n
                     </div>
                   </div>
                   {next && <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold text-primary-foreground">{t("AHORA")}</span>}
-                  {!next && it.cod > 0 && !delivered && <span className="shrink-0 rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-bold text-background">{t("COBRAR")}</span>}
                 </summary>
                 <div className="space-y-2 px-4 pb-3 pl-15 text-sm">
                   <p className="flex items-start gap-1.5">
@@ -617,7 +614,6 @@ function Delivery({
           <span className="rounded-md bg-muted px-2 py-2">{t(info.service)}</span>
           {info.attempts > 0 && <span className="rounded-md bg-amber-100 px-2 py-2 text-amber-900">{t("Intentos previos: {n}", { n: info.attempts })}</span>}
         </div>
-        {info.cod > 0 && <p className="mt-3 rounded-lg bg-foreground px-3 py-2 text-center text-sm font-bold text-background">{t("COBRAR AL ENTREGAR")} {money(info.cod)}</p>}
       </section>
 
       {view === "entregar" ? (

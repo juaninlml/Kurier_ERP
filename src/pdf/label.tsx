@@ -88,7 +88,6 @@ const shortDate = (d: Date, lang: Lang) => {
   return `${p.day}-${(lang === "en" ? MONTHS_EN : MONTHS)[Number(p.month) - 1]}-${p.year}`;
 };
 const phone = (p: string) => (p.length === 10 ? `${p.slice(0, 2)} ${p.slice(2, 6)} ${p.slice(6)}` : p);
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const INK = "#000";
 const line = { borderBottomWidth: 1, borderBottomColor: INK } as const;
@@ -166,20 +165,10 @@ function Label({ sh, n, of, trackUrl, lang }: { s: CompanySettings; sh: Shipment
             <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold" }}>{sh.tracking}</Text>
             <Text style={{ ...small, marginTop: 3 }}>{t("REFERENCIA KURIER")}</Text>
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>{sh.reference}</Text>
-            {sh.cod > 0 ? (
-              <View style={{ backgroundColor: INK, paddingHorizontal: 4, paddingVertical: 2, marginTop: 3, alignSelf: "flex-start" }}>
-                <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Helvetica-Bold" }}>
-                  {t("COBRAR AL ENTREGAR")} {money(sh.cod)}
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={{ ...small, marginTop: 3 }}>{t("SERVICIO")}</Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>
-                  {t("Entrega a domicilio")} · {t(nextDay ? "día siguiente" : "mismo día")}
-                </Text>
-              </>
-            )}
+            <Text style={{ ...small, marginTop: 3 }}>{t("SERVICIO")}</Text>
+            <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>
+              {t("Entrega a domicilio")} · {t(nextDay ? "día siguiente" : "mismo día")}
+            </Text>
             <Text style={{ fontSize: 6, marginTop: 2 }}>{t("Escanea para rastrear · al entregar: foto y firma")}</Text>
           </View>
         </View>

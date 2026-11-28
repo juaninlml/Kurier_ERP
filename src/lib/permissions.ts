@@ -42,6 +42,7 @@ export type ModuleId =
   | "conciliacion"
   | "proveedores"
   | "cxp"
+  | "cobranza"
   | "nomina"
   | "usuarios"
   | "configuracion"
@@ -64,6 +65,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/contabilidad", "contabilidad"],
   ["/proveedores", "proveedores"],
   ["/cuentas-por-pagar", "cxp"],
+  ["/cobranza", "cobranza"],
   ["/nomina", "nomina"],
   ["/usuarios", "usuarios"],
   ["/configuracion", "configuracion"],
@@ -87,7 +89,7 @@ const ROUTES: [string, ModuleId][] = [
 type Access = "write" | "read";
 const ALL: ModuleId[] = [
   "inicio", "cotizaciones", "facturas", "ordenes", "envios", "salidas", "reparto", "clientes", "tarifario", "contabilidad", "conciliacion",
-  "proveedores", "cxp", "nomina", "usuarios", "configuracion", "bitacora", "perfil", "general",
+  "proveedores", "cxp", "cobranza", "nomina", "usuarios", "configuracion", "bitacora", "perfil", "general",
 ];
 const every = (a: Access, except: ModuleId[] = []) =>
   Object.fromEntries(ALL.filter((m) => !except.includes(m)).map((m) => [m, a])) as Partial<Record<ModuleId, Access>>;
@@ -105,6 +107,7 @@ const ACCESS: Record<Role, Partial<Record<ModuleId, Access>>> = {
     conciliacion: "write",
     proveedores: "read",
     cxp: "read",
+    cobranza: "write",
     nomina: "read",
     bitacora: "read",
     perfil: "write",
@@ -121,6 +124,7 @@ const ACCESS: Record<Role, Partial<Record<ModuleId, Access>>> = {
     envios: "write",
     tarifario: "read",
     facturas: "read",
+    cobranza: "read",
     perfil: "write",
   },
 };
@@ -160,6 +164,7 @@ export const MODULE_LABEL: Record<string, string> = {
   conciliacion: "Conciliación",
   proveedores: "Proveedores",
   cxp: "Cuentas por pagar",
+  cobranza: "Cobranza",
   nomina: "Nómina",
   usuarios: "Usuarios",
   configuracion: "Configuración",

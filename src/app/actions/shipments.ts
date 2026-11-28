@@ -146,7 +146,6 @@ async function createShipmentImpl(fd: FormData) {
       heightCm: pos("heightCm", 300),
       weightKg: pos("weightKg", 200),
       packages,
-      cod: pos("cod", 1_000_000),
       price: quote.price,
       priceLabel: quote.label,
       notes: str(fd, "notes"),

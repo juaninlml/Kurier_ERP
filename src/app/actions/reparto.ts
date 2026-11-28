@@ -52,7 +52,6 @@ export type DeliveryInfo = {
   borough: string;
   zone: number;
   packages: number;
-  cod: number;
   service: string;
   attempts: number;
   content: string;
@@ -86,7 +85,6 @@ const select = {
   borough: true,
   zone: true,
   packages: true,
-  cod: true,
   serviceLevel: true,
   attempts: true,
   content: true,
@@ -109,7 +107,6 @@ function info(s: Record<string, unknown>): DeliveryInfo {
     borough: x.borough,
     zone: x.zone,
     packages: x.packages,
-    cod: x.cod,
     service: SERVICE_LEVELS[serviceLevelOf(x.serviceLevel)],
     attempts: x.attempts,
     content: x.content,
@@ -353,7 +350,7 @@ export async function confirmDelivery(fd: FormData): Promise<{ ok: true; trackin
           deliveredAt: new Date(),
           deliveredBy: name,
           receiverName: receiver.slice(0, 120),
-          events: { create: { kind: "ENTREGA", detail: `Entregada · recibió ${receiver} · con firma y foto${s.cod > 0 ? ` · cobro contra entrega $${s.cod.toFixed(2)}` : ""}`, by: name } },
+          events: { create: { kind: "ENTREGA", detail: `Entregada · recibió ${receiver} · con firma y foto`, by: name } },
         },
       }),
     ]);

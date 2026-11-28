@@ -46,6 +46,7 @@ function revalidateAll(id?: number) {
   revalidatePath("/");
   revalidatePath("/facturas");
   revalidatePath("/contabilidad");
+  revalidatePath("/cobranza");
   if (id) revalidatePath(`/facturas/${id}`);
 }
 

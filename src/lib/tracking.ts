@@ -18,7 +18,7 @@ export const trackingUrl = (origin: string, tracking: string) => `${origin}/rast
 /** Solo el primer nombre (la página de rastreo es pública: no expone nombre completo ni teléfono). */
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
 
-type ForMessage = { tracking: string; status: string; destName: string; originName: string; originCompany: string; serviceLevel: string; cod: number };
+type ForMessage = { tracking: string; status: string; destName: string; originName: string; originCompany: string; serviceLevel: string };
 
 /** Mensaje de WhatsApp para el destinatario, según el estatus de la guía. */
 export function whatsappMessage(s: ForMessage, url: string) {
@@ -33,8 +33,7 @@ export function whatsappMessage(s: ForMessage, url: string) {
         : s.status === "CANCELADA"
           ? `fue cancelado. Si tienes dudas, contacta a ${from || "la tienda"}.`
           : `ya está registrado con Kurier Kido y se entrega ${when}.`;
-  const cod = s.cod > 0 && s.status !== "ENTREGADA" && s.status !== "CANCELADA" ? `\nTen listo el pago contra entrega: $${s.cod.toLocaleString("es-MX", { minimumFractionDigits: 2 })}.` : "";
-  return `Hola ${who}, tu paquete${from ? ` de ${from}` : ""} ${status}${cod}\nGuía: ${s.tracking}\nRastréalo aquí: ${url}`;
+  return `Hola ${who}, tu paquete${from ? ` de ${from}` : ""} ${status}\nGuía: ${s.tracking}\nRastréalo aquí: ${url}`;
 }
 
 /** Link de WhatsApp (wa.me) al teléfono del destinatario con el mensaje escrito. Teléfonos MX de 10 dígitos. */

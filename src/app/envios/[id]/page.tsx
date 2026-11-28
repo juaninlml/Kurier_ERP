@@ -153,7 +153,6 @@ export default async function ShipmentPage({ params }: { params: Promise<{ id: s
                 [t("Medidas"), s.lengthCm ? `${s.lengthCm} × ${s.widthCm} × ${s.heightCm} cm` : ""],
                 [t("Peso"), s.weightKg ? `${s.weightKg} kg${vol ? ` · ${t("volumétrico")} ${vol} kg` : ""}` : ""],
                 [t("Bultos"), String(s.packages)],
-                [t("Pago contra entrega"), s.cod ? formatMoney(s.cod) : ""],
                 [t("Tarifa"), `${s.priceLabel} · ${formatMoney(s.price)}`],
                 [t("Notas"), s.notes],
               ])}

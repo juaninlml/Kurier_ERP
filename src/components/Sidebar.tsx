@@ -20,6 +20,7 @@ import {
   ChevronsUpDown,
   Clock,
   HandCoins,
+  BellRing,
   FileUp,
   PackageOpen,
   Boxes,
@@ -85,6 +86,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
       { href: "/proveedores", label: "Proveedores", icon: Truck },
+      { href: "/cobranza", label: "Cobranza", icon: BellRing },
       { href: "/cuentas-por-pagar", label: "Cuentas por pagar", icon: Receipt },
       { href: "/contabilidad/conciliacion", label: "Conciliación bancaria", icon: Landmark },
       { href: "/contabilidad/presupuesto", label: "Presupuesto", icon: Target },

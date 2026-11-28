@@ -13,7 +13,6 @@ import { useT } from "./I18nProvider";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
-import { NumberField } from "./NumberField";
 export type SavedAddress = {
   id: number;
   kind: string;
@@ -59,7 +58,7 @@ export function ShipmentForm({
       ? startCheck(async () => setLocCheck({ text, r: await checkLocation(text, effBorough) }))
       : setLocCheck(null);
   const [clientId, setClientId] = useState(0);
-  const [pkg, setPkg] = useState({ packageType: "CAJA", serviceLevel: "MISMO_DIA", content: "", lengthCm: "", widthCm: "", heightCm: "", weightKg: "", packages: "1", cod: "" });
+  const [pkg, setPkg] = useState({ packageType: "CAJA", serviceLevel: "MISMO_DIA", content: "", lengthCm: "", widthCm: "", heightCm: "", weightKg: "", packages: "1" });
   const [quote, setQuote] = useState<LastMileQuote | null>(null);
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [pending, start] = useTransition();
@@ -261,14 +260,10 @@ export function ShipmentForm({
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+              <label className="col-span-2 block sm:col-span-1">
                 <span className="label">{t("Bultos")}</span>
                 <input name="packages" type="number" min="1" max="50" step="1" value={pkg.packages} onChange={(e) => setPkg({ ...pkg, packages: e.target.value })} className="input text-right tabular-nums" />
                 <span className="mt-1 block text-[11px] text-muted-foreground">{t("Misma parada; una guía por bulto.")}</span>
-              </label>
-              <label className="block">
-                <span className="label">{t("Pago contra entrega")}</span>
-                <NumberField name="cod" value={pkg.cod} onValueChange={(_, x) => setPkg({ ...pkg, cod: x })} className="input text-right tabular-nums" placeholder="$0.00" />
               </label>
             </div>
             <label className="block">
