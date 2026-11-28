@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Hand, CircleAlert, CircleCheck, Delete, LogIn, LogOut, Utensils, UtensilsCrossed } from "lucide-react";
 import { KidoBrand } from "./KidoLogo";
+import { unstable_isUnrecognizedActionError as isStaleAction } from "next/navigation";
 import { kioskChangeType, kioskHeartbeat, kioskPunch, type KioskResult } from "@/app/actions/attendance";
 import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
@@ -21,7 +22,29 @@ const TONE = {
 const OK_MS = 4000;
 const ERROR_MS = 3500;
 
-export function KioskScreen({ company, device, tz }: { company: string; device: string; tz: string }) {
+/**
+ * Código pendiente cuando el kiosco se recarga por una actualización: al volver se envía solo
+ * (los códigos del autenticador duran 30 s, así que solo si tiene menos de 20 s).
+ */
+const RETRY_KEY = "kurier:kiosk-retry";
+const RETRY_MAX_MS = 20_000;
+const saveRetry = (code: string) => {
+  try {
+    sessionStorage.setItem(RETRY_KEY, JSON.stringify({ code, at: Date.now() }));
+  } catch {}
+};
+const takeRetry = (): string | null => {
+  try {
+    const raw = sessionStorage.getItem(RETRY_KEY);
+    sessionStorage.removeItem(RETRY_KEY);
+    const r = raw ? (JSON.parse(raw) as { code: string; at: number }) : null;
+    return r && /^\d{6}$/.test(r.code) && Date.now() - r.at < RETRY_MAX_MS ? r.code : null;
+  } catch {
+    return null;
+  }
+};
+
+export function KioskScreen({ company, device, tz, version }: { company: string; device: string; tz: string; version: string }) {
   const t = useT();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<KioskResult | null>(null);
@@ -31,18 +54,46 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
   const [now, setNow] = useState<Date | null>(null);
   const [pending, start] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Se publicó una versión nueva: la tablet se recarga sola
+  const [updating, setUpdating] = useState(false);
+  const reloadNow = useCallback(() => {
+    setUpdating(true);
+    window.location.reload();
+  }, []);
 
-  // Reloj y llamada periódica (cierra jornadas vencidas con la salida automática)
+  // Si nadie está usando el kiosco (sin código a medias ni resultado en pantalla) se puede recargar
+  const idle = useRef(true);
+  useEffect(() => {
+    idle.current = !result && code.length === 0 && !pending;
+  });
+
+  // Reloj y llamada periódica (cierra jornadas vencidas y detecta una versión nueva publicada)
   useEffect(() => {
     setNow(new Date());
     const clock = setInterval(() => setNow(new Date()), 1000);
-    const beat = setInterval(() => void kioskHeartbeat(), 60000);
-    void kioskHeartbeat();
+    let stale = false;
+    const heartbeat = async () => {
+      try {
+        const r = await kioskHeartbeat();
+        if (r.version !== version) stale = true;
+      } catch (e) {
+        // La acción ya no existe en el servidor: esta pantalla es de la versión anterior
+        if (isStaleAction(e)) stale = true;
+      }
+      if (stale && idle.current) reloadNow();
+    };
+    const beat = setInterval(() => void heartbeat(), 60000);
+    // Si había una versión nueva pero alguien estaba checando, se recarga en cuanto quede libre
+    const waitIdle = setInterval(() => {
+      if (stale && idle.current) reloadNow();
+    }, 2000);
+    void heartbeat();
     return () => {
       clearInterval(clock);
       clearInterval(beat);
+      clearInterval(waitIdle);
     };
-  }, []);
+  }, [version, reloadNow]);
 
   const showResult = useCallback((r: KioskResult) => {
     setResult(r);
@@ -59,13 +110,43 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
     setResult(null);
   }, []);
 
+  /**
+   * Llama al servidor sin dejar nunca el kiosco trabado: si la página es de una versión anterior se
+   * recarga (y reenvía el código); si no hay conexión, avisa y limpia el código.
+   */
+  const call = useCallback(
+    async (fn: () => Promise<KioskResult>, retryCode?: string): Promise<KioskResult | null> => {
+      try {
+        return await fn();
+      } catch (e) {
+        if (isStaleAction(e)) {
+          if (retryCode) saveRetry(retryCode);
+          reloadNow();
+          return null;
+        }
+        return { ok: false, error: t("Sin conexión con el servidor. Revisa el internet e intenta de nuevo.") };
+      }
+    },
+    [reloadNow, t],
+  );
+
   const submit = useCallback(
     (value: string) => {
       if (value.length !== 6 || pending) return;
-      start(async () => showResult(await kioskPunch(value)));
+      start(async () => {
+        const r = await call(() => kioskPunch(value), value);
+        if (r) showResult(r);
+      });
     },
-    [pending, showResult],
+    [pending, showResult, call],
   );
+
+  // Al volver de una recarga por actualización: enviar el código que se estaba registrando
+  useEffect(() => {
+    const pendingCode = takeRetry();
+    if (pendingCode) submit(pendingCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Referencia al código actual: con teclado físico las teclas llegan más rápido que los renders
   const codeRef = useRef("");
@@ -105,6 +186,15 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
   const time = !now ? " " : now.toLocaleTimeString("es-MX", { timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = !now ? " " : now.toLocaleDateString("es-MX", { timeZone: tz, weekday: "long", day: "numeric", month: "long" });
 
+  if (updating)
+    return (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar text-sidebar-foreground" role="status">
+        <p className="text-lg font-medium">
+          <Tr>Actualizando el kiosco…</Tr>
+        </p>
+      </div>
+    );
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-sidebar text-sidebar-foreground select-none">
       <header className="flex shrink-0 items-center justify-between px-6 py-4 text-sm landscape:py-2.5">
@@ -133,7 +223,17 @@ export function KioskScreen({ company, device, tz }: { company: string; device: 
             className="grid h-full w-full cursor-pointer place-items-center outline-none"
           >
             <div className="flex w-full flex-col items-center gap-5">
-              <ResultCard key={seq} result={result} onChange={(type) => result.ok && start(async () => showResult(await kioskChangeType(result.punchId, result.ticket, type)))} />
+              <ResultCard
+                key={seq}
+                result={result}
+                onChange={(type) =>
+                  result.ok &&
+                  start(async () => {
+                    const r = await call(() => kioskChangeType(result.punchId, result.ticket, type));
+                    if (r) showResult(r);
+                  })
+                }
+              />
               <p className="kiosk-rise flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-sidebar-foreground" style={{ animationDelay: "500ms" }}>
                 <Hand className="size-4" aria-hidden /> <Tr>Toca la pantalla para el siguiente registro</Tr>
               </p>

@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { pairKiosk } from "@/app/actions/attendance";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
+import { appVersion } from "@/app/actions/attendance";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -58,5 +59,5 @@ export default async function KioskPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  return <KioskScreen company={s?.tradeName ?? "Kurier"} device={device.name} tz={s?.timezone || "America/Mexico_City"} />;
+  return <KioskScreen company={s?.tradeName ?? "Kurier"} device={device.name} tz={s?.timezone || "America/Mexico_City"} version={await appVersion()} />;
 }

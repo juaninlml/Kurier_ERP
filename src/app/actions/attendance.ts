@@ -166,13 +166,22 @@ export async function kioskChangeType(punchId: number, ticket: string, type: str
   };
 }
 
-/** Llamada periódica del kiosco: cierra jornadas vencidas y marca la tablet como activa. */
+/** Identificador de la versión publicada (cambia en cada deploy de Vercel). */
+export async function appVersion() {
+  return process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || "local";
+}
+
+/**
+ * Llamada periódica del kiosco: cierra jornadas vencidas, marca la tablet como activa y regresa la
+ * versión publicada (si cambió, el kiosco se recarga solo antes de que alguien intente checar).
+ */
 export async function kioskHeartbeat() {
+  const version = await appVersion();
   const device = await currentDevice();
-  if (!device) return { ok: false };
+  if (!device) return { ok: false, version };
   await autoCloseShifts();
   await prisma.kioskDevice.update({ where: { id: device.id }, data: { lastSeenAt: new Date() } });
-  return { ok: true };
+  return { ok: true, version };
 }
 
 // ───────────── Autorización de tablets ─────────────

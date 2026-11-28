@@ -271,6 +271,8 @@ export const en: Record<string, string> = {
   Reintentar: "Try again",
   "Cambios guardados.": "Changes saved.",
   "Registro agregado.": "Record added.",
+  "Sin conexión con el servidor. Revisa el internet e intenta de nuevo.": "No connection to the server. Check the internet and try again.",
+  "Actualizando el kiosco…": "Updating the kiosk…",
   "Rastreo de envío": "Shipment tracking",
   "Pasos": "Steps",
   "Entregar": "Deliver",
