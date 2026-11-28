@@ -21,6 +21,8 @@ import {
   Clock,
   HandCoins,
   BellRing,
+  CalendarRange,
+  Warehouse,
   FileUp,
   PackageOpen,
   Boxes,
@@ -71,9 +73,11 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/cotizaciones", label: "Cotizaciones", icon: FileText },
       { href: "/facturas", label: "Facturas", icon: ReceiptText },
+      { href: "/facturas/semanal", label: "Facturación semanal", icon: CalendarRange },
       { href: "/facturas/importar", label: "Importar del WMS", icon: FileUp },
       { href: "/ordenes", label: "Órdenes diarias", icon: PackageOpen },
       { href: "/ordenes/insumos", label: "Insumos de empaque", icon: Boxes },
+      { href: "/ordenes/inventario", label: "Inventario de insumos", icon: Warehouse },
       { href: "/envios", label: "Envíos última milla", icon: PackageCheck },
       { href: "/salidas", label: "Salidas de mercancía", icon: PackageMinus },
       { href: "/reparto", label: "Reparto", icon: ScanLine },
@@ -111,8 +115,8 @@ function useIsActive() {
   const pathname = usePathname();
   return (href: string) => {
     if (href === "/") return pathname === "/";
-    if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar");
-    if (href === "/ordenes") return pathname.startsWith("/ordenes") && !pathname.startsWith("/ordenes/insumos");
+    if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar") && !pathname.startsWith("/facturas/semanal");
+    if (href === "/ordenes") return pathname.startsWith("/ordenes") && !pathname.startsWith("/ordenes/insumos") && !pathname.startsWith("/ordenes/inventario");
     if (href === "/nomina") return pathname.startsWith("/nomina") && !pathname.startsWith("/nomina/asistencias");
     if (href === "/contabilidad") return pathname === "/contabilidad" || pathname.startsWith("/contabilidad/movimientos");
     return pathname.startsWith(href);

@@ -697,8 +697,27 @@ model PackMaterial {
   noSupply  Boolean       @default(false) // "Sin insumo" (N/A): cuenta para cuadrar contra las órdenes, no como consumo
   sortOrder Int           @default(0)
   active    Boolean       @default(true)
+  minStock  Int           @default(0) // existencia mínima: al llegar a ella sale la alerta de "por agotarse" (0 = sin alerta)
   createdAt DateTime      @default(now())
   supplies  DailySupply[]
+  stockMoves StockMove[]
+}
+
+/// Inventario de insumos de empaque: entradas (compras) y conteos físicos. El consumo sale de DailySupply.
+model StockMove {
+  id         Int          @id @default(autoincrement())
+  materialId Int
+  material   PackMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  kind       String // ENTRADA (piezas recibidas) | CONTEO (piezas contadas: fija la existencia al cierre de ese día)
+  date       String // yyyy-mm-dd
+  quantity   Int
+  unitCost   Float        @default(0) // costo por pieza de la compra (sin IVA); 0 = no se capturó
+  supplier   String       @default("")
+  note       String       @default("")
+  createdBy  String       @default("")
+  createdAt  DateTime     @default(now())
+
+  @@index([materialId, date])
 }
 
 /// Insumos usados: piezas de un material para un cliente en un día.

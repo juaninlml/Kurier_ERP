@@ -7,8 +7,8 @@ import { editorData, invoiceFolioSuggestions, itemsForEditor } from "@/lib/edito
 import { addDays, formatMoney, toInputDate } from "@/lib/money";
 import { prisma } from "@/lib/db";
 import { previewImport } from "@/lib/wms/imports";
-import { clientOrdersSummary, DATE_RE, rangeLabel, weekOf } from "@/lib/orders";
-import { suppliesByMaterial } from "@/lib/supplies";
+import { DATE_RE } from "@/lib/orders";
+import { weeklyDraft } from "@/lib/weekly-billing";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
 import { suggestedCnyRate } from "@/lib/fx";
@@ -36,66 +36,25 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   let back = { href: "/facturas", label: t("Facturas") };
 
   if (ordenes && semana && DATE_RE.test(semana)) {
-    // Factura semanal de servicio logístico desde Órdenes diarias.
-    const week = weekOf(semana);
-    const [sum, sup] = await Promise.all([clientOrdersSummary(Number(ordenes), week.from, week.to), suppliesByMaterial(week.from, week.to, Number(ordenes))]);
-    if (sum) {
-      // Todos los insumos consumidos en la semana (menos «Sin insumo»). Precio: el de la tarifa del cliente
-      // con el mismo nombre del material, si la tiene; si no, el precio de venta del material.
-      const norm = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^material de empaque:\s*/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
-      const clientPrice = (name: string) => sum.client.rates.find((r) => r.active && !r.atCost && norm(r.name) === norm(name))?.unitPrice;
-      const supplyLines = sup.list
-        .filter((m) => !m.noSupply)
-        .map((m) => {
-          const price = clientPrice(m.name) ?? m.unitPrice;
-          return {
-            description: `Material de empaque: ${m.name}`, // se guarda en la factura: siempre en español
-            detail: m.size ? `Medidas ${m.size.replace(/\*/g, "×")} cm` : "",
-            section: "Material de empaque",
-            unit: "Pieza",
-            quantity: m.qty,
-            unitPrice: price,
-            taxRate: settings.defaultTaxRate,
-          };
-        });
-      const unpriced = supplyLines.filter((l) => !l.unitPrice).length;
-      const supplySale = supplyLines.reduce((a, l) => a + l.quantity * l.unitPrice, 0);
-      const period = rangeLabel(week.from, week.to, "es-MX"); // se guarda en la factura: siempre en español
-      const breakdown = sum.byWave.filter((w) => w.total > 0).map((w) => `${w.name}: ${w.total}`).join(" · ");
-      defaults = {
-        ...base,
-        clientId: sum.client.id,
-        ordersWeek: week.from,
-        period: `${period} — ciclo semanal`,
-        volume: `${sum.total} paquetes en ${sum.days.length} día(s) operado(s)`,
-        storage: "No se cobra en este periodo.",
-        items: [
-          {
-            description: "Servicio logístico",
-            detail: `Paquetes procesados del ${period}${breakdown ? ` (${breakdown})` : ""}`,
-            unit: "Paquete",
-            quantity: sum.total,
-            unitPrice: sum.rate.rate,
-            taxRate: settings.defaultTaxRate,
-          },
-          ...supplyLines,
-        ],
-      };
-      subtitle = sum.rate.rate
+    // Factura semanal de servicio logístico desde Órdenes diarias (mismo cálculo que Facturación semanal).
+    const d = await weeklyDraft(Number(ordenes), semana, settings);
+    if (d) {
+      defaults = { ...base, clientId: d.client.id, ordersWeek: d.ordersWeek, period: d.period, volume: d.volume, storage: d.storage, items: d.items };
+      subtitle = d.rate.rate
         ? t("Desde Órdenes diarias: {v0} paquetes × {v1} ({v2}){v3}. Revisa y ajusta antes de crearla.", {
-            v0: sum.total,
-            v1: formatMoney(sum.rate.rate),
-            v2: t(sum.rate.label).toLowerCase(),
-            v3: supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: supplyLines.length, v1: formatMoney(supplySale) }) : "",
+            v0: d.packages,
+            v1: formatMoney(d.rate.rate),
+            v2: t(d.rate.label).toLowerCase(),
+            v3: d.supplyLines.length ? t(", más {v0} material(es) de empaque ({v1})", { v0: d.supplyLines.length, v1: formatMoney(d.supplySale) }) : "",
           }) +
-          (unpriced ? ` ${t("{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.", { v0: unpriced })}` : "") +
-          (supplyLines.length
+          (d.unpriced ? ` ${t("{v0} insumo(s) sin precio de venta: captura el precio o quítalos si van incluidos en el servicio.", { v0: d.unpriced })}` : "") +
+          (d.supplyLines.length
             ? ""
-            : sup.list.some((m) => m.noSupply)
+            : d.onlyNoSupply
               ? ` ${t("Esta semana sus paquetes se registraron como «Sin insumo»: no hay material de empaque que cobrar.")}`
               : ` ${t("No hay insumos capturados para este cliente en la semana (Órdenes → Insumos de empaque).")}`)
-        : t("Desde Órdenes diarias: {v0} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.", { v0: sum.total });
-      back = { href: `/ordenes?fecha=${week.from}`, label: t("Órdenes diarias") };
+        : t("Desde Órdenes diarias: {v0} paquetes. El cliente no tiene tarifa por paquete; captura el precio antes de crearla.", { v0: d.packages });
+      back = { href: `/facturas/semanal?semana=${d.ordersWeek}`, label: t("Facturación semanal") };
     }
   } else if (importId) {
     const imp = await prisma.wmsImport.findUnique({ where: { id: Number(importId) } });

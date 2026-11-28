@@ -2,12 +2,13 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 
-/** Pestañas de la sección: órdenes por oleada e insumos de empaque (comparten fecha). */
-export async function OrdersTabs({ active, date }: { active: "ordenes" | "insumos"; date: string }) {
+/** Pestañas de la sección: órdenes por oleada, insumos de empaque (comparten fecha) e inventario de insumos. */
+export async function OrdersTabs({ active, date }: { active: "ordenes" | "insumos" | "inventario"; date: string }) {
   const t = await getT();
   const tabs = [
     { id: "ordenes", label: t("Órdenes por oleada"), href: `/ordenes?fecha=${date}` },
     { id: "insumos", label: t("Insumos de empaque"), href: `/ordenes/insumos?fecha=${date}` },
+    { id: "inventario", label: t("Inventario"), href: "/ordenes/inventario" },
   ] as const;
   return (
     <nav aria-label={t("Secciones de órdenes diarias")} className="mb-6 flex gap-1 border-b">

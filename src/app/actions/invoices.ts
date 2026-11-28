@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { computeLines } from "@/lib/totals";
-import { fromInputDate, round2 } from "@/lib/money";
+import { addDays, formatMoney, fromInputDate, round2 } from "@/lib/money";
 import { auditNote } from "@/lib/audit";
 import { nextFolio } from "@/lib/settings";
 import { numv, parseItems, str } from "./helpers";
@@ -14,6 +14,9 @@ import { queueArchive } from "@/lib/archive";
 import { brandPrefix } from "@/lib/brands";
 import { UserError } from "@/lib/user-error";
 import { currencyOf, exchangeRateLabel, formatCurrency, toMxn } from "@/lib/currency";
+import { weeklyDraft, draftIssues } from "@/lib/weekly-billing";
+import { invoiceFolioSuggestions } from "@/lib/editor-data";
+import { DATE_RE, companyToday, weekOf } from "@/lib/orders";
 
 /** Moneda de la factura y tipo de cambio (MXN por 1 CNY). En MXN el tipo de cambio es 1. */
 function currencyInput(fd: FormData) {
@@ -102,6 +105,74 @@ async function createInvoiceImpl(fd: FormData) {
   if (ordersWeek) revalidatePath("/ordenes");
   queueArchive(`factura:${inv.id}`, ...(ordersWeek ? [`ordenes:${h.clientId}:${ordersWeek}`] : []));
   redirect(`/facturas/${inv.id}`);
+}
+
+/**
+ * Facturación semanal: emite de una vez las facturas de servicio logístico de la semana para los clientes indicados.
+ * Recalcula cada propuesta al momento (mismos datos que la pantalla) y omite a los que ya tienen factura de esa
+ * semana o necesitan revisión (sin tarifa por paquete o insumos sin precio). Folio: la serie propia del cliente
+ * si la usa; si no, el consecutivo de su marca. Fecha de hoy y vencimiento según el plazo de pago configurado.
+ */
+async function emitWeeklyInvoicesImpl(weekFrom: string, clientIds: number[]) {
+  if (!DATE_RE.test(weekFrom)) throw new UserError("La semana no es válida.");
+  const week = weekOf(weekFrom);
+  const ids = [...new Set(clientIds.filter((x) => Number.isInteger(x) && x > 0))].slice(0, 200);
+  if (!ids.length) throw new UserError("No hay facturas listas para emitir.");
+  const [settings, today, series] = await Promise.all([
+    prisma.companySettings.findUniqueOrThrow({ where: { id: 1 }, select: { defaultTaxRate: true, paymentTermsDays: true, invoiceNotes: true, paymentTerms: true } }),
+    companyToday(),
+    invoiceFolioSuggestions(),
+  ]);
+  const issueDate = fromInputDate(today);
+  const created: { id: number; folio: string; clientId: number; total: number }[] = [];
+  let skipped = 0;
+  for (const clientId of ids) {
+    const d = await weeklyDraft(clientId, week.from, settings);
+    if (!d || draftIssues(d).length) {
+      skipped++;
+      continue;
+    }
+    const { items, ...totals } = computeLines(d.items.filter((i) => i.quantity > 0));
+    const inv = await prisma.$transaction(async (tx) => {
+      const dup = await tx.invoice.findFirst({ where: { clientId, ordersWeek: week.from, status: { not: "CANCELADA" } }, select: { id: true } });
+      if (dup) return null;
+      const own = series[clientId];
+      const folio = own && !(await tx.invoice.findFirst({ where: { folio: own }, select: { id: true } })) ? own : await nextFolio(tx, "invoice", await brandPrefix(d.client.brandId, "invoice"));
+      return tx.invoice.create({
+        data: {
+          ...totals,
+          clientId,
+          brandId: d.client.brandId,
+          currency: "MXN",
+          exchangeRate: 1,
+          issueDate,
+          dueDate: addDays(issueDate, settings.paymentTermsDays),
+          notes: settings.invoiceNotes,
+          terms: settings.paymentTerms,
+          period: d.period,
+          volume: d.volume,
+          storage: d.storage,
+          ordersWeek: week.from,
+          folio,
+          items: { create: items },
+        },
+        select: { id: true, folio: true, clientId: true, total: true },
+      });
+    });
+    if (inv) created.push(inv);
+    else skipped++;
+  }
+  if (created.length) {
+    auditNote(
+      `Facturación semanal ${week.from}: ${created.length} factura(s) emitida(s) (${created.map((c) => c.folio).join(", ")}) por ${formatMoney(round2(created.reduce((a, c) => a + c.total, 0)))}`,
+      `/facturas/semanal?semana=${week.from}`,
+    );
+    revalidateAll();
+    revalidatePath("/facturas/semanal");
+    revalidatePath("/ordenes");
+    queueArchive(...created.flatMap((c) => [`factura:${c.id}`, `ordenes:${c.clientId}:${week.from}`]));
+  }
+  return { created: created.length, skipped };
 }
 
 async function updateInvoiceImpl(id: number, fd: FormData) {
@@ -204,6 +275,7 @@ async function reactivateInvoiceImpl(id: number) {
 export const createInvoice = safe(createInvoiceImpl, "facturas", "createInvoiceImpl");
 export const updateInvoice = safe(updateInvoiceImpl, "facturas", "updateInvoiceImpl");
 export const addPayment = safe(addPaymentImpl, "facturas", "addPaymentImpl");
+export const emitWeeklyInvoices = safe(emitWeeklyInvoicesImpl, "facturas", "emitWeeklyInvoicesImpl");
 export const deletePayment = safe(deletePaymentImpl, "facturas", "deletePaymentImpl");
 export const cancelInvoice = safe(cancelInvoiceImpl, "facturas", "cancelInvoiceImpl");
 export const reactivateInvoice = safe(reactivateInvoiceImpl, "facturas", "reactivateInvoiceImpl");

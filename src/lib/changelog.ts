@@ -18,6 +18,72 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-28-d",
+    kind: "new",
+    text: {
+      es: {
+        title: "Facturación semanal automática",
+        items: [
+          "Nueva pantalla Facturas → Facturación semanal: las facturas de servicio logístico de cada cliente se arman solas con sus órdenes diarias y el material de empaque de la semana.",
+          "Emite de un clic todas las que están listas, o revisa una por una antes de crearla.",
+          "Los clientes sin tarifa por paquete o con insumos sin precio quedan marcados para revisarlos.",
+          "Cada lunes verás en Inicio un aviso cuando haya clientes de la semana anterior por facturar.",
+        ],
+      },
+      en: {
+        title: "Automatic weekly billing",
+        items: [
+          "New screen Invoices → Weekly billing: each client's logistics service invoice is built automatically from the week's daily orders and packing material.",
+          "Issue all the ready ones in one click, or review each one before creating it.",
+          "Clients without a per-package rate or with unpriced supplies are flagged for review.",
+          "Every Monday you'll see a notice on Home when there are clients from the previous week to invoice.",
+        ],
+      },
+      zh: {
+        title: "每周自动开票",
+        items: [
+          "新增 发票 → 每周开票 页面：根据本周每日订单和包装材料，自动生成各客户的物流服务发票。",
+          "一键开具所有已就绪的发票，或在创建前逐一核对。",
+          "没有单件包裹费率或有耗材未定价的客户会被标出，需要核对。",
+          "每周一，如有上周待开票的客户，首页会显示提醒。",
+        ],
+      },
+    },
+  },
+  {
+    id: "2026-11-28-c",
+    kind: "new",
+    text: {
+      es: {
+        title: "Inventario de insumos de empaque con alertas",
+        items: [
+          "Nueva pestaña Órdenes diarias → Inventario: existencia de cada bolsa y caja, consumo diario y para cuántos días alcanza.",
+          "Registra las entradas del proveedor y haz conteos físicos; lo que se captura en Insumos de empaque se descuenta solo.",
+          "Pon un mínimo por material y te avisamos en Inicio y en Insumos de empaque cuando esté por agotarse o se haya agotado.",
+          "Para empezar, haz un conteo físico de cada material.",
+        ],
+      },
+      en: {
+        title: "Packing supplies inventory with alerts",
+        items: [
+          "New tab Daily orders → Inventory: stock of every bag and box, daily usage and how many days it will last.",
+          "Record supplier receipts and do physical counts; what's entered in Packing supplies is deducted automatically.",
+          "Set a minimum per material and you'll be warned on Home and in Packing supplies when it's running low or out.",
+          "To get started, do a physical count of each material.",
+        ],
+      },
+      zh: {
+        title: "包装耗材库存及提醒",
+        items: [
+          "新增 每日订单 → 库存 标签页：每种袋子和箱子的库存、日用量以及可用天数。",
+          "登记供应商入库并进行实物盘点；在“包装耗材”中录入的用量会自动扣减。",
+          "为每种材料设置最低库存，即将用完或已用完时会在首页和“包装耗材”中提醒你。",
+          "开始使用前，请先对每种材料做一次实物盘点。",
+        ],
+      },
+    },
+  },
+  {
     id: "2026-11-28-b",
     kind: "new",
     text: {

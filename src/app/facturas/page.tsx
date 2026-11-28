@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { AlarmClock, CircleCheck, FileUp, Plus, ReceiptText, Wallet } from "lucide-react";
+import { AlarmClock, CalendarRange, CircleCheck, FileUp, Plus, ReceiptText, Wallet } from "lucide-react";
+import { lastWeek, weeklyPending } from "@/lib/weekly-billing";
+import { companyToday } from "@/lib/orders";
 import { prisma } from "@/lib/db";
 import { PageHeader, StatusBadge, Empty, Stat } from "@/components/kit";
 import { FilterBar, PdfLink } from "@/components/list";
@@ -27,7 +29,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ? { status }
         : {};
   const search = q ? { OR: [{ folio: { contains: q, mode: "insensitive" as const } }, { client: { name: { contains: q, mode: "insensitive" as const } } }] } : {};
-  const [invoices, open, grouped, pendingImports] = await Promise.all([
+  const [invoices, open, grouped, pendingImports, weekly] = await Promise.all([
     prisma.invoice.findMany({
       where: { ...where, ...search },
       include: { client: { select: { name: true } } },
@@ -37,6 +39,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     prisma.invoice.findMany({ where: { status: { in: ["PENDIENTE", "PARCIAL"] } }, select: { total: true, paidTotal: true, dueDate: true, currency: true, exchangeRate: true } }),
     prisma.invoice.groupBy({ by: ["status"], where: search, _count: true }),
     prisma.wmsImport.count({ where: { status: "PENDIENTE" } }),
+    companyToday().then((d) => weeklyPending(lastWeek(d))),
   ]);
   // Las facturas en yuanes se suman en pesos con su tipo de cambio guardado (los totales siempre en MXN).
   const receivable = round2(open.reduce((a, i) => a + toMxn(i.total - i.paidTotal, i), 0));
@@ -52,6 +55,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         actions={
           <>
             <ExportButton kind="facturas" />
+            <Link href="/facturas/semanal" className="btn-secondary">
+              <CalendarRange className="size-4" /> {t("Facturación semanal")}
+              {weekly.pending > 0 && <span className="rounded-md bg-kurier px-1.5 text-[11px] text-white tabular-nums">{weekly.pending}</span>}
+            </Link>
             <Link href="/facturas/importar" className="btn-secondary">
               <FileUp className="size-4" /> {t("Importar del WMS")}
               {pendingImports > 0 && <span className="rounded-md bg-kurier px-1.5 text-[11px] text-white tabular-nums">{pendingImports}</span>}

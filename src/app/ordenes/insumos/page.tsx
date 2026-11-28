@@ -15,6 +15,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { cn } from "@/lib/utils";
 import { Tr } from "@/components/Tr";
 import { getT } from "@/lib/i18n/server";
+import { StockAlert } from "@/components/StockAlert";
+import { stockAlerts } from "@/lib/inventory";
 
 import { NumberField } from "@/components/NumberField";
 export const dynamic = "force-dynamic";
@@ -35,7 +37,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
   const monthKey = view === "cliente" && q.mes && MONTH_RE.test(q.mes) ? q.mes : date.slice(0, 7);
   const month = { from: `${monthKey}-01`, to: monthEndOf(`${monthKey}-01`) };
 
-  const [materials, hidden, clients, supplies, orders] = await Promise.all([
+  const [materials, hidden, clients, supplies, orders, alerts] = await Promise.all([
     prisma.packMaterial.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
     prisma.packMaterial.findMany({ where: { active: false }, orderBy: { name: "asc" } }),
     prisma.client.findMany({
@@ -51,6 +53,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
       where: { OR: [{ workDate: { gte: month.from, lte: month.to } }, { workDate: date }], quantity: { gt: 0 } },
       select: { workDate: true, clientId: true, quantity: true },
     }),
+    stockAlerts(today),
   ]);
 
   const sum = (rows: Row[], f: (r: Row) => boolean) => rows.reduce((a, r) => (f(r) ? a + r.quantity : a), 0);
@@ -84,6 +87,7 @@ export default async function SuppliesPage({ searchParams }: { searchParams: Pro
         actions={<ViewSwitch items={switchItems} active={view} />}
       />
       <OrdersTabs active="insumos" date={date} />
+      <StockAlert alerts={alerts} className="mb-6" />
       {view === "dia" ? (
         <DayView />
       ) : (

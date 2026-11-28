@@ -1,7 +1,7 @@
 import { formatCurrency } from "@/lib/currency";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity, CalendarRange } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader, Stat, StatusBadge, Empty, Panel } from "@/components/kit";
 import { ActivityHeatmap, BarList, ColumnChart, Delta, SegmentedBar } from "@/components/charts";
@@ -14,6 +14,13 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
 import { NoAccessNotice } from "@/components/NoAccessNotice";
 import { canManageUsers, getSessionUser } from "@/lib/current-user";
+import { canRead, canWrite } from "@/lib/permissions";
+import { companyToday } from "@/lib/orders";
+import { stockAlerts } from "@/lib/inventory";
+import { StockAlert } from "@/components/StockAlert";
+import { lastWeek, weeklyPending } from "@/lib/weekly-billing";
+import { rangeLabel } from "@/lib/orders";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +38,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const prevFrom = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - 1, 1));
   const prevTo = new Date(from.getTime() - 1);
   const year = lastMonthsRange(12);
-  const [stmt, prev, ar, ap, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat] = await Promise.all([
+  const [stmt, prev, ar, ap, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat, lowStock, weekly] = await Promise.all([
     incomeStatement(from, to),
     incomeStatement(prevFrom, prevTo),
     receivables(),
@@ -47,6 +54,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     topClients(year.from, year.to),
     recentActivity(9),
     activityByDay(17, settings.timezone || "America/Mexico_City"),
+    // Insumos por agotarse: solo para quien ve órdenes diarias
+    me && canRead(me.role, "ordenes") ? companyToday().then(stockAlerts) : Promise.resolve([]),
+    // Facturación semanal pendiente de la última semana completa: solo para quien emite facturas
+    me && canWrite(me.role, "facturas") ? companyToday().then((d) => weeklyPending(lastWeek(d))) : Promise.resolve(null),
   ]);
   const openTotal = round2(openQuotes._sum.total ?? 0);
   const overdue = round2(ar.total - ar.byBucket.corriente);
@@ -72,6 +83,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <div>
       {showNoAccess && <NoAccessNotice />}
+      <StockAlert alerts={lowStock} className="mb-6" />
+      {weekly && weekly.pending > 0 && (
+        <Alert className="mb-6">
+          <CalendarRange />
+          <AlertTitle>{t("Facturación semanal lista para revisar")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("{n} cliente(s) con órdenes de la semana {v0} sin factura.", { n: weekly.pending, v0: rangeLabel(weekly.week.from, weekly.week.to, locale) })}</p>
+            <Link href="/facturas/semanal" className="font-medium underline underline-offset-2">
+              {t("Ir a Facturación semanal")}
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
       <PageHeader
         title={t("Inicio")}
         subtitle={
