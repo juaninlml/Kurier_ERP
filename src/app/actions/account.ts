@@ -171,7 +171,10 @@ async function updateUserImpl(id: number, fd: FormData) {
   const role = str(fd, "role");
   if (!(ROLES as readonly string[]).includes(role) || role === "OWNER") throw new Error("Rol inválido.");
   if ((role === "ADMIN" || target.role === "ADMIN") && admin.role !== "OWNER") throw new Error("Solo la cuenta maestra puede cambiar administradores.");
-  await prisma.user.update({ where: { id }, data: { role, active: fd.get("active") === "on", ...(fd.get("unlock") === "on" ? { failedLogins: 0, lockedUntil: null } : {}) } });
+  const active = fd.get("active") === "on";
+  await prisma.user.update({ where: { id }, data: { role, active, ...(fd.get("unlock") === "on" ? { failedLogins: 0, lockedUntil: null } : {}) } });
+  // Al desactivar, sus links pendientes (p. ej. "restablecer autenticador") dejan de servir: si no, al usarlo se reactivaría solo
+  if (!active) await prisma.invitation.updateMany({ where: { email: target.email, usedAt: null, revokedAt: null }, data: { revokedAt: new Date() } });
   revalidatePath("/usuarios");
 }
 

@@ -8,16 +8,40 @@ import { BOROUGH_CENTER, km } from "./route-order";
  */
 export type LocationResult = { ok: true; lat: number; lng: number; warning: string } | { ok: false; error: string };
 
+/**
+ * Solo se abren direcciones de Google (google.com, google.com.mx, goo.gl, g.co…) y por HTTPS.
+ * Se revisa el dominio ya interpretado (no el texto): "google.com.otro-sitio.com" o
+ * "http://169.254.169.254/?google.com/maps" no pasan (evita que el servidor abra sitios internos).
+ */
+function googleUrl(raw: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  if (u.username || u.password || u.port) return null;
+  const h = u.hostname.toLowerCase();
+  const ok = h === "goo.gl" || h.endsWith(".goo.gl") || h === "g.co" || /^([a-z0-9-]+\.)*google\.(com|[a-z]{2}|com\.[a-z]{2}|co\.[a-z]{2})$/.test(h);
+  if (!ok) return null;
+  u.protocol = "https:";
+  return u.toString();
+}
+
 /** Sigue las redirecciones de un link corto (máx. 5) y regresa la última dirección + el HTML si no trae coordenadas. */
 async function expand(url: string): Promise<{ finalUrl: string; html: string }> {
   let current = url;
   for (let i = 0; i < 5; i++) {
+    const safeUrl = googleUrl(current);
+    if (!safeUrl) return { finalUrl: current, html: "" };
+    current = safeUrl;
     const res = await fetch(current, { redirect: "manual", signal: AbortSignal.timeout(6000), headers: { "User-Agent": "Mozilla/5.0 (compatible; KurierERP)" } });
     const next = res.headers.get("location");
     if (res.status >= 300 && res.status < 400 && next) {
       current = new URL(next, current).toString();
       // Solo dominios de Google (el servidor no sigue links hacia otros sitios)
-      if (!/^https:\/\/([a-z0-9-]+\.)*(google\.[a-z.]+|goo\.gl|g\.co)\//i.test(current)) return { finalUrl: current, html: "" };
+      if (!googleUrl(current)) return { finalUrl: current, html: "" };
       if (coordsFromText(current)) return { finalUrl: current, html: "" };
       continue;
     }
@@ -43,7 +67,7 @@ export async function resolveLocation(raw: string, borough?: string): Promise<Lo
   if (!text) return { ok: false, error: "Pega el link de ubicación." };
   let point: LatLng | null = coordsFromText(text);
   if (!point && /^https?:\/\//i.test(text)) {
-    if (!isShortMapsLink(text) && !/google\.[a-z.]+\/maps|maps\.google\./i.test(text)) {
+    if ((!isShortMapsLink(text) && !/google\.[a-z.]+\/maps|maps\.google\./i.test(text)) || !googleUrl(text)) {
       return { ok: false, error: "Ese link no es de Google Maps. Pide al cliente su ubicación de WhatsApp o un link de Maps." };
     }
     try {

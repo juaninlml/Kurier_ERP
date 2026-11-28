@@ -8,7 +8,7 @@ import { authorizeTotp } from "@/auth";
 import { safe, safePublic } from "@/lib/safe-action";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/current-user";
-import { decryptSecret, encryptSecret, newSecret, verifyCode } from "@/lib/totp";
+import { decryptSecret, encryptSecret, newSecret, safeEqual, verifyCode } from "@/lib/totp";
 import { autoCloseShifts, localParts, nextAction, PUNCH_LABEL, PUNCH_TYPES, toMin, validAlternatives, zonedTime, type PunchType } from "@/lib/attendance";
 import { LATES_PER_REST, monthLates } from "@/lib/incidents";
 import { numv, str } from "./helpers";
@@ -145,7 +145,7 @@ export async function kioskPunch(code: string): Promise<KioskResult> {
 export async function kioskChangeType(punchId: number, ticket: string, type: string): Promise<KioskResult> {
   const device = await currentDevice();
   if (!device) return { ok: false, error: "Esta tablet no está autorizada como kiosco." };
-  if (ticket !== ticketFor(punchId) || !(PUNCH_TYPES as readonly string[]).includes(type)) return { ok: false, error: "No se pudo corregir." };
+  if (!safeEqual(String(ticket ?? ""), ticketFor(punchId)) || !(PUNCH_TYPES as readonly string[]).includes(type)) return { ok: false, error: "No se pudo corregir." };
   const p = await prisma.punch.findUnique({ where: { id: punchId }, include: { employee: true } });
   if (!p || p.deviceId !== device.id || Date.now() - p.createdAt.getTime() > 90000) return { ok: false, error: "Ya no se puede corregir desde el kiosco; pide la corrección a tu supervisor." };
   const { tz } = await settings();

@@ -314,7 +314,18 @@ async function imageOf(fd: FormData, key: string, kinds: string[], label: string
   if (!(f instanceof File) || f.size === 0) throw new UserError("Falta {v0}.", { v0: label });
   if (!kinds.includes(f.type)) throw new UserError("Formato no válido en {v0}.", { v0: label });
   if (f.size > MAX_IMAGE) throw new UserError("Pesa demasiado {v0}; vuelve a tomarla.", { v0: label });
-  return { bytes: Buffer.from(await f.arrayBuffer()), mime: f.type };
+  const bytes = Buffer.from(await f.arrayBuffer());
+  // El tipo real sale de los primeros bytes (no del que declara el navegador) y es el que se guarda
+  const mime = imageMime(bytes);
+  if (!mime || !kinds.includes(mime)) throw new UserError("Formato no válido en {v0}.", { v0: label });
+  return { bytes, mime };
+}
+
+function imageMime(b: Buffer) {
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return null;
 }
 
 /** Confirma la entrega: quién recibió, firma y foto. La guía pasa a "Entregada". */
