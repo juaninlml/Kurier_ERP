@@ -914,4 +914,13 @@ export const en: Record<string, string> = {
   "Condiciones de pago por defecto (facturas)": "Default payment terms (invoices)",
   "Aviso al pie de la factura (usa **texto** para negritas)": "Invoice footer notice (use **text** for bold)",
   "Guardar configuración": "Save settings",
+  // Novedades (ventana al entrar y página /novedades)
+  "Novedades": "What's new",
+  "Novedades en Kurier ERP": "What's new in Kurier ERP",
+  "Lo que cambió desde tu última visita": "What changed since your last visit",
+  "Entendido": "Got it",
+  "Nuevo": "New",
+  "Mejora": "Improved",
+  "Corrección": "Fixed",
+  "Funciones nuevas, mejoras y correcciones de Kurier ERP.": "New features, improvements and fixes in Kurier ERP.",
 };

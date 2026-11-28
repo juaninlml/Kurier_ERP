@@ -879,4 +879,13 @@ export const zh: Messages = {
   "Condiciones de pago por defecto (facturas)": "默认付款条件（发票）",
   "Aviso al pie de la factura (usa **texto** para negritas)": "发票页脚提示（用 **文字** 表示加粗）",
   "Guardar configuración": "保存设置",
+  // Novedades (ventana al entrar y página /novedades)
+  "Novedades": "更新内容",
+  "Novedades en Kurier ERP": "Kurier ERP 更新内容",
+  "Lo que cambió desde tu última visita": "自你上次访问以来的变化",
+  "Entendido": "知道了",
+  "Nuevo": "新功能",
+  "Mejora": "改进",
+  "Corrección": "修复",
+  "Funciones nuevas, mejoras y correcciones de Kurier ERP.": "Kurier ERP 的新功能、改进和修复。",
 };

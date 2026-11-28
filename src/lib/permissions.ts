@@ -69,6 +69,7 @@ const ROUTES: [string, ModuleId][] = [
   ["/configuracion", "configuracion"],
   ["/bitacora", "bitacora"],
   ["/perfil", "perfil"],
+  ["/novedades", "perfil"], // historial de novedades: lo ve todo el que tiene perfil
   // PDFs y exportación
   ["/api/pdf/cotizacion", "cotizaciones"],
   ["/api/pdf/factura", "facturas"],

@@ -12,6 +12,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLang } from "@/lib/i18n/server";
 import { messagesFor } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { WhatsNew } from "@/components/WhatsNew";
+import { localizeChangelog, unseenChangelog } from "@/lib/changelog";
 import { isTheme, THEME_COOKIE, THEME_SCRIPT, VIEW_TRANSITION_GUARD } from "@/lib/theme";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -32,6 +34,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = me ? { name: me.name, email: me.email, image: me.image, role: me.role } : null;
   const signedIn = !!user;
   const arriving = signedIn && jar.get(ARRIVE_COOKIE)?.value === "1";
+  // Novedades que este usuario no ha visto (los repartidores solo usan la app de reparto: no se les muestran)
+  const news = me && me.role !== "REPARTIDOR" ? localizeChangelog(unseenChangelog(me.lastSeenChangelog), lang) : [];
 
   return (
     // La clase "dark" sale del servidor si el tema es oscuro; con "sistema" la pone el script antes de pintar
@@ -46,6 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="flex min-h-screen">
                 <ArrivalCurtain initial={arriving} />
                 <AppSidebar user={user} />
+                {news.length > 0 && <WhatsNew entries={news} />}
                 <div className="flex min-w-0 flex-1 flex-col">
                   <MobileNav user={user} />
                   <main data-app-main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">

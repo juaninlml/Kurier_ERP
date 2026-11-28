@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   Tags,
   UserRound,
+  Sparkles,
   Users,
   Wallet,
   type LucideIcon,
@@ -240,6 +241,11 @@ function UserMenu({ user }: { user: SidebarUser }) {
         <DropdownMenuItem asChild>
           <Link href="/perfil">
             <UserRound /> {t("Mi perfil")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/novedades">
+            <Sparkles /> {t("Novedades")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

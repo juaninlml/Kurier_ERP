@@ -13,6 +13,7 @@ import { decryptSecret, safeEqual, verifyCode } from "@/lib/totp";
 import { isLang, LANG_COOKIE } from "@/lib/i18n";
 import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { numv, str } from "./helpers";
+import { LATEST_CHANGELOG } from "@/lib/changelog";
 
 const YEAR = 60 * 60 * 24 * 365;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -86,7 +87,8 @@ async function confirmEnrollmentImpl(token: string, fd: FormData) {
   await prisma.$transaction([
     existing
       ? prisma.user.update({ where: { id: existing.id }, data: { ...auth, active: true, role, ...(name && !existing.name ? { name } : {}) } })
-      : prisma.user.create({ data: { ...auth, email, name, role, invitedById: inv!.createdById } }),
+      // Usuario nuevo: entra al día (no se le muestran las novedades anteriores a su alta)
+      : prisma.user.create({ data: { ...auth, email, name, role, invitedById: inv!.createdById, lastSeenChangelog: LATEST_CHANGELOG } }),
     prisma.invitation.update({ where: { id: inv!.id }, data: { usedAt: new Date(), usedByEmail: email, pendingSecret: "" } }),
   ]);
   redirect(`/login?vinculado=1&email=${encodeURIComponent(email)}`);
@@ -125,6 +127,13 @@ async function updateProfileImpl(fd: FormData) {
   });
   if (isLang(lang)) (await cookies()).set(LANG_COOKIE, lang, { sameSite: "lax", maxAge: YEAR, path: "/" });
   revalidatePath("/", "layout");
+}
+
+/** Cierra la ventana de novedades: queda como vista la más reciente (no la que diga el navegador). */
+async function markChangelogSeenImpl() {
+  const user = await getCurrentUser();
+  if (user.lastSeenChangelog >= LATEST_CHANGELOG) return;
+  await prisma.user.update({ where: { id: user.id }, data: { lastSeenChangelog: LATEST_CHANGELOG } });
 }
 
 // ───────────── Usuarios e invitaciones ─────────────
@@ -183,6 +192,8 @@ export const setInvitationIdentity = safePublic(setInvitationIdentityImpl);
 export const confirmEnrollment = safePublic(confirmEnrollmentImpl);
 export const startOwnerSetup = safePublic(startOwnerSetupImpl);
 export const setLanguage = safePublic(setLanguageImpl);
+// Sin bitácora: marcar novedades como vistas no es un cambio de datos del negocio
+export const markChangelogSeen = safePublic(markChangelogSeenImpl);
 export const updateProfile = safe(updateProfileImpl, "perfil", "updateProfileImpl");
 export const createInvitation = safe(createInvitationImpl, "usuarios", "createInvitationImpl");
 export const createResetLink = safe(createResetLinkImpl, "usuarios", "createResetLinkImpl");
