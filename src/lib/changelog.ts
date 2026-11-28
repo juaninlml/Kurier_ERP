@@ -18,6 +18,45 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-28-e",
+    kind: "improved",
+    text: {
+      es: {
+        title: "Más fácil encontrar las cosas y ver lo pendiente",
+        items: [
+          "Menú reorganizado por tarea: Operación, Ventas, Facturación y cobro, Finanzas y Personal. Los grupos se pueden plegar. Insumos e Inventario ahora están como pestañas dentro de Órdenes diarias.",
+          "Contadores en el menú: facturas vencidas en Cobranza, insumos por agotarse en Órdenes diarias, clientes sin facturar en Facturación semanal y pagos vencidos en Cuentas por pagar.",
+          "Buscador general: presiona Ctrl+K (⌘K en Mac) o «Buscar…» para encontrar clientes, folios, guías, proveedores, empleados y secciones, o para crear una factura o capturar órdenes.",
+          "Inicio tiene «Pendientes de hoy»: capturas del día, semana por facturar, promesas de pago, vencidos, pagos a proveedores, insumos por agotarse, envíos sin entregar y empleados sin checar, cada uno con su botón.",
+          "Inicio separa lo facturado del mes de lo cobrado, y quien no ve finanzas ve paquetes y envíos del día.",
+          "El promedio del mes en Órdenes diarias ya no cuenta las semanas anteriores a la primera captura.",
+        ],
+      },
+      en: {
+        title: "Easier to find things and see what's pending",
+        items: [
+          "Menu reorganized by task: Operations, Sales, Billing & collections, Finance and People. Groups can be collapsed. Supplies and Inventory are now tabs inside Daily orders.",
+          "Counters in the menu: overdue invoices in Collections, supplies running low in Daily orders, clients not yet invoiced in Weekly billing and overdue payments in Accounts payable.",
+          "Global search: press Ctrl+K (⌘K on Mac) or “Search…” to find clients, folios, tracking numbers, suppliers, employees and sections, or to create an invoice or enter orders.",
+          "Home now has “Today's to-dos”: today's entries, week to invoice, payment promises, overdue amounts, supplier payments, low supplies, undelivered shipments and employees who haven't clocked in, each with its button.",
+          "Home separates what was invoiced this month from what was collected, and people without finance access see today's packages and shipments.",
+          "The monthly average in Daily orders no longer counts weeks before the first entry.",
+        ],
+      },
+      zh: {
+        title: "更容易找到内容、看到待办",
+        items: [
+          "菜单按任务重新分组：运营、销售、开票与收款、财务、人员。分组可以折叠。耗材和库存现在是“每日订单”里的标签页。",
+          "菜单中显示计数：收款中的逾期发票、每日订单中即将用完的物料、每周开票中未开票的客户、应付账款中的逾期付款。",
+          "全局搜索：按 Ctrl+K（Mac 为 ⌘K）或点“搜索…”，查找客户、单号、运单号、供应商、员工和页面，或直接新建发票、录入订单。",
+          "首页新增“今日待办”：当日录入、待开票的一周、付款承诺、逾期款项、供应商付款、即将用完的物料、未送达的配送和未打卡的员工，每项都有直达按钮。",
+          "首页将本月开票与本月收款分开显示；没有财务权限的人看到当日包裹和配送。",
+          "每日订单的月平均值不再计入首次录入之前的周。",
+        ],
+      },
+    },
+  },
+  {
     id: "2026-11-28-d",
     kind: "new",
     text: {

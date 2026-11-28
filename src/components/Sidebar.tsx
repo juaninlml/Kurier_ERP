@@ -5,45 +5,7 @@ import { usePathname } from "next/navigation";
 import { KidoBrand } from "./KidoLogo";
 import { SessionCurtain } from "./SessionCurtain";
 import { useEffect, useState, useTransition } from "react";
-import {
-  BarChart3,
-  Building2,
-  Truck,
-  PackageCheck,
-  PackageMinus,
-  ScanLine,
-  Receipt,
-  Landmark,
-  Target,
-  PieChart,
-  History,
-  ChevronsUpDown,
-  Clock,
-  HandCoins,
-  BellRing,
-  CalendarRange,
-  Warehouse,
-  FileUp,
-  PackageOpen,
-  Boxes,
-  FileText,
-  Languages,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Monitor,
-  Moon,
-  Sun,
-  ReceiptText,
-  Settings,
-  ShieldCheck,
-  Tags,
-  UserRound,
-  Sparkles,
-  Users,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Languages, LogOut, Menu, Monitor, Moon, Search, Sparkles, Sun, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -62,65 +24,37 @@ import { setLanguage, signOutAction } from "@/app/actions/account";
 import { LANGS, LANG_NAMES } from "@/lib/i18n/core";
 import { DOOR_COVERED_MS, stampDoor, type Door } from "@/lib/session-ui";
 import { canOpen, ROLE_LABEL } from "@/lib/permissions";
+import { NAV, activeHref, type NavBadge } from "./nav-items";
+import { CommandPalette, openCommandPalette } from "./CommandPalette";
 
 export type SidebarUser = { name: string; email: string; image: string; role: string };
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
-const NAV: { title: string; items: NavItem[] }[] = [
-  { title: "General", items: [{ href: "/", label: "Inicio", icon: LayoutDashboard }] },
-  {
-    title: "Ventas",
-    items: [
-      { href: "/cotizaciones", label: "Cotizaciones", icon: FileText },
-      { href: "/facturas", label: "Facturas", icon: ReceiptText },
-      { href: "/facturas/semanal", label: "Facturación semanal", icon: CalendarRange },
-      { href: "/facturas/importar", label: "Importar del WMS", icon: FileUp },
-      { href: "/ordenes", label: "Órdenes diarias", icon: PackageOpen },
-      { href: "/ordenes/insumos", label: "Insumos de empaque", icon: Boxes },
-      { href: "/ordenes/inventario", label: "Inventario de insumos", icon: Warehouse },
-      { href: "/envios", label: "Envíos última milla", icon: PackageCheck },
-      { href: "/salidas", label: "Salidas de mercancía", icon: PackageMinus },
-      { href: "/reparto", label: "Reparto", icon: ScanLine },
-      { href: "/clientes", label: "Clientes", icon: Users },
-      { href: "/servicios", label: "Tarifario", icon: Tags },
-    ],
-  },
-  {
-    title: "Finanzas",
-    items: [
-      { href: "/contabilidad", label: "Contabilidad", icon: Wallet },
-      { href: "/proveedores", label: "Proveedores", icon: Truck },
-      { href: "/cobranza", label: "Cobranza", icon: BellRing },
-      { href: "/cuentas-por-pagar", label: "Cuentas por pagar", icon: Receipt },
-      { href: "/contabilidad/conciliacion", label: "Conciliación bancaria", icon: Landmark },
-      { href: "/contabilidad/presupuesto", label: "Presupuesto", icon: Target },
-      { href: "/contabilidad/gastos-fijos", label: "Gastos fijos", icon: Building2 },
-      { href: "/nomina", label: "Nómina", icon: HandCoins },
-      { href: "/nomina/asistencias", label: "Asistencias", icon: Clock },
-      { href: "/contabilidad/reportes", label: "Reportes", icon: BarChart3 },
-      { href: "/contabilidad/rentabilidad", label: "Rentabilidad por cliente", icon: PieChart },
-    ],
-  },
-  {
-    title: "Sistema",
-    items: [
-      { href: "/usuarios", label: "Usuarios y accesos", icon: ShieldCheck },
-      { href: "/bitacora", label: "Bitácora", icon: History },
-      { href: "/configuracion", label: "Configuración", icon: Settings },
-    ],
-  },
-];
+export type NavBadges = Record<string, NavBadge>;
 
-function useIsActive() {
-  const pathname = usePathname();
-  return (href: string) => {
-    if (href === "/") return pathname === "/";
-    if (href === "/facturas") return pathname.startsWith("/facturas") && !pathname.startsWith("/facturas/importar") && !pathname.startsWith("/facturas/semanal");
-    if (href === "/ordenes") return pathname.startsWith("/ordenes") && !pathname.startsWith("/ordenes/insumos") && !pathname.startsWith("/ordenes/inventario");
-    if (href === "/nomina") return pathname.startsWith("/nomina") && !pathname.startsWith("/nomina/asistencias");
-    if (href === "/contabilidad") return pathname === "/contabilidad" || pathname.startsWith("/contabilidad/movimientos");
-    return pathname.startsWith(href);
-  };
+const COLLAPSED_KEY = "kurier_nav_collapsed";
+
+/** Grupos plegados (se recuerdan en este navegador). */
+function useCollapsed() {
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+      if (Array.isArray(v)) setCollapsed(v.filter((x) => typeof x === "string"));
+    } catch {
+      /* sin almacenamiento: todo abierto */
+    }
+  }, []);
+  const toggle = (id: string) =>
+    setCollapsed((c) => {
+      const next = c.includes(id) ? c.filter((x) => x !== id) : [...c, id];
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        /* ignora */
+      }
+      return next;
+    });
+  return { collapsed, toggle };
 }
 
 function Brand() {
@@ -152,54 +86,114 @@ function PendingDot() {
   );
 }
 
-function NavLinks({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => void }) {
-  const isActiveNow = useIsActive();
+function NavLinks({ user, badges = {}, onNavigate }: { user: SidebarUser; badges?: NavBadges; onNavigate?: () => void }) {
   const pathname = usePathname();
   // Marca la opción en cuanto se da clic (sin esperar a que el servidor responda)
   const [clicked, setClicked] = useState<string | null>(null);
   useEffect(() => setClicked(null), [pathname]);
-  const isActive = (href: string) => (clicked ? clicked === href : isActiveNow(href));
+  const current = clicked ?? activeHref(pathname);
+  const { collapsed, toggle } = useCollapsed();
   const t = useT();
   return (
-    <nav className="flex flex-col gap-5">
+    <nav className="flex flex-col gap-3">
       {NAV.map((group) => {
         // Solo las secciones que el rol puede consultar (ver src/lib/permissions.ts)
         const items = group.items.filter((i) => canOpen(user.role, i.href));
         if (!items.length) return null;
+        const hasActive = items.some((i) => i.href === current);
+        // El grupo de la sección abierta nunca se pliega; plegado, muestra la suma de sus pendientes.
+        const open = group.id === "general" || hasActive || !collapsed.includes(group.id);
+        const hidden = items.reduce((a, i) => a + (badges[i.href]?.n ?? 0), 0);
+        const hiddenAlert = items.some((i) => badges[i.href]?.tone === "alert");
         return (
-          <div key={group.title}>
-            <div className="mb-1.5 px-3 text-[11px] font-medium tracking-wide text-sidebar-foreground/45 uppercase">{t(group.title)}</div>
-            <ul className="flex flex-col gap-0.5">
-              {items.map(({ href, label, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      onClick={(e) => {
-                        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) setClicked(href);
-                        onNavigate?.();
-                      }}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
-                        active
-                          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                      )}
-                    >
-                      <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-primary" : "opacity-70 group-hover:opacity-100")} />
-                      {t(label)}
-                      <PendingDot />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+          <div key={group.id}>
+            {group.id !== "general" && (
+              <button
+                type="button"
+                onClick={() => !hasActive && toggle(group.id)}
+                aria-expanded={open}
+                className="mb-1 flex w-full items-center gap-1.5 rounded-md px-3 py-1 text-left text-[11px] font-medium tracking-wide text-sidebar-foreground/45 uppercase transition-colors outline-none hover:text-sidebar-foreground/75 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              >
+                <span className="flex-1">{t(group.title)}</span>
+                {!open && hidden > 0 && <Count n={hidden} tone={hiddenAlert ? "alert" : "info"} />}
+                {!hasActive && <ChevronDown aria-hidden className={cn("size-3.5 transition-transform duration-(--dur-state)", !open && "-rotate-90")} />}
+              </button>
+            )}
+            {open && (
+              <ul className="flex flex-col gap-0.5">
+                {items.map(({ href, label, icon: Icon }) => {
+                  const active = current === href;
+                  const badge = badges[href];
+                  return (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        onClick={(e) => {
+                          if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) setClicked(href);
+                          onNavigate?.();
+                        }}
+                        aria-current={active ? "page" : undefined}
+                        title={badge?.title}
+                        className={cn(
+                          "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                        )}
+                      >
+                        <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-primary" : "opacity-70 group-hover:opacity-100")} />
+                        <span className="min-w-0 flex-1 truncate">{t(label)}</span>
+                        {badge ? (
+                          <>
+                            <Count n={badge.n} tone={badge.tone} />
+                            <span className="sr-only">{badge.title}</span>
+                          </>
+                        ) : (
+                          <PendingDot />
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         );
       })}
     </nav>
+  );
+}
+
+/** Contador de pendientes: rojo si requiere atención, neutro si es informativo. */
+function Count({ n, tone }: { n: number; tone: "alert" | "info" }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10.5px] leading-none font-semibold tabular-nums",
+        tone === "alert" ? "bg-rose-600 text-white" : "bg-sidebar-primary/15 text-sidebar-primary",
+      )}
+    >
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
+/** Botón que abre el buscador (Ctrl+K / ⌘K). */
+function SearchButton() {
+  const t = useT();
+  const [mac, setMac] = useState(false);
+  useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform)), []);
+  return (
+    <button
+      type="button"
+      onClick={openCommandPalette}
+      className="flex h-9 w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 text-left text-sm text-sidebar-foreground/60 transition-colors outline-none hover:bg-sidebar-accent/70 hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+    >
+      <Search className="size-4 shrink-0" aria-hidden />
+      <span className="flex-1 truncate">{t("Buscar…")}</span>
+      <kbd className="rounded border border-sidebar-border px-1.5 font-sans text-[10.5px] text-sidebar-foreground/55">{mac ? "⌘K" : "Ctrl K"}</kbd>
+    </button>
   );
 }
 
@@ -300,12 +294,13 @@ function UserMenu({ user }: { user: SidebarUser }) {
 }
 
 /** Barra lateral fija (escritorio). */
-export function AppSidebar({ user }: { user: SidebarUser }) {
+export function AppSidebar({ user, badges }: { user: SidebarUser; badges?: NavBadges }) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-4 border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
       <Brand />
-      <div className="flex-1 overflow-y-auto">
-        <NavLinks user={user} />
+      <SearchButton />
+      <div className="-mx-1 flex-1 overflow-y-auto px-1">
+        <NavLinks user={user} badges={badges} />
       </div>
       <UserMenu user={user} />
     </aside>
@@ -313,7 +308,7 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
 }
 
 /** Barra superior con menú deslizable (celular y tablet). */
-export function MobileNav({ user }: { user: SidebarUser }) {
+export function MobileNav({ user, badges }: { user: SidebarUser; badges?: NavBadges }) {
   const [open, setOpen] = useState(false);
   const t = useT();
   return (
@@ -324,18 +319,30 @@ export function MobileNav({ user }: { user: SidebarUser }) {
             <Menu />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="flex w-64 flex-col border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
+        <SheetContent side="left" className="flex w-72 flex-col border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
           <SheetHeader className="p-0 pb-4">
             <SheetTitle className="sr-only">{t("Menú")}</SheetTitle>
             <Brand />
           </SheetHeader>
+          <div className="pb-3">
+            <SearchButton />
+          </div>
           <div className="flex-1 overflow-y-auto">
-            <NavLinks user={user} onNavigate={() => setOpen(false)} />
+            <NavLinks user={user} badges={badges} onNavigate={() => setOpen(false)} />
           </div>
           <UserMenu user={user} />
         </SheetContent>
       </Sheet>
       <Brand />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        aria-label={t("Buscar")}
+        onClick={openCommandPalette}
+      >
+        <Search />
+      </Button>
     </header>
   );
 }

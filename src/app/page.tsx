@@ -1,7 +1,7 @@
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, formatCurrencyCode, toMxn } from "@/lib/currency";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity, CalendarRange } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, FileText, Plus, Receipt, ReceiptText, Wallet, ClipboardList, Activity, FileCheck2, Package, PackageCheck, CalendarRange } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader, Stat, StatusBadge, Empty, Panel } from "@/components/kit";
 import { ActivityHeatmap, BarList, ColumnChart, Delta, SegmentedBar } from "@/components/charts";
@@ -14,13 +14,11 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { localeOf } from "@/lib/i18n";
 import { NoAccessNotice } from "@/components/NoAccessNotice";
 import { canManageUsers, getSessionUser } from "@/lib/current-user";
-import { canRead, canWrite } from "@/lib/permissions";
-import { companyToday } from "@/lib/orders";
-import { stockAlerts } from "@/lib/inventory";
-import { StockAlert } from "@/components/StockAlert";
-import { lastWeek, weeklyPending } from "@/lib/weekly-billing";
-import { rangeLabel } from "@/lib/orders";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { canRead } from "@/lib/permissions";
+import { addDaysStr } from "@/lib/attendance";
+import { companyToday, dayLong, weekOf } from "@/lib/orders";
+import { todayPending } from "@/lib/today-pending";
+import { TodayPanel } from "@/components/TodayPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +36,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const prevFrom = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - 1, 1));
   const prevTo = new Date(from.getTime() - 1);
   const year = lastMonthsRange(12);
-  const [stmt, prev, ar, ap, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat, lowStock, weekly] = await Promise.all([
+  // Quien no consulta contabilidad (p. ej. ventas) ve indicadores de operación en lugar de los de dinero.
+  const finance = !!me && canRead(me.role, "contabilidad");
+  const ops = !!me && canRead(me.role, "ordenes");
+  const today = await companyToday();
+  const [stmt, prev, ar, ap, openQuotes, recentInvoices, recentQuotes, flow, pipeline, clients, activity, heat, pending, billed, opsStats] = await Promise.all([
     incomeStatement(from, to),
     incomeStatement(prevFrom, prevTo),
     receivables(),
@@ -54,10 +56,21 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     topClients(year.from, year.to),
     recentActivity(9),
     activityByDay(17, settings.timezone || "America/Mexico_City"),
-    // Insumos por agotarse: solo para quien ve órdenes diarias
-    me && canRead(me.role, "ordenes") ? companyToday().then(stockAlerts) : Promise.resolve([]),
-    // Facturación semanal pendiente de la última semana completa: solo para quien emite facturas
-    me && canWrite(me.role, "facturas") ? companyToday().then((d) => weeklyPending(lastWeek(d))) : Promise.resolve(null),
+    // Pendientes de hoy, solo de las secciones que el rol puede ver
+    me ? todayPending(me.role, t, locale) : Promise.resolve([]),
+    // Facturado en el mes (emitido, en MXN): se muestra junto a lo cobrado para no confundirlos
+    prisma.invoice
+      .findMany({ where: { issueDate: { gte: from, lte: to }, status: { not: "CANCELADA" } }, select: { total: true, currency: true, exchangeRate: true } })
+      .then((r) => ({ total: round2(r.reduce((a, i) => a + toMxn(i.total, i), 0)), count: r.length })),
+    // Operación: paquetes de hoy, de la semana y envíos de hoy
+    !finance && ops
+      ? Promise.all([
+          prisma.dailyOrder.aggregate({ where: { workDate: today }, _sum: { quantity: true } }),
+          prisma.dailyOrder.aggregate({ where: { workDate: addDaysStr(today, -7) }, _sum: { quantity: true } }),
+          prisma.dailyOrder.aggregate({ where: { workDate: { gte: weekOf(today).from, lte: today } }, _sum: { quantity: true } }),
+          me && canRead(me.role, "envios") ? prisma.shipment.count({ where: { createdAt: { gte: new Date(`${today}T06:00:00Z`) } } }) : Promise.resolve(null),
+        ]).then(([d, prevD, w, ship]) => ({ day: d._sum.quantity ?? 0, prevDay: prevD._sum.quantity ?? 0, week: w._sum.quantity ?? 0, shipments: ship }))
+      : Promise.resolve(null),
   ]);
   const openTotal = round2(openQuotes._sum.total ?? 0);
   const overdue = round2(ar.total - ar.byBucket.corriente);
@@ -83,25 +96,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <div>
       {showNoAccess && <NoAccessNotice />}
-      <StockAlert alerts={lowStock} className="mb-6" />
-      {weekly && weekly.pending > 0 && (
-        <Alert className="mb-6">
-          <CalendarRange />
-          <AlertTitle>{t("Facturación semanal lista para revisar")}</AlertTitle>
-          <AlertDescription>
-            <p>{t("{n} cliente(s) con órdenes de la semana {v0} sin factura.", { n: weekly.pending, v0: rangeLabel(weekly.week.from, weekly.week.to, locale) })}</p>
-            <Link href="/facturas/semanal" className="font-medium underline underline-offset-2">
-              {t("Ir a Facturación semanal")}
-            </Link>
-          </AlertDescription>
-        </Alert>
-      )}
       <PageHeader
         title={t("Inicio")}
         subtitle={
           <>
-            {t("Resumen de")} <span className="font-medium text-foreground">{monthName}</span> · {t("utilidad del mes")}{" "}
-            <span className={net >= 0 ? "font-medium text-emerald-700" : "font-medium text-rose-700"}>{formatMoney(net)}</span>
+            {t("Resumen de")} <span className="font-medium text-foreground">{monthName}</span>
+            {finance && (
+              <>
+                {" "}
+                · {t("flujo del mes (cobrado − pagado)")}{" "}
+                <span className={net >= 0 ? "font-medium text-emerald-700" : "font-medium text-rose-700"}>{formatMoney(net)}</span>
+              </>
+            )}
           </>
         }
         actions={
@@ -115,44 +121,74 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </>
         }
       />
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-        <Stat
-          label={t("Ingresos del mes")}
-          value={formatMoney(stmt.incomeTotal)}
-          tone="pos"
-          icon={ArrowUpRight}
-          href="/contabilidad"
-          delta={<Delta pct={pctChange(stmt.incomeTotal, prev.incomeTotal)} />}
-          hint={t("vs. mes anterior")}
-        />
-        <Stat
-          label={t("Egresos del mes")}
-          value={formatMoney(stmt.expenseTotal)}
-          tone="neg"
-          icon={ArrowDownRight}
-          href="/contabilidad"
-          delta={<Delta pct={pctChange(stmt.expenseTotal, prev.expenseTotal)} goodWhenUp={false} />}
-          hint={t("vs. mes anterior")}
-        />
-        <Stat
-          label={t("Por cobrar")}
-          value={formatMoney(ar.total)}
-          hint={overdue > 0 ? t("{amount} vencido", { amount: formatMoney(overdue) }) : t("Todo al corriente")}
-          icon={Wallet}
-          href={overdue > 0 ? "/facturas?status=VENCIDA" : "/facturas"}
-        />
-        <Stat
-          label={t("Por pagar")}
-          value={formatMoney(ap.total)}
-          tone={apOverdue > 0 ? "neg" : undefined}
-          hint={apOverdue > 0 ? t("{amount} vencido", { amount: formatMoney(apOverdue) }) : ap.total > 0 ? t("Todo al corriente") : t("Sin cuentas pendientes")}
-          icon={Receipt}
-          href={apOverdue > 0 ? "/cuentas-por-pagar?status=VENCIDA" : "/cuentas-por-pagar"}
-        />
-        <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes._count._all })} icon={ClipboardList} href="/cotizaciones" />
-      </div>
+      <TodayPanel items={pending} dateLabel={dayLong(today)} />
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+      {finance ? (
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <Stat
+            label={t("Facturado del mes")}
+            value={formatMoney(billed.total)}
+            icon={FileCheck2}
+            href="/facturas"
+            hint={t("{n} factura(s) emitidas · en MXN", { n: billed.count })}
+          />
+          <Stat
+            label={t("Cobrado del mes")}
+            value={formatMoney(stmt.incomeTotal)}
+            tone="pos"
+            icon={ArrowUpRight}
+            href="/contabilidad"
+            delta={<Delta pct={pctChange(stmt.incomeTotal, prev.incomeTotal)} />}
+            hint={t("ingresos registrados · vs. mes anterior")}
+          />
+          <Stat
+            label={t("Egresos del mes")}
+            value={formatMoney(stmt.expenseTotal)}
+            tone="neg"
+            icon={ArrowDownRight}
+            href="/contabilidad"
+            delta={<Delta pct={pctChange(stmt.expenseTotal, prev.expenseTotal)} goodWhenUp={false} />}
+            hint={t("vs. mes anterior")}
+          />
+          <Stat
+            label={t("Por cobrar")}
+            value={formatMoney(ar.total)}
+            hint={overdue > 0 ? t("{amount} vencido", { amount: formatMoney(overdue) }) : t("Todo al corriente")}
+            icon={Wallet}
+            href={overdue > 0 ? "/facturas?status=VENCIDA" : "/facturas"}
+          />
+          <Stat
+            label={t("Por pagar")}
+            value={formatMoney(ap.total)}
+            tone={apOverdue > 0 ? "neg" : undefined}
+            hint={apOverdue > 0 ? t("{amount} vencido", { amount: formatMoney(apOverdue) }) : ap.total > 0 ? t("Todo al corriente") : t("Sin cuentas pendientes")}
+            icon={Receipt}
+            href={apOverdue > 0 ? "/cuentas-por-pagar?status=VENCIDA" : "/cuentas-por-pagar"}
+          />
+          <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes._count._all })} icon={ClipboardList} href="/cotizaciones" />
+        </div>
+      ) : (
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {opsStats && (
+            <>
+              <Stat
+                label={t("Paquetes de hoy")}
+                value={String(opsStats.day)}
+                icon={Package}
+                href="/ordenes"
+                delta={opsStats.prevDay ? <Delta pct={pctChange(opsStats.day, opsStats.prevDay)} /> : undefined}
+                hint={t("vs. mismo día de la semana pasada")}
+              />
+              <Stat label={t("Paquetes de la semana")} value={String(opsStats.week)} icon={CalendarRange} href="/ordenes" hint={t("De lunes a hoy")} />
+              {opsStats.shipments !== null && <Stat label={t("Envíos de hoy")} value={String(opsStats.shipments)} icon={PackageCheck} href="/envios" />}
+            </>
+          )}
+          <Stat label={t("Cotizaciones abiertas")} value={formatMoney(openTotal)} hint={t("{n} en seguimiento", { n: openQuotes._count._all })} icon={ClipboardList} href="/cotizaciones" />
+        </div>
+      )}
+
+      <div className={finance ? "mb-6 grid gap-6 xl:grid-cols-3" : "mb-6 grid gap-6 xl:grid-cols-2 [&>div]:contents"}>
+        {finance && (
         <Panel
           className="xl:col-span-2"
           title={t("Flujo de efectivo")}
@@ -180,6 +216,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             emptyText={t("Aún no hay movimientos registrados.")}
           />
         </Panel>
+        )}
 
         <div className="grid gap-6">
           <Panel
@@ -289,7 +326,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                         <td>
                           <StatusBadge status={r.status} />
                         </td>
-                        <td className="text-right font-medium tabular-nums">{formatCurrency(r.total, r.currency)}</td>
+                        <td className="text-right font-medium tabular-nums">{r.currency === "MXN" ? formatCurrency(r.total, r.currency) : formatCurrencyCode(r.total, r.currency)}</td>
                       </tr>
                     ))}
                   </tbody>

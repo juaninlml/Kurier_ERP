@@ -13,6 +13,8 @@ import {
   orderRateOf,
   weekSegments,
   weeklyAverages,
+  firstCaptureDate,
+  averagingStart,
   workdaysBetween,
   rangeLabel,
   sumRange,
@@ -52,7 +54,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const from = [week.from, month.from, chartFrom].sort()[0]!;
   const to = [week.to, month.to].sort().at(-1)!;
 
-  const [waves, hiddenWaves, clients, orders, invoices] = await Promise.all([
+  const [waves, hiddenWaves, clients, orders, invoices, firstCapture] = await Promise.all([
     prisma.orderWave.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
     prisma.orderWave.findMany({ where: { active: false }, orderBy: { name: "asc" } }),
     prisma.client.findMany({
@@ -62,6 +64,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     }),
     prisma.dailyOrder.findMany({ where: { workDate: { gte: from, lte: to }, quantity: { gt: 0 } }, select: { workDate: true, clientId: true, waveId: true, quantity: true } }),
     prisma.invoice.findMany({ where: { ordersWeek: week.from, status: { not: "CANCELADA" } }, select: { id: true, folio: true, clientId: true } }),
+    firstCaptureDate(),
   ]);
 
   // Captura del día
@@ -81,7 +84,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const weekTotal = sumRange(orders, week.from, week.to);
   const weekDays = workdaysBetween(week.from, week.to, date);
   const monthTotal = sumRange(orders, month.from, month.to);
-  const monthSegments = weekSegments(month.from, month.to, date);
+  // Las semanas anteriores a la primera captura no cuentan (aún no se usaba el ERP).
+  const monthStart = averagingStart(month.from, firstCapture);
+  const monthSegments = monthStart <= month.to ? weekSegments(monthStart, month.to, date) : [];
   const monthStats = weeklyAverages(orders, monthSegments);
 
   // Últimos 35 días (tendencia)
@@ -204,6 +209,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         description={
           <>
             <Tr>Semanas de lunes a sábado; la primera y la última pueden quedar cortadas por el cambio de mes. El promedio del mes es el promedio de los promedios de cada semana.</Tr>
+            {monthStart > month.from && (
+              <>
+                {" "}
+                {t("Cuenta desde {v0}, el primer día con órdenes capturadas.", { v0: dayShort(monthStart) })}
+              </>
+            )}
           </>
         }
         bodyClassName="p-0"

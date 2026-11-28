@@ -46,7 +46,7 @@ export default async function InventoryPage() {
 
   return (
     <div>
-      <PageHeader title={t("Órdenes diarias")} subtitle={t("Existencias de bolsas, cajas y demás insumos de empaque, con alerta cuando se están acabando.")} />
+      <PageHeader title={t("Inventario de insumos")} subtitle={t("Existencias de bolsas, cajas y demás insumos de empaque, con alerta cuando se están acabando.")} />
       <OrdersTabs active="inventario" date={today} />
 
       <StockAlert alerts={alerts.map((a) => ({ id: a.id, name: a.name, stock: a.stock ?? 0, minStock: a.minStock, days: a.days, status: a.status as "out" | "low" }))} className="mb-6" />

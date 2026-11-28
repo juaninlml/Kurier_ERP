@@ -128,7 +128,8 @@ export async function clientOrdersSummary(clientId: number, from: string, to: st
   const byMaterial = materials.filter((m) => used2.get(m.id)).map((m) => ({ id: m.id, name: m.name, size: m.size, noSupply: m.noSupply, unitPrice: m.noSupply ? 0 : m.unitPrice, total: used2.get(m.id)! }));
   // Promedios con semanas de lunes a sábado (hasta hoy si el periodo sigue en curso).
   const today = await companyToday();
-  const weekly = weeklyAverages(orders, weekSegments(from, to, today < to ? today : to));
+  const start = averagingStart(from, await firstCaptureDate());
+  const weekly = weeklyAverages(orders, start <= to ? weekSegments(start, to, today < to ? today : to) : []);
   return { client, waves: cols, days, byWave, total, rate, from, to, byMaterial, weekly };
 }
 
@@ -179,3 +180,15 @@ export function weeklyAverages(orders: OrderRow[], segments: WeekSegment[], clie
     weeklyAvg: mean(counted.map((w) => w.total)),
   };
 }
+
+/**
+ * Primer día con órdenes capturadas en el ERP. Las semanas anteriores no cuentan para los
+ * promedios: no son semanas sin trabajo, son semanas en que todavía no se usaba el sistema.
+ */
+export async function firstCaptureDate() {
+  const r = await prisma.dailyOrder.findFirst({ where: { quantity: { gt: 0 } }, orderBy: { workDate: "asc" }, select: { workDate: true } });
+  return r?.workDate ?? null;
+}
+
+/** Inicio efectivo de un periodo para promedios: el mayor entre el inicio y la primera captura. */
+export const averagingStart = (from: string, first: string | null) => (first && first > from ? first : from);

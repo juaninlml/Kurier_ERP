@@ -9,7 +9,9 @@ import { PageTransition } from "@/components/PageTransition";
 import { ArrivalCurtain } from "@/components/SessionCurtain";
 import { ARRIVE_COOKIE } from "@/lib/session-ui";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getLang } from "@/lib/i18n/server";
+import { getLang, getT } from "@/lib/i18n/server";
+import { navBadges } from "@/lib/nav-badges";
+import { CommandPalette } from "@/components/CommandPalette";
 import { messagesFor } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { WhatsNew } from "@/components/WhatsNew";
@@ -36,6 +38,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const arriving = signedIn && jar.get(ARRIVE_COOKIE)?.value === "1";
   // Novedades que este usuario no ha visto (los repartidores solo usan la app de reparto: no se les muestran)
   const news = me && me.role !== "REPARTIDOR" ? localizeChangelog(unseenChangelog(me.lastSeenChangelog), lang) : [];
+  // Pendientes junto a cada opción del menú (vencidas, por agotarse, semana sin facturar…)
+  const badges = me && me.role !== "REPARTIDOR" ? await navBadges(me.role, await getT()) : {};
 
   return (
     // La clase "dark" sale del servidor si el tema es oscuro; con "sistema" la pone el script antes de pintar
@@ -49,10 +53,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {signedIn ? (
               <div className="flex min-h-screen">
                 <ArrivalCurtain initial={arriving} />
-                <AppSidebar user={user} />
+                <AppSidebar user={user} badges={badges} />
+                <CommandPalette role={user.role} />
                 {news.length > 0 && <WhatsNew entries={news} />}
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <MobileNav user={user} />
+                  <MobileNav user={user} badges={badges} />
                   <main data-app-main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
                     {/* Transición suave al cambiar de sección (solo el contenido; la barra lateral queda fija) */}
                     <PageTransition>{children}</PageTransition>
